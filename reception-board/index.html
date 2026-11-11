@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>到着ボード | ポックル院内ツール</title>
+<script src="../gate.js"></script>
+<style id="bstyle">
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7f8;color:#1f2a2e;font-family:"Meiryo UI","Yu Gothic UI",-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;font-size:14px}
+.wrap{max-width:560px;margin:0 auto;padding:14px}
+.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.top h1{font-size:18px;margin:0;color:#1f8670}
+.top .sp{flex:1}
+button{font:inherit;border:1px solid #b9c4c8;background:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;color:#1f2a2e}
+button:hover{background:#eef3f4}
+button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
+button.pri:hover{background:#176b59}
+.set{background:#fff;border:1px solid #e3e8ea;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-size:13px;color:#46555b;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.set select{font:inherit;padding:3px 6px}
+#panel{background:#fff;border:1px solid #cfd8db;border-radius:10px;overflow:hidden}
+.bar{display:flex;align-items:center;gap:6px;padding:6px 10px;background:#eef8f5;border-bottom:1px solid #d5e7e1;font-size:13px;cursor:default}
+.bar b{color:#1f8670}
+.bar .cnt{margin-left:auto;color:#46555b}
+.bar.alert{animation:al 1s infinite}
+@keyframes al{50%{background:#ffe08a}}
+.delay{display:flex;gap:4px;align-items:center;padding:6px 10px;border-bottom:1px solid #e3e8ea;font-size:12px;color:#46555b;flex-wrap:wrap}
+.delay button{padding:2px 8px;font-size:12px}
+.delay button.on{background:#e0a100;border-color:#e0a100;color:#fff}
+.delay .left{margin-left:auto;font-size:11px}
+.dlabel{padding:4px 10px;background:#fff4d6;color:#6b4a00;font-size:12px;font-weight:700;border-bottom:1px solid #f0d58a}
+.row{padding:7px 10px;border-bottom:1px solid #eef1f2;display:flex;gap:8px;align-items:center}
+.row:last-child{border-bottom:0}
+.row .m{flex:1;min-width:0}
+.row .n{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .d{font-size:12px;color:#46555b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row.new{background:#fffbe9}
+.row.called{background:#e8f1fb}
+.tag{display:inline-block;font-size:11px;padding:0 5px;border-radius:4px;margin-right:4px;font-weight:700;vertical-align:1px}
+.t-res{background:#e1f5ee;color:#085041}
+.t-con{background:#e6f1fb;color:#0c447c}
+.t-walk{background:#fcebeb;color:#a32d2d}
+.t-car{background:#f1efe8;color:#444441}
+.amber{color:#9a5b00!important;font-weight:700}
+.red{color:#c62828!important;font-weight:700}
+.acts{display:flex;gap:4px;flex-shrink:0;align-items:center}
+.acts button{padding:3px 8px;font-size:12px;white-space:nowrap}
+.x{border:0;background:none;color:#9aa6aa;padding:2px 4px!important}
+.rooms{display:flex;gap:3px}
+.rooms button{padding:3px 7px}
+.empty{padding:14px;color:#9aa6aa;text-align:center;font-size:13px}
+.err{padding:6px 10px;color:#c62828;font-size:12px}
+.mini .delay,.mini .dlabel,.mini #list{display:none}
+.hide{display:none!important}
+.start{position:fixed;inset:0;background:rgba(245,247,248,.97);display:flex;align-items:center;justify-content:center;z-index:9}
+.start div{background:#fff;border:1px solid #e3e8ea;border-radius:14px;padding:24px;max-width:360px;text-align:center}
+.start p{color:#46555b;font-size:13px}
+.mock{background:#333;color:#fff;font-size:11px;text-align:center;padding:2px}
+</style></head><body>
+<div class="wrap">
+<div class="top"><h1>到着ボード</h1><span class="sp"></span>
+<button id="pipBtn" class="pri">最前面に浮かせる</button></div>
+<div class="set">
+このPCの診察室：
+<select id="room"><option value="">なし（受付など）</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select>
+<span id="roleTxt"></span>
+<button id="notiBtn" class="hide">通知を許可</button>
+</div>
+
+<div id="panel">
+<div class="bar" id="bar"><b>到着ボード</b><span class="cnt" id="cnt">読込中…</span><button id="miniBtn" title="縮める／広げる" style="padding:0 8px">－</button></div>
+<div class="mock hide" id="mockbar">試験モード（この端末内だけのデータ）</div>
+<div class="delay hide" id="delayBox">遅れ表示：
+<button data-d="0">なし</button><button data-d="10">10分</button><button data-d="20">20分</button><button data-d="30">30分</button>
+<span class="left" id="delayLeft"></span></div>
+<div class="dlabel hide" id="dlabel"></div>
+<div id="list"><div class="empty">読込中…</div></div>
+<div class="err hide" id="err"></div>
+</div>
+</div>
+
+<div class="start" id="start"><div>
+<h2 style="margin:0 0 8px;font-size:18px">到着ボードを開始</h2>
+<p id="startMsg">音と通知を使うため、最初に1回押してください。</p>
+<button class="pri" id="startBtn" style="font-size:16px;padding:8px 20px">開始</button>
+</div></div>
+
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script>
+(function(){
+var cache={};document.querySelectorAll('[id]').forEach(function(e){cache[e.id]=e});
+var $=function(id){return cache[id]||(cache[id]=document.getElementById(id))};
+var LS='rcb_';
+/* キーと役割：URLの # に付けて1回開けばこのPCに保存される */
+var h=new URLSearchParams(location.hash.slice(1));
+if(h.get('k')){localStorage.setItem(LS+'key',h.get('k'));localStorage.setItem(LS+'role',h.get('role')==='reception'?'reception':'');history.replaceState(null,'',location.pathname)}
+var KEY=localStorage.getItem(LS+'key')||(RCP.isMock?'test':'');
+var RECEPTION=localStorage.getItem(LS+'role')==='reception'||(RCP.isMock&&h.get('role')!=='room');
+if(RCP.isMock)$('mockbar').classList.remove('hide');
+$('roleTxt').textContent=RECEPTION?'［受付PC：遅れ表示を変更できます］':'';
+$('room').value=localStorage.getItem(LS+'room')||'';
+$('room').addEventListener('change',function(){localStorage.setItem(LS+'room',$('room').value);draw()});
+if(!KEY){$('startMsg').textContent='このPCはまだ登録されていません。院長から受け取った登録用URLで開いてください。';$('startBtn').classList.add('hide')}
+
+/* 音 */
+var ac=null;
+function beep(){if(!ac)return;[0,0.25].forEach(function(dt,i){var o=ac.createOscillator(),g=ac.createGain();o.frequency.value=i?1320:990;o.connect(g);g.connect(ac.destination);var t=ac.currentTime+dt;g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.4,t+0.02);g.gain.exponentialRampToValueAtTime(0.0001,t+0.22);o.start(t);o.stop(t+0.24)})}
+function notify(r){if(!('Notification' in window)||Notification.permission!=='granted')return;try{new Notification('到着：診察券 '+r.card,{body:(r.wait==='car'?'車（'+r.car+'）':'院内')+'／'+CATJ[r.cat],tag:'rc-'+r.id})}catch(e){}}
+function updNoti(){$('notiBtn').classList.toggle('hide',!('Notification' in window)||Notification.permission==='granted')}
+$('notiBtn').addEventListener('click',function(){Notification.requestPermission().then(updNoti)});
+
+$('startBtn').addEventListener('click',function(){
+  try{ac=new (window.AudioContext||window.webkitAudioContext)();ac.resume()}catch(e){}
+  if('Notification' in window&&Notification.permission==='default')Notification.requestPermission().then(updNoti);
+  $('start').classList.add('hide');updNoti();load();schedule();
+});
+
+/* データ */
+var rows=[],seen=null,delay=0,delayAt=0,skew=0,busy=false;
+var CATJ={reserved:'予約あり',contacted:'予約なし・連絡済',walkin:'飛び込み'};
+function load(){
+  if(busy)return;busy=true;
+  RCP.get({action:'board',k:KEY}).then(function(r){
+    if(!r.ok)throw new Error(r.err==='auth'?'このPCの登録が無効です（キーを確認）':r.err);
+    $('err').classList.add('hide');
+    skew=(r.now||Date.now())-Date.now();
+    rows=r.rows.sort(function(a,b){return a.createdAt-b.createdAt});delay=r.delay||0;delayAt=r.delayAt||0;
+    var fresh=rows.filter(function(x){return x.status==='new'&&seen&&!seen[x.id]});
+    if(!seen)seen={};rows.forEach(function(x){seen[x.id]=1});
+    if(fresh.length){beep();fresh.forEach(notify);if(mini)$('bar').classList.add('alert')}
+    draw();
+  }).catch(function(e){$('err').textContent='更新できません：'+(e.message||e);$('err').classList.remove('hide')})
+  .then(function(){busy=false});
+}
+function act(p){p.k=KEY;return RCP.post(p).then(function(r){if(!r.ok){showErr(r.err==='already'?'すでに診察室'+r.room+'から呼び出されています':'操作できませんでした：'+r.err)}load()}).catch(function(e){showErr('通信できませんでした：'+(e.message||e))})}
+function showErr(t){$('err').textContent=t;$('err').classList.remove('hide');setTimeout(function(){$('err').classList.add('hide')},6000)}
+function now(){return Date.now()+skew}
+function mins(t){return Math.max(0,Math.floor((now()-t)/60000))}
+function hm(t){var d=new Date(t);return d.getHours()+':'+('0'+d.getMinutes()).slice(-2)}
+function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+function btn(txt,fn,cls){var b=el('button',cls||'',txt);b.addEventListener('click',fn);return b}
+
+var openPick={},lastSig='';
+function draw(){
+  var sig=JSON.stringify([rows,delay,delayAt,$('room').value,openPick,Math.floor(now()/60000)]);
+  if(sig===lastSig)return;lastSig=sig;
+  var car=rows.filter(function(x){return x.wait==='car'}).length,inside=rows.length-car;
+  var nNew=rows.filter(function(x){return x.status==='new'}).length;
+  $('cnt').textContent='車 '+car+'・院内 '+inside+(nNew?'（未受付 '+nNew+'）':'');
+  $('delayBox').classList.toggle('hide',!RECEPTION);
+  $('delayBox').querySelectorAll('button[data-d]').forEach(function(b){b.classList.toggle('on',Number(b.dataset.d)===delay)});
+  $('delayLeft').textContent=delay?'あと'+Math.max(0,60-mins(delayAt))+'分で自動解除':'';
+  $('dlabel').classList.toggle('hide',RECEPTION||!delay);$('dlabel').textContent='飼い主さんに「約'+delay+'分遅れ」と表示中';
+  var L=$('list');L.innerHTML='';
+  if(!rows.length){L.appendChild(el('div','empty','待っている方はいません'));return}
+  var myRoom=$('room').value;
+  rows.forEach(function(r){
+    var row=el('div','row '+r.status),m=el('div','m'),n=el('div','n'),d=el('div','d'),a=el('div','acts');
+    n.appendChild(el('span','tag '+(r.cat==='reserved'?'t-res':r.cat==='contacted'?'t-con':'t-walk'),r.cat==='walkin'?'飛込・緊急料':CATJ[r.cat]));
+    n.appendChild(document.createTextNode('診察券 '+(r.card||'?')+(r.owner?'　'+r.owner+(r.pet?'・'+r.pet:''):'')));
+    var w=r.wait==='car'?'車（'+r.car+'）':'院内';
+    if(r.status==='called'){
+      var cm=mins(r.calledAt);d.textContent=w+'・診察室'+r.room+'へ呼出中 '+cm+'分'+(cm>=5?'（応答なし？電話か駐車場へ）':'');
+      if(cm>=5)d.className='d red';
+      a.appendChild(btn('入室',function(){act({action:'enter',id:r.id})},'pri'));
+      a.appendChild(btn('取消',function(){act({action:'uncall',id:r.id})}));
+    }else{
+      var wm=mins(r.createdAt);d.textContent=w+'・到着 '+hm(r.createdAt)+'・'+wm+'分'+(r.status==='new'?'・未受付':'・受付済');
+      if(wm>=20)d.className='d red';else if(wm>=10)d.className='d amber';
+      if(r.status==='new')a.appendChild(btn('受付済',function(){act({action:'accept',id:r.id})},'pri'));
+      else if(r.wait==='car'){
+        if(myRoom&&!openPick[r.id]){
+          a.appendChild(btn('診察室'+myRoom+'へ呼出',function(){act({action:'call',id:r.id,room:myRoom,by:'診察室'+myRoom})},'pri'));
+          a.appendChild(btn('他',function(){openPick[r.id]=1;draw()}));
+        }else{
+          var rs=el('div','rooms');rs.appendChild(el('span','',(myRoom?'':'呼出')+' '));
+          [1,2,3,4,5].forEach(function(k){rs.appendChild(btn(String(k),function(){delete openPick[r.id];act({action:'call',id:r.id,room:String(k),by:myRoom?'診察室'+myRoom:'受付'})}))});
+          a.appendChild(rs);
+        }
+      }
+    }
+    var xb=btn('×',function(){if(xb.dataset.arm){act({action:'cancel',id:r.id})}else{xb.dataset.arm=1;xb.textContent='取消する';xb.className='';setTimeout(function(){delete xb.dataset.arm;xb.textContent='×';xb.className='x'},3000)}},'x');xb.title='受付を取り消す';a.appendChild(xb);
+    m.appendChild(n);m.appendChild(d);row.appendChild(m);row.appendChild(a);L.appendChild(row);
+  });
+}
+$('delayBox').querySelectorAll('button[data-d]').forEach(function(b){b.addEventListener('click',function(){act({action:'setDelay',min:Number(b.dataset.d)})})});
+
+/* 最前面（Document Picture-in-Picture） */
+var pip=null,mini=false,timer=null,host=window;
+var FULL={w:340,h:440},MINI={w:340,h:72};
+$('pipBtn').addEventListener('click',function(){
+  if(pip){pip.close();return}
+  if(!('documentPictureInPicture' in window)){showErr('このブラウザでは最前面表示が使えません。ChromeまたはEdgeを最新版にしてください。');return}
+  documentPictureInPicture.requestWindow({width:FULL.w,height:FULL.h}).then(function(w){
+    pip=w;w.document.title='到着ボード';
+    var st=w.document.createElement('style');st.textContent=$('bstyle').textContent+'body{background:#fff}#panel{border:0;border-radius:0}';
+    w.document.head.appendChild(st);w.document.body.appendChild($('panel'));
+    $('pipBtn').textContent='ボードを元に戻す';host=w;schedule();
+    w.addEventListener('pagehide',function(){document.querySelector('.wrap').appendChild($('panel'));pip=null;host=window;mini=false;$('panel').classList.remove('mini');$('miniBtn').textContent='－';$('pipBtn').textContent='最前面に浮かせる';schedule()});
+  }).catch(function(e){showErr('最前面にできませんでした：'+e.message)});
+});
+$('miniBtn').addEventListener('click',function(){
+  mini=!mini;$('panel').classList.toggle('mini',mini);$('miniBtn').textContent=mini?'＋':'－';$('bar').classList.remove('alert');
+  if(pip){try{pip.resizeTo(mini?MINI.w:FULL.w,mini?MINI.h:FULL.h)}catch(e){}}
+});
+$('bar').addEventListener('click',function(e){if(e.target.id!=='miniBtn')$('bar').classList.remove('alert')});
+
+/* 更新間隔：見えているときは6秒、隠れているときは30秒。浮かせているときは浮いた窓で数える */
+function schedule(){
+  if(timer){try{timer.w.clearInterval(timer.id)}catch(e){}}
+  var visible=pip||document.visibilityState==='visible';
+  var ms=RCP.isMock?2000:(visible?6000:30000);
+  timer={w:host,id:host.setInterval(function(){load()},ms)};
+}
+document.addEventListener('visibilitychange',function(){if(!$('start').classList.contains('hide'))return;if(document.visibilityState==='visible')load();schedule()});
+setInterval(function(){if(!$('start').classList.contains('hide'))return;draw()},30000);
+})();
+</script>
+</body></html>

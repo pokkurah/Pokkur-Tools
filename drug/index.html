@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="薬剤計算">
+<meta name="theme-color" content="#ffffff">
+<title>エキゾ薬剤計算 β | ポックル動物病院</title>
+<style>
+:root{--mint:#2fa88e;--mint-d:#1f8670;--mint-l:#e6f5f1;--ink:#1f2a2e;--sub:#6b7a80;--line:#e3e8ea;--bg:#f5f7f8;
+  --warn:#c0392b;--warn-l:#fdecea;--amber:#9a6200;--amber-l:#fdf3e1}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;font-size:16px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line)}
+.hbar{display:flex;align-items:center;gap:8px;padding:10px 14px 6px}
+.hbar h1{font-size:17px;margin:0;flex:1}
+.hbar h1 small{display:block;font-size:11px;color:var(--sub);font-weight:500}
+.beta{font-size:11px;font-weight:800;color:#fff;background:var(--amber);border-radius:6px;padding:2px 6px;margin-left:4px;vertical-align:2px}
+.tabs{display:flex;gap:6px;padding:0 10px 8px}
+.tabs button{flex:1;border:0;background:var(--bg);border-radius:9px;padding:8px;font-size:13px;color:var(--sub);font-weight:700}
+.tabs button.on{background:var(--mint);color:#fff}
+main{padding:12px 12px 40px;max-width:680px;margin:0 auto}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 10px;color:var(--mint-d)}
+label.f{display:block;font-size:13px;color:var(--sub);margin:12px 0 5px;font-weight:700}
+label.f:first-of-type{margin-top:0}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:1px solid var(--line);background:#fff;border-radius:10px;min-height:42px;padding:0 12px;font-weight:700;font-size:15px}
+.seg button.on{background:var(--mint);border-color:var(--mint);color:#fff}
+.seg.sp button{min-width:calc(25% - 5px);padding:0 6px;font-size:14px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.inbox{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;padding:0 12px;min-height:46px;background:#fff}
+.inbox input{border:0;width:100%;font-size:20px;font-weight:800;padding:6px 0;background:transparent;min-width:0}
+.inbox input:focus{outline:none}
+.inbox .u{font-size:13px;color:var(--sub);white-space:nowrap;margin-left:6px}
+.inbox.req{border-color:var(--warn);background:var(--warn-l)}
+select.t{width:100%;border:1px solid var(--line);border-radius:10px;padding:0 12px;min-height:46px;background:#fff;font-size:17px;font-weight:700}
+.drug{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:10px}
+.dh{display:flex;align-items:flex-start;gap:8px}
+.dh .nm{flex:1;font-weight:800;font-size:16px}
+.dh .nm small{display:block;font-weight:500;font-size:12px;color:var(--sub)}
+.x{border:1px solid var(--line);background:#fff;border-radius:9px;width:34px;height:34px;font-size:16px;color:var(--sub)}
+.mini{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+.mini button{border:1px solid var(--line);background:#fff;border-radius:8px;min-height:34px;padding:0 10px;font-size:13px;font-weight:700}
+.mini button.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.ref{font-size:12px;color:var(--sub);margin-top:5px}
+.ref b{color:var(--ink)}
+.res{margin-top:10px;background:var(--mint-l);border-radius:10px;padding:10px 12px}
+.res .big{font-size:24px;font-weight:900;color:var(--mint-d);letter-spacing:.01em}
+.res .sm{font-size:13px;color:var(--ink);margin-top:2px}
+.warn{margin-top:8px;font-size:13px;font-weight:700;color:var(--warn);background:var(--warn-l);border-radius:8px;padding:7px 10px}
+.caut{margin-top:8px;font-size:13px;font-weight:700;color:var(--amber);background:var(--amber-l);border-radius:8px;padding:7px 10px}
+.draft{display:inline-block;font-size:11px;font-weight:800;color:var(--amber);background:var(--amber-l);border-radius:5px;padding:1px 6px;margin-left:4px}
+.add{display:flex;gap:8px}
+.add select{flex:1}
+.add button{border:0;background:var(--mint);color:#fff;border-radius:10px;padding:0 16px;font-weight:800;min-height:46px}
+pre.karte{white-space:pre-wrap;word-break:break-all;font-family:inherit;font-size:15px;background:var(--bg);border-radius:10px;padding:12px;margin:0 0 10px;line-height:1.6}
+.copy{width:100%;border:0;background:var(--mint);color:#fff;border-radius:12px;min-height:50px;font-weight:900;font-size:16px}
+.copied{text-align:center;font-size:13px;color:var(--mint-d);font-weight:700;min-height:20px;margin-top:6px}
+.veh{font-size:14px;margin-top:8px;color:var(--ink)}
+table.dt{width:100%;border-collapse:collapse;font-size:13px}
+table.dt th,table.dt td{border-bottom:1px solid var(--line);padding:7px 4px;text-align:left;vertical-align:top}
+table.dt th{color:var(--sub);font-size:12px}
+table.dt td.na{color:#b5bfc3}
+.hint{font-size:12px;color:var(--sub);margin:6px 2px 0}
+.ok{display:inline-block;font-size:11px;font-weight:800;color:var(--mint-d);background:var(--mint-l);border-radius:5px;padding:1px 6px;margin-left:4px}
+.status{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mint-d);background:var(--mint-l);border-radius:10px;padding:6px 6px 6px 12px;margin-bottom:10px;font-weight:700}
+.status.off{color:var(--amber);background:var(--amber-l)}
+.status span{flex:1}
+.status button{border:1px solid currentColor;background:#fff;color:inherit;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:800}
+a.open{display:block;text-align:center;background:var(--mint);color:#fff;text-decoration:none;font-weight:800;border-radius:10px;padding:12px;margin-top:8px}
+.clear{width:100%;border:1px solid var(--line);background:#fff;border-radius:12px;min-height:46px;font-weight:800;color:var(--sub);margin-top:4px}
+</style>
+</head>
+<body>
+<header>
+  <div class="hbar"><h1>エキゾ薬剤計算<span class="beta">β</span><small>ポックル動物病院</small></h1></div>
+  <div class="tabs" id="tabs"><button data-v="calc" class="on">計算</button><button data-v="table">用量表</button></div>
+</header>
+<main id="main"></main>
+<script>
+(function(){
+"use strict";
+
+/* ===== 動物種 ===== */
+var SPECIES=[
+ {k:"hamster",l:"ハムスター"},{k:"bird",l:"鳥"},{k:"lizard",l:"トカゲ"},{k:"gecko",l:"ヤモリ"},
+ {k:"rabbit",l:"ウサギ"},{k:"chinchilla",l:"チンチラ"},{k:"degu",l:"デグー"},{k:"hedgehog",l:"ハリネズミ"},
+ {k:"mouse",l:"マウス"},{k:"rat",l:"ラット"},{k:"turtle",l:"カメ"},{k:"snake",l:"ヘビ"},{k:"newt",l:"イモリ"}
+];
+
+/* ===== データ源：Googleスプレッドシート（失敗時は前回読込分 → 内蔵の下書き） ===== */
+var SHEET_ID="1yBlnA-iun1W7lky1rIzBrKZ7ZG1yvp-gqc7d5tEklaE";
+var SHEET_URL="https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/edit";
+function gviz(name){ return "https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:csv&headers=1&sheet="+encodeURIComponent(name); }
+
+/* 内蔵の下書き（スプレッドシートと同じ列構成） */
+var BUILTIN_MASTER=[
+ ["ダイフェン","ST合剤","錠","480","","","SMX400＋TMP80。用量は合計量(mg/kg)"],
+ ["エンロフロキサシン","エンロフロキサシン","錠","15,50","","",""],
+ ["メロキシカム錠","メロキシカム","錠","5","","",""],
+ ["メタカムシロップ","メロキシカム","液","0.5,1.5","","","規格はmg/mL"],
+ ["フロセミド","フロセミド","錠","10","","",""],
+ ["クラリスロマイシン","クラリスロマイシン","錠","200","","",""],
+ ["アジスロマイシン","アジスロマイシン","錠","200","","",""],
+ ["ビクタス","オルビフロキサシン","錠","10,20","","",""],
+ ["ベトメディン","ピモベンダン","錠","2.5,5","","",""],
+ ["フォルテコール","ベナゼプリル","錠","2.5,5","","",""],
+ ["プリンペラン錠","メトクロプラミド","錠","5","","",""],
+ ["プロナミド錠","モサプリド","錠","5","","",""],
+ ["シプロヘプタジン錠","シプロヘプタジン","錠","4","","",""],
+ ["ファモチジン錠","ファモチジン","錠","10","","",""],
+ ["プレドニゾロン錠","プレドニゾロン","錠","5","","",""],
+ ["オメプラゾール錠","オメプラゾール","錠","10","","",""],
+ ["スピロノラクトン錠","スピロノラクトン","錠","25","","",""],
+ ["ハイシー","アスコルビン酸","散","200","","","ビタミンC。規格はmg/g"],
+ ["マイトマックス","","量指定","","カプセル","1","5mLあたり1カプセル"]
+];
+var BUILTIN_DOSES=[["エンロフロキサシン", "ウサギ", "10", "5", "15", "BID", "Small Animal Pediatrics 表176-5（ウサギ）", "", "", ""], ["エンロフロキサシン", "ハムスター", "10", "5", "20", "BID", "ISVMA 小型齧歯類 10mg/kg q12h", "", "", ""], ["エンロフロキサシン", "マウス", "10", "5", "20", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["エンロフロキサシン", "ラット", "10", "5", "20", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["エンロフロキサシン", "鳥", "15", "15", "20", "BID", "MSD獣医マニュアル（Pet Birds）", "", "", ""], ["エンロフロキサシン", "トカゲ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "ヤモリ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "カメ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "ヘビ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "ハリネズミ", "10", "10", "20", "BID", "BSAVA Formulary Exotic Pets（ヨーロッパハリネズミ）", "ヨーロッパハリネズミの用量", "", ""], ["エンロフロキサシン", "イモリ", "5", "5", "10", "SID", "MSD獣医マニュアル（Amphibians）", "", "", ""], ["ST合剤", "ウサギ", "30", "30", "40", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["ST合剤", "マウス", "30", "15", "30", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["ST合剤", "ラット", "30", "15", "30", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["ST合剤", "鳥", "50", "50", "100", "BID", "MSD獣医マニュアル（Pet Birds）", "", "", ""], ["ST合剤", "トカゲ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["ST合剤", "ヤモリ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["ST合剤", "カメ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["ST合剤", "ヘビ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["メロキシカム", "ウサギ", "1", "0.3", "1.5", "SID", "MSD獣医マニュアル 1mg/kg/日、UVic 0.3–1.5 PO", "", "", ""], ["メロキシカム", "マウス", "2", "1", "5", "SID", "UVic 実験動物フォーミュラリー", "", "", ""], ["メロキシカム", "ラット", "1", "1", "2", "SID", "UVic / Montana State IACUC", "", "", ""], ["メロキシカム", "鳥", "1", "0.5", "1.6", "BID", "MSD獣医マニュアル 1mg/kg q12–24h、オウム1.6mg/kg q12h", "", "", ""], ["メロキシカム", "トカゲ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "ヤモリ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "カメ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "ヘビ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "ハリネズミ", "0.5", "0.5", "0.5", "SID", "BSAVA Formulary Exotic Pets（ハリネズミ）", "", "", ""], ["メロキシカム", "イモリ", "0.2", "0.2", "0.2", "SID", "MSD獣医マニュアル（Amphibians）", "頻度の記載なし", "", ""], ["アジスロマイシン", "ハムスター", "30", "30", "30", "SID", "ISVMA 小型齧歯類", "", "", ""], ["アジスロマイシン", "マウス", "30", "30", "50", "SID", "UNSW 研究動物フォーミュラリー2023（q12–24h）", "", "", ""], ["アジスロマイシン", "ラット", "30", "30", "50", "SID", "UNSW 研究動物フォーミュラリー2023（q12–24h）", "", "", ""], ["アジスロマイシン", "ウサギ", "30", "15", "30", "SID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["アジスロマイシン", "鳥", "45", "45", "45", "SID", "Dorrestein（抗酸菌症の多剤併用）", "抗酸菌症の併用療法での用量", "", ""], ["アジスロマイシン", "ヘビ", "10", "10", "10", "3〜7日ごと", "MSD獣医マニュアル（ボールパイソン）", "3〜7日ごとの投与", "", ""], ["クラリスロマイシン", "鳥", "85", "85", "85", "SID", "Dorrestein（抗酸菌症の多剤併用）", "抗酸菌症の併用療法での用量", "", ""], ["クラリスロマイシン", "カメ", "15", "15", "15", "2〜3日ごと", "MSD獣医マニュアル（サバクゴファーガメ）", "2〜3日ごとの投与", "", ""], ["メトクロプラミド", "ウサギ", "0.5", "0.5", "0.5", "BID", "BSAVA Manual of Rabbit Medicine 2nd", "", "", ""]];
+
+var DRUGS=[], DOSES={}, ING=[], SRC={kind:"builtin",at:""};
+var SP_BY_NAME={}; SPECIES.forEach(function(x){ SP_BY_NAME[x.l]=x.k; });
+function tnum(v){ v=String(v==null?"":v).trim(); return v===""||isNaN(+v)?null:+v; }
+function buildData(master, doses){
+  var drugs=[], dmap={}, ings=[];
+  master.forEach(function(r){
+    var name=String(r[0]||"").trim(); if(!name) return;
+    var formJ=String(r[2]||"").trim(), form=formJ==="液"?"liq":formJ==="散"?"pow":formJ==="量指定"?"fixed":"tab";
+    var ing=String(r[1]||"").trim()||null;
+    var str=String(r[3]||"").split(/[,、，\s]+/).map(tnum).filter(function(x){return x!==null&&x>0;});
+    if(form!=="fixed" && !str.length) return;
+    drugs.push({id:name,name:name,ing:ing,form:form,str:str,unit:String(r[4]||"").trim()||"個",per5:tnum(r[5])||1,note:String(r[6]||"").trim()});
+    if(ing && ings.indexOf(ing)<0) ings.push(ing);
+  });
+  doses.forEach(function(r){
+    var ing=String(r[0]||"").trim(), sp=SP_BY_NAME[String(r[1]||"").trim()], d=tnum(r[2]);
+    if(!ing||!sp||d===null) return;
+    var mn=tnum(r[3]), mx=tnum(r[4]);
+    (dmap[ing]=dmap[ing]||{})[sp]={d:d,min:mn===null?d:mn,max:mx===null?d:mx,f:String(r[5]||"").trim()||"SID",
+      src:String(r[6]||"").trim(),note:String(r[7]||"").trim(),by:String(r[8]||"").trim(),date:String(r[9]||"").trim()};
+    if(ings.indexOf(ing)<0) ings.push(ing);
+  });
+  DRUGS=drugs; DOSES=dmap; ING=ings;
+}
+function parseCSV(t){
+  var rows=[],row=[],f="",q=false;
+  for(var i=0;i<t.length;i++){var c=t[i];
+    if(q){ if(c==='"'){ if(t[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else if(c==='"') q=true; else if(c===','){row.push(f);f="";} else if(c==='\n'){row.push(f);rows.push(row);row=[];f="";} else if(c!=='\r') f+=c; }
+  if(f!==""||row.length){row.push(f);rows.push(row);}
+  return rows;
+}
+function nowStr(){ var d=new Date(); return (d.getMonth()+1)+"/"+d.getDate()+" "+d.getHours()+":"+("0"+d.getMinutes()).slice(-2); }
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+function loadSheet(){
+  SRC.loading=true; renderStatus();
+  Promise.all([fetch(gviz("薬剤マスタ")).then(function(r){ if(!r.ok) throw 0; return r.text(); }),
+               fetch(gviz("用量表")).then(function(r){ if(!r.ok) throw 0; return r.text(); })])
+  .then(function(t){
+    var m=parseCSV(t[0]).slice(1), d=parseCSV(t[1]).slice(1);
+    if(!m.length || (m[0][0]||"").indexOf("<")===0) throw 0;
+    buildData(m,d); SRC={kind:"sheet",at:nowStr()}; lsSet("dose_cache",{m:m,d:d,at:SRC.at}); render();
+  }).catch(function(){
+    var c=lsGet("dose_cache");
+    if(c&&c.m){ buildData(c.m,c.d); SRC={kind:"cache",at:c.at}; } else { SRC={kind:"builtin",at:""}; }
+    render();
+  });
+}
+(function(){ var c=lsGet("dose_cache"); if(c&&c.m){ buildData(c.m,c.d); SRC={kind:"cache",at:c.at}; } else buildData(BUILTIN_MASTER,BUILTIN_DOSES); })();
+
+var FREQS=["SID","BID","TID","EOD"];
+var PERDOSE=[0.05,0.1,0.2,0.3,0.5];
+
+/* ===== 状態 ===== */
+var S={sp:null, wt:"", per:0.1, freq:"SID", total:5, veh:"water", items:[]};
+var view="calc";
+
+/* ===== helpers ===== */
+function h(tag,attrs){var el=document.createElement(tag);if(attrs)for(var a in attrs){if(a==="class")el.className=attrs[a];else if(a==="text")el.textContent=attrs[a];else if(a.slice(0,2)==="on")el.addEventListener(a.slice(2),attrs[a]);else el.setAttribute(a,attrs[a]);}
+ for(var i=2;i<arguments.length;i++){var c=arguments[i];if(c==null)continue;(Array.isArray(c)?c:[c]).forEach(function(x){if(x!=null)el.appendChild(typeof x==="string"?document.createTextNode(x):x);});}return el;}
+function num(v){return v!==""&&v!=null&&!isNaN(+v)&&isFinite(+v);}
+function drug(id){for(var i=0;i<DRUGS.length;i++)if(DRUGS[i].id===id)return DRUGS[i];return null;}
+function spName(k){for(var i=0;i<SPECIES.length;i++)if(SPECIES[i].k===k)return SPECIES[i].l;return"";}
+function doseFor(ing,sp){return ing&&sp&&DOSES[ing]?DOSES[ing][sp]||null:null;}
+function fmt(n,dp){ // 数値の表示
+  if(!isFinite(n))return"—";
+  var s=n.toFixed(dp); return s.replace(/(\.\d*?)0+$/,"$1").replace(/\.$/,"");
+}
+function fmtTab(n){ return n<0.1 ? n.toFixed(3) : n.toFixed(2); }
+function fmtMg(n){ return n<1 ? fmt(n,3) : n<10 ? fmt(n,2) : fmt(n,1); }
+function strLabel(d,s){ return d.form==="liq" ? s+"mg/mL" : d.form==="pow" ? s+"mg/g" : s+"mg"; }
+function unitOf(d){ return d.form==="fixed"?d.unit : d.form==="liq"?"mL" : d.form==="pow"?"g" : "錠"; }
+function fmtQty(q,u){ return u==="錠" ? fmtTab(q) : u==="g" ? q.toFixed(3) : fmt(q,2); }
+
+/* ===== 計算 ===== */
+function calcItem(it){
+  var d=drug(it.id), r={d:d};
+  var tot=+S.total;
+  if(it.mode==="fixed"){
+    var q=num(it.fixed)?+it.fixed:NaN;
+    r.qty=q*tot/5; r.ok=num(it.fixed);
+    r.unit = unitOf(d);
+    r.liqMl = d.form==="liq" ? r.qty : 0;
+    return r;
+  }
+  var wt=+S.wt/1000, dose=+it.dose, per=+S.per, str=d.str[it.si];
+  r.ok = num(S.wt) && +S.wt>0 && num(it.dose) && +it.dose>0;
+  if(!r.ok) return r;
+  r.mgDose = dose*wt;            // 1回量 mg
+  r.conc   = r.mgDose/per;       // mg/mL
+  r.mgTotal= r.conc*tot;         // 総液量に入れる mg
+  r.qty=r.mgTotal/str; r.unit=unitOf(d); r.liqMl = d.form==="liq" ? r.qty : 0;
+  return r;
+}
+function vehicle(results){
+  var liq=0; results.forEach(function(r){ if(r.ok && r.liqMl) liq+=r.liqMl; });
+  var rem=+S.total-liq;
+  return {liq:liq, rem:rem, water:S.veh==="water"?rem:rem/2, syrup:S.veh==="water"?0:rem/2};
+}
+
+/* ===== カルテ文 ===== */
+function karteText(){
+  var lines=[], res=S.items.map(calcItem);
+  lines.push("【調剤】"+(spName(S.sp)||"動物種未選択")+" "+(num(S.wt)?S.wt+"g":"体重未入力"));
+  lines.push("1回"+fmt(+S.per,3)+"mL "+S.freq+"／全量"+S.total+"mL");
+  S.items.forEach(function(it,i){
+    var r=res[i], d=r.d;
+    var name=d.name+(d.form==="fixed"?"":d.form==="tab"?strLabel(d,d.str[it.si])+(/錠$/.test(d.name)?"":"錠"):"（"+strLabel(d,d.str[it.si])+"）");
+    if(!r.ok){ lines.push("・"+name+"：未計算"); return; }
+    if(it.mode==="fixed"){
+      lines.push("・"+name+" "+fmt(r.qty,2)+r.unit+"（"+fmt(+it.fixed,2)+r.unit+"/5mL）");
+    }else{
+      lines.push("・"+name+"｜"+fmt(+it.dose,3)+"mg/kg → "+fmtQty(r.qty,r.unit)+r.unit+"（"+fmtMg(r.mgTotal)+"mg）");
+    }
+  });
+  var v=vehicle(res);
+  if(S.veh==="water") lines.push("溶解：水で全量"+S.total+"mL"+(v.liq>0?"（水 "+fmt(v.rem,2)+"mL）":""));
+  else lines.push("溶解：半シロ（単シロップ "+fmt(v.syrup,2)+"mL＋水 "+fmt(v.water,2)+"mL）");
+  return lines.join("\n");
+}
+
+function badge(d){ return d.by ? h("span",{class:"ok",text:"確認済 "+d.by}) : h("span",{class:"draft",text:"未確認"}); }
+function statusBar(){
+  var t = SRC.loading ? "用量表を読み込み中…" :
+          SRC.kind==="sheet" ? "用量表：スプレッドシート（"+SRC.at+" 読込）" :
+          SRC.kind==="cache" ? "用量表：前回読込分（"+SRC.at+"）※最新に接続できません" :
+          "用量表：内蔵の下書き ※スプレッドシートに接続できません";
+  return h("div",{class:"status"+(SRC.kind==="sheet"&&!SRC.loading?"":" off")},h("span",{text:t}),
+    h("button",{text:"再読込",onclick:function(){ loadSheet(); }}));
+}
+function renderStatus(){ var el=document.querySelector(".status"); if(el) el.replaceWith(statusBar()); }
+
+/* ===== 画面：計算 ===== */
+function segBtns(list, cur, onPick, cls){
+  var s=h("div",{class:"seg"+(cls?" "+cls:"")});
+  list.forEach(function(o){ var v=o.v!==undefined?o.v:o, l=o.l!==undefined?o.l:o;
+    s.appendChild(h("button",{class:String(cur)===String(v)?"on":"",text:String(l),onclick:function(){onPick(v);}})); });
+  return s;
+}
+
+function viewCalc(){
+  var w=h("div");
+  S.items=S.items.filter(function(it){ return !!drug(it.id); });
+  w.appendChild(statusBar());
+  // 基本設定
+  var wtIn=h("input",{type:"text",inputmode:"decimal",placeholder:"必須"}); wtIn.value=S.wt;
+  var wtBox=h("div",{class:"inbox"+(num(S.wt)&&+S.wt>0?"":" req")},wtIn,h("span",{class:"u",text:"g"}));
+  wtIn.addEventListener("input",function(){ wtIn.value=wtIn.value.replace(/[^\d.]/g,""); S.wt=wtIn.value;
+    wtBox.className="inbox"+(num(S.wt)&&+S.wt>0?"":" req"); refreshDrugs(); });
+  var perIn=h("input",{type:"text",inputmode:"decimal"}); perIn.value=S.per;
+  perIn.addEventListener("input",function(){ perIn.value=perIn.value.replace(/[^\d.]/g,""); if(num(perIn.value)&&+perIn.value>0){S.per=+perIn.value; refreshDrugs();} });
+  var totSel=h("select",{class:"t"});
+  for(var i=1;i<=10;i++){ var o=h("option",{value:String(i),text:i+" mL"}); if(i===+S.total)o.selected=true; totSel.appendChild(o); }
+  totSel.addEventListener("change",function(){ S.total=+totSel.value; refreshDrugs(); });
+
+  w.appendChild(h("div",{class:"card"},
+    h("label",{class:"f",text:"動物種"}),
+    segBtns(SPECIES.map(function(s){return{v:s.k,l:s.l};}),S.sp,function(v){
+      S.sp=v; S.items.forEach(function(it){ var dd=doseFor(drug(it.id).ing,v); if(it.mode==="calc") it.dose=dd?dd.d:""; }); render();
+    },"sp"),
+    h("div",{class:"row2",style:"margin-top:4px"},
+      h("div",null,h("label",{class:"f",text:"体重"}),wtBox),
+      h("div",null,h("label",{class:"f",text:"総液量"}),totSel)),
+    h("label",{class:"f",text:"1回量"}),
+    h("div",{class:"row2"},
+      segBtns(PERDOSE,S.per,function(v){S.per=v;render();}),
+      h("div",{class:"inbox"},perIn,h("span",{class:"u",text:"mL"}))),
+    h("label",{class:"f",text:"回数"}),
+    segBtns(FREQS,S.freq,function(v){S.freq=v;render();}),
+    h("label",{class:"f",text:"溶解液"}),
+    segBtns([{v:"water",l:"水のみ"},{v:"half",l:"半シロ"}],S.veh,function(v){S.veh=v;render();})
+  ));
+
+  // 薬
+  w.appendChild(h("div",{id:"drugs"}));
+  var sel=h("select",{class:"t"}); sel.appendChild(h("option",{value:"",text:"＋ 薬を追加"}));
+  DRUGS.forEach(function(d){ sel.appendChild(h("option",{value:d.id,text:d.name+(d.note&&d.form!=="fixed"?"（"+d.note.split("。")[0]+"）":"")})); });
+  sel.addEventListener("change",function(){ if(!sel.value)return; addDrug(sel.value); sel.value=""; });
+  w.appendChild(h("div",{class:"card"},h("div",{class:"add"},sel)));
+
+  // 結果
+  w.appendChild(h("div",{id:"karte"}));
+  w.appendChild(h("button",{class:"clear",text:"すべてクリア",onclick:function(){
+    S={sp:null,wt:"",per:0.1,freq:"SID",total:5,veh:"water",items:[]}; render(); window.scrollTo(0,0);
+  }}));
+  setTimeout(refreshDrugs,0);
+  return w;
+}
+
+function addDrug(id){
+  var d=drug(id), dd=doseFor(d.ing,S.sp);
+  S.items.push({id:id, si:0, mode:d.form==="fixed"?"fixed":"calc", dose:dd?dd.d:"", fixed:d.form==="fixed"?d.per5:""});
+  refreshDrugs();
+}
+
+function drugCard(it, idx){
+  var d=drug(it.id), r=calcItem(it), dd=doseFor(d.ing,S.sp);
+  var card=h("div",{class:"drug"});
+  card.appendChild(h("div",{class:"dh"},
+    h("div",{class:"nm"},d.name,d.note?h("small",{text:d.note}):null),
+    h("button",{class:"x",text:"✕","aria-label":"削除",onclick:function(){ S.items.splice(idx,1); refreshDrugs(); }})));
+  // 規格・モード
+  var mini=h("div",{class:"mini"});
+  if(d.form!=="fixed"){
+    d.str.forEach(function(s,i){ mini.appendChild(h("button",{class:it.si===i?"on":"",text:strLabel(d,s),onclick:function(){it.si=i;refreshDrugs();}})); });
+    mini.appendChild(h("span",{style:"flex:1"}));
+    [["calc","計算"],["fixed","量指定"]].forEach(function(m){
+      mini.appendChild(h("button",{class:it.mode===m[0]?"on":"",text:m[1],onclick:function(){it.mode=m[0]; if(m[0]==="fixed"&&!num(it.fixed)) it.fixed=""; if(m[0]==="calc"&&!num(it.dose)) it.dose=dd?dd.d:""; refreshDrugs();}}));
+    });
+  }
+  card.appendChild(mini);
+
+  if(it.mode==="fixed"){
+    var unit = unitOf(d);
+    var fin=h("input",{type:"text",inputmode:"decimal"}); fin.value=it.fixed;
+    fin.addEventListener("input",function(){ fin.value=fin.value.replace(/[^\d.]/g,""); it.fixed=fin.value; updateResult(card,it); updateKarte(); });
+    card.appendChild(h("div",{class:"inbox"+(num(it.fixed)?"":" req")},fin,h("span",{class:"u",text:unit+" / 5mLあたり"})));
+  }else{
+    var din=h("input",{type:"text",inputmode:"decimal",placeholder:dd?"":"用量を入力"}); din.value=it.dose;
+    var dbox=h("div",{class:"inbox"+(num(it.dose)?"":" req")},din,h("span",{class:"u",text:"mg/kg"}));
+    din.addEventListener("input",function(){ din.value=din.value.replace(/[^\d.]/g,""); it.dose=din.value;
+      dbox.className="inbox"+(num(it.dose)?"":" req"); updateResult(card,it); updateKarte(); });
+    card.appendChild(dbox);
+    if(!S.sp) card.appendChild(h("div",{class:"caut",text:"動物種を選ぶと用量が自動で入ります"}));
+    else if(dd){
+      card.appendChild(h("div",{class:"ref"},
+        h("b",{text:"用量表 "+(dd.min!==dd.max?dd.min+"–"+dd.max:dd.d)+" mg/kg "+dd.f}), badge(dd),
+        h("div",{text:dd.src+(dd.note?"／"+dd.note:"")})));
+    }else{
+      card.appendChild(h("div",{class:"warn",text:spName(S.sp)+"の用量は未登録です。用量を手入力してください。"}));
+    }
+  }
+  card.appendChild(h("div",{class:"slot"}));
+  updateResult(card,it);
+  return card;
+}
+
+function updateResult(card,it){
+  var slot=card.querySelector(".slot"); slot.innerHTML="";
+  var d=drug(it.id), r=calcItem(it), dd=doseFor(d.ing,S.sp);
+  if(!r.ok){
+    if(it.mode==="calc" && !(num(S.wt)&&+S.wt>0)) slot.appendChild(h("div",{class:"warn",text:"体重を入力してください"}));
+    return;
+  }
+  if(it.mode==="fixed"){
+    slot.appendChild(h("div",{class:"res"},
+      h("div",{class:"big",text:fmt(r.qty,2)+" "+r.unit}),
+      h("div",{class:"sm",text:"全量"+S.total+"mLに対して（"+fmt(+it.fixed,2)+r.unit+"/5mL）"})));
+    return;
+  }
+  var qtyTxt = fmtQty(r.qty,r.unit)+" "+r.unit;
+  slot.appendChild(h("div",{class:"res"},
+    h("div",{class:"big",text:qtyTxt+" を全量"+S.total+"mLに"}),
+    h("div",{class:"sm",text:"薬剤量 "+fmtMg(r.mgTotal)+"mg ／ 1回 "+fmtMg(r.mgDose)+"mg（"+fmt(+it.dose,3)+"mg/kg）／ 濃度 "+fmt(r.conc,3)+"mg/mL"})));
+  if(dd){
+    var v=+it.dose;
+    if(v<dd.min||v>dd.max) slot.appendChild(h("div",{class:"warn",text:"用量表の範囲（"+dd.min+"–"+dd.max+"mg/kg）を外れています"}));
+    if(dd.f!==S.freq) slot.appendChild(h("div",{class:"caut",text:"用量表の回数は「"+dd.f+"」です（設定："+S.freq+"）"}));
+  }
+}
+
+function refreshDrugs(){
+  var box=document.getElementById("drugs"); if(!box) return;
+  box.innerHTML="";
+  S.items.forEach(function(it,i){ box.appendChild(drugCard(it,i)); });
+  updateKarte();
+}
+
+function updateKarte(){
+  var box=document.getElementById("karte"); if(!box) return;
+  box.innerHTML="";
+  if(!S.items.length) return;
+  var res=S.items.map(calcItem), v=vehicle(res);
+  var card=h("div",{class:"card"},h("h2",{text:"カルテ転記"}));
+  if(v.rem<0) card.appendChild(h("div",{class:"warn",style:"margin:0 0 10px",text:"液剤だけで総液量を超えています（"+fmt(v.liq,2)+"mL）。総液量か1回量を見直してください。"}));
+  var txt=karteText();
+  card.appendChild(h("pre",{class:"karte",text:txt}));
+  var msg=h("div",{class:"copied"});
+  card.appendChild(h("button",{class:"copy",text:"カルテ用にコピー",onclick:function(){
+    function done(){ msg.textContent="コピーしました。ARMIXに貼り付けてください。"; }
+    try{ navigator.clipboard.writeText(txt).then(done,fallback); }catch(e){ fallback(); }
+    function fallback(){ var ta=h("textarea"); ta.value=txt; document.body.appendChild(ta); ta.select();
+      try{ document.execCommand("copy"); done(); }catch(e){ msg.textContent="コピーできませんでした。長押しで選択してください。"; } ta.remove(); }
+  }}));
+  card.appendChild(msg);
+  box.appendChild(card);
+}
+
+/* ===== 画面：用量表 ===== */
+function viewTable(){
+  var w=h("div");
+  w.appendChild(statusBar());
+  w.appendChild(h("div",{class:"card"},
+    h("h2",{text:"用量表"}),
+    h("p",{class:"hint",style:"margin-top:0",text:"編集・追記はGoogleスプレッドシートで行います。確認者が空欄の行は「未確認」と表示されます。未登録の組み合わせは計算時に手入力です。"}),
+    h("a",{href:SHEET_URL,target:"_blank",rel:"noopener",class:"open",text:"スプレッドシートを開いて編集"})));
+  ING.forEach(function(ing){
+    if(!DOSES[ing]) DOSES[ing]={};
+    var drugsUsing=DRUGS.filter(function(d){return d.ing===ing;}).map(function(d){return d.name;}).join("・");
+    var tb=h("table",{class:"dt"},h("tr",null,h("th",{text:"動物種"}),h("th",{text:"mg/kg"}),h("th",{text:"回数"}),h("th",{text:"出典・備考"})));
+    SPECIES.forEach(function(s){
+      var d=DOSES[ing][s.k];
+      if(d) tb.appendChild(h("tr",null,h("td",{text:s.l}),h("td",{text:(d.min!==d.max?d.min+"–"+d.max+"（"+d.d+"）":String(d.d))}),h("td",{text:d.f}),h("td",null,d.src+(d.note?"／"+d.note:""),h("div",null,badge(d)))));
+      else tb.appendChild(h("tr",null,h("td",{text:s.l}),h("td",{class:"na",text:"未登録"}),h("td",{class:"na",text:""}),h("td",{class:"na",text:""})));
+    });
+    w.appendChild(h("div",{class:"card"},h("h2",{text:ing}),h("p",{class:"hint",style:"margin:-6px 0 8px",text:"対象：" + drugsUsing}),tb));
+  });
+  return w;
+}
+
+/* ===== ルーティング ===== */
+document.getElementById("tabs").addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;view=b.getAttribute("data-v");render();window.scrollTo(0,0);});
+function render(){
+  Array.prototype.forEach.call(document.querySelectorAll("#tabs button"),function(b){b.classList.toggle("on",b.getAttribute("data-v")===view);});
+  var m=document.getElementById("main"); m.innerHTML="";
+  m.appendChild(view==="calc"?viewCalc():viewTable());
+}
+render();
+loadSheet();
+})();
+</script>
+</body>
+</html>

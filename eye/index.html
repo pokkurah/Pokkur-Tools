@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="眼科検査">
+<meta name="theme-color" content="#ffffff">
+<title>眼科検査記録 | ポックル動物病院</title>
+<style>
+:root{
+  --mint:#2fa88e; --mint-d:#1f8670; --mint-l:#e6f5f1;
+  --ink:#1f2a2e; --sub:#6b7a80; --line:#e3e8ea; --bg:#f5f7f8;
+  --warn:#c0392b; --warn-l:#fdecea; --amber:#b9770e; --amber-l:#fdf3e1;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;
+  font-size:16px;line-height:1.45}
+button{font:inherit;color:inherit}
+input,textarea,select{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line)}
+.hbar{display:flex;align-items:center;gap:8px;padding:10px 14px}
+.hbar h1{font-size:17px;margin:0;flex:1;font-weight:700;letter-spacing:.02em}
+.hbar h1 small{display:block;font-size:11px;color:var(--sub);font-weight:500}
+.iconbtn{border:1px solid var(--line);background:#fff;border-radius:10px;height:38px;min-width:38px;padding:0 10px;font-size:14px}
+.steps{display:flex;padding:0 10px 8px;gap:6px}
+.steps button{flex:1;border:0;background:var(--bg);border-radius:9px;padding:8px 4px;font-size:13px;color:var(--sub);font-weight:600}
+.steps button.on{background:var(--mint);color:#fff}
+.colhead{display:none;grid-template-columns:1fr 3px 1fr;gap:8px;padding:6px 22px;background:var(--mint-l);font-size:14px;font-weight:800;color:var(--mint-d);text-align:center;align-items:center}
+.colhead .bar{background:var(--mint);height:20px;border-radius:2px;opacity:.55}
+.colhead.show{display:grid}
+main{padding:12px 12px 120px;max-width:680px;margin:0 auto}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 10px;color:var(--mint-d)}
+label.f{display:block;font-size:13px;color:var(--sub);margin:10px 0 4px;font-weight:600}
+input.t,select.t,textarea.t{width:100%;border:1px solid var(--line);border-radius:10px;padding:11px 12px;background:#fff;font-size:16px}
+input.t:focus,textarea.t:focus{outline:2px solid var(--mint);border-color:transparent}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:1px solid var(--line);background:#fff;border-radius:10px;min-height:44px;padding:0 14px;font-weight:600;font-size:15px}
+.seg button.on{background:var(--mint);border-color:var(--mint);color:#fff}
+.sec{font-size:13px;font-weight:800;color:var(--sub);letter-spacing:.08em;margin:18px 4px 8px}
+.row{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:8px}
+.rl{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-weight:700;font-size:15px;margin:0 2px 8px}
+.rl .ref{font-weight:500;font-size:12px;color:var(--sub)}
+.rl .tog{margin-left:auto}
+.cells{display:grid;grid-template-columns:1fr 1fr;column-gap:19px;row-gap:8px;position:relative}
+.cells::after{content:"";position:absolute;left:50%;top:-4px;bottom:-4px;width:3px;margin-left:-1.5px;background:var(--mint);border-radius:2px;opacity:.55}.cell{display:flex;gap:4px}
+.cell button{flex:1;min-height:46px;border:1px solid var(--line);border-radius:10px;background:#fff;font-weight:700;font-size:16px;padding:0 2px}
+.cell button.on{background:var(--mint);border-color:var(--mint);color:#fff}
+.cell button.on.bad{background:var(--warn);border-color:var(--warn)}
+.cell .num{flex:1;display:flex;flex-direction:column;gap:3px}
+.cell .num .in{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;padding:0 10px;min-height:46px;background:#fff}
+.cell .num input{border:0;width:100%;font-size:20px;font-weight:700;padding:6px 0;background:transparent;min-width:0}
+.cell .num input:focus{outline:none}
+.cell .num .u{font-size:12px;color:var(--sub);white-space:nowrap}
+.judge{font-size:12px;font-weight:700;min-height:16px;padding-left:2px}
+.judge.n{color:var(--mint-d)} .judge.w{color:var(--amber)} .judge.b{color:var(--warn)}
+.cell .num .in.b{border-color:var(--warn);background:var(--warn-l)}
+.cell .num .in.w{border-color:var(--amber);background:var(--amber-l)}
+.detail{margin-top:8px;border-top:1px dashed var(--line);padding-top:8px}
+.detail .dh{font-size:12px;font-weight:800;color:var(--warn);margin:4px 2px 6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{border:1px solid var(--line);background:#fff;border-radius:999px;padding:8px 12px;font-size:14px;font-weight:600;min-height:38px}
+.chips button.on{background:var(--warn-l);border-color:var(--warn);color:var(--warn)}
+.detail input.t{margin-top:6px;padding:9px 10px;font-size:15px}
+.allnormal{width:100%;border:0;border-radius:12px;background:var(--mint-l);color:var(--mint-d);font-weight:800;min-height:50px;font-size:15px}
+.counter{font-size:12px;color:var(--sub);text-align:right;margin-top:4px}
+.counter.over{color:var(--warn);font-weight:700}
+.foot{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:10px 12px calc(10px + env(safe-area-inset-bottom));display:flex;gap:8px;z-index:20}
+.foot button{flex:1;min-height:50px;border-radius:12px;border:1px solid var(--line);background:#fff;font-weight:800;font-size:16px}
+.foot button.pri{background:var(--mint);border-color:var(--mint);color:#fff}
+.preview img{width:100%;border:1px solid var(--line);border-radius:6px;box-shadow:0 2px 10px rgba(0,0,0,.06);margin-bottom:10px;background:#fff}
+.msg{font-size:14px;padding:10px 12px;border-radius:10px;margin-bottom:10px}
+.msg.ok{background:var(--mint-l);color:var(--mint-d)} .msg.ng{background:var(--warn-l);color:var(--warn)}
+.fname{font-size:12px;color:var(--sub);word-break:break-all;margin:-4px 2px 10px}
+.modal{position:fixed;inset:0;background:rgba(20,30,35,.45);display:flex;align-items:flex-end;justify-content:center;z-index:50}
+.modal .box{background:#fff;width:100%;max-width:520px;border-radius:18px 18px 0 0;padding:18px 16px calc(16px + env(safe-area-inset-bottom))}
+.modal p{margin:0 0 14px;font-size:15px}
+.modal .btns{display:flex;gap:8px}
+.modal .btns button{flex:1;min-height:48px;border-radius:12px;border:1px solid var(--line);background:#fff;font-weight:800}
+.modal .btns .danger{background:var(--warn);border-color:var(--warn);color:#fff}
+table.st{width:100%;border-collapse:collapse;font-size:13px}
+table.st th,table.st td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:middle}
+table.st input[type=number]{width:58px;border:1px solid var(--line);border-radius:8px;padding:6px;font-size:15px}
+table.st input[type=text]{width:100%;border:1px solid var(--line);border-radius:8px;padding:6px;font-size:13px}
+.hint{font-size:12px;color:var(--sub);margin:6px 2px 0}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<header>
+  <div class="hbar">
+    <h1>眼科検査記録<small>ポックル動物病院</small></h1>
+  </div>
+  <div class="steps" id="steps">
+    <button data-v="pt">① 患者情報</button>
+    <button data-v="ex">② 検査入力</button>
+    <button data-v="out">③ PDF</button>
+  </div>
+  <div class="colhead" id="colhead"><div>右眼 OD</div><div class="bar"></div><div>左眼 OS</div></div>
+</header>
+<main id="main"></main>
+<div class="foot" id="foot"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ===================== 定義 ===================== */
+var SPECIES = [
+  {k:"dog", l:"犬"}, {k:"cat", l:"猫"}, {k:"rabbit", l:"兎"}, {k:"other", l:"その他"}
+];
+var TESTS = [
+  {k:"iop",  l:"眼圧",     unit:"mmHg"},
+  {k:"stt",  l:"STT",      unit:"mm/分"},
+  {k:"tq",   l:"ティアQ",  unit:"mm/5秒"},
+  {k:"tbut", l:"TBUT",     unit:"秒"}
+];
+/* 出典：ティアQ犬 Nascimento 2023 / Miyasaka 2019、猫・兎 Rajaei 2018 / Kovaļčuka 2021、兎STT ホーランドロップ75頭（中央値10, 5.0–17.3）
+   lo=正常下限 / bl=境界下限 / sev=重度下限 / hi=上限 / judge=判定する / note=参考表示 */
+var DEFAULT_REFS = {
+  dog:{
+    iop:{judge:true, lo:10, hi:25, note:""},
+    stt:{judge:true, lo:15, bl:11, sev:6, note:""},
+    tq: {judge:true, lo:10, bl:7, note:""},
+    tbut:{judge:true, lo:20, note:""}
+  },
+  cat:{
+    iop:{judge:true, lo:10, hi:25, note:""},
+    stt:{judge:true, lo:9, note:"ストレスで低値になりやすい"},
+    tq: {judge:false, note:"参考 約4.7〜10.5（報告差大）"},
+    tbut:{judge:true, lo:12, note:""}
+  },
+  rabbit:{
+    iop:{judge:true, lo:10, hi:20, note:""},
+    stt:{judge:false, note:"参考 5〜17"},
+    tq: {judge:false, note:"参考 約4.7"},
+    tbut:{judge:false, note:""}
+  },
+  other:{
+    iop:{judge:false, note:""}, stt:{judge:false, note:""},
+    tq:{judge:false, note:""}, tbut:{judge:false, note:""}
+  }
+};
+var LOW_LABELS = {
+  stt:["軽度低下","中等度低下","重度低下"],
+  tq:["境界","KCS疑い","KCS疑い"],
+  iop:["低値","低値","低値"],
+  tbut:["短縮","短縮","短縮"]
+};
+
+var ITEMS = [
+  {sec:"神経眼科・反射"},
+  {k:"plrD",  l:"対光反射（直接）", t:"tri"},
+  {k:"plrI",  l:"対光反射（間接）", t:"tri"},
+  {k:"menace",l:"威嚇反射", t:"tri"},
+  {k:"palp",  l:"眼瞼反射", t:"tri"},
+  {k:"nys",   l:"眼振", t:"find", opts:["なし","あり"], chips:["水平","垂直","回旋","頭位変換性"]},
+  {sec:"前眼部"},
+  {k:"cornea",l:"角膜", t:"find", opts:["正常","異常"], chips:["潰瘍","びらん","浮腫","血管新生","色素沈着","混濁","瘢痕","デスメ瘤","異物"]},
+  {k:"conj",  l:"結膜", t:"find", opts:["正常","異常"], chips:["充血","浮腫","濾胞","分泌物(漿液性)","分泌物(粘液性)","分泌物(膿性)","腫瘤"]},
+  {k:"lid",   l:"眼瞼反転時（眼瞼結膜・第三眼瞼）", short:"眼瞼反転時", t:"find", opts:["正常","異常"], chips:["充血","浮腫","濾胞","異物","腫瘤","第三眼瞼腺脱出","軟骨変形"]},
+  {k:"ac",    l:"前眼房", t:"find", opts:["正常","異常"], chips:["フレア","前房出血","前房蓄膿","フィブリン","浅い","深い"]},
+  {k:"lens",  l:"水晶体", t:"find", opts:["正常","異常"], chips:["核硬化","白内障(初発)","白内障(未熟)","白内障(成熟)","白内障(過熟)","前方脱臼","後方脱臼","亜脱臼"]},
+  {sec:"検査"},
+  {k:"iop",   l:"眼圧", t:"num", ref:"iop", opt:true},
+  {k:"tear",  l:"涙液量", t:"tear", opt:true},
+  {k:"fluo",  l:"フルオレセイン染色", t:"find", opts:["陰性","陽性"], chips:["点状","潰瘍","広範囲","中央","周辺","ザイデル陽性"], opt:true},
+  {k:"tbut",  l:"涙液層破壊時間（TBUT）", short:"TBUT", t:"num", ref:"tbut", opt:true}
+];
+var VETS = ["伊村","伊村晶子","蒲原","榮藤","柿本","山田"];
+var TRI = ["+","±","−"];
+var EYES = ["OD","OS"];
+var COMMENT_LIMIT = 150;
+
+/* ===================== 保存 ===================== */
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+function clone(o){ return JSON.parse(JSON.stringify(o)); }
+
+function today(){
+  var d=new Date(); var m=("0"+(d.getMonth()+1)).slice(-2), dd=("0"+d.getDate()).slice(-2);
+  return d.getFullYear()+"-"+m+"-"+dd;
+}
+function blankState(){
+  return {pt:{date:today(), no:"", name:"", owner:"", sp:"dog", spOther:"", vet:(lsGet("eye_vet")||"")},
+          tearMethod:"stt", e:{OD:{},OS:{}}, comment:""};
+}
+var S = lsGet("eye_draft") || blankState();
+if(!S.e) S = blankState();
+var REFS = DEFAULT_REFS; // 基準値は全端末共通（変更はこのファイルのDEFAULT_REFSを編集）
+try{ localStorage.removeItem("eye_refs"); }catch(e){}
+var view = "pt";
+function persist(){ lsSet("eye_draft", S); }
+
+/* ===================== 判定 ===================== */
+function refFor(test){ return (REFS[S.pt.sp]||REFS.other)[test] || {judge:false}; }
+function isNum(v){ return v!==null && v!=="" && v!==undefined && !isNaN(+v); }
+function judge(test, raw){
+  if(!isNum(raw)) return null;
+  var r = refFor(test); if(!r.judge) return null;
+  var v = +raw, L = LOW_LABELS[test];
+  if(isNum(r.hi) && v > +r.hi) return {c:"b", t:"高値"};
+  if(isNum(r.lo) && v < +r.lo){
+    if(isNum(r.bl) && v >= +r.bl) return {c:"w", t:L[0]};
+    if(isNum(r.sev) && v < +r.sev) return {c:"b", t:L[2]};
+    return {c:"b", t:L[1]};
+  }
+  return {c:"n", t:"正常範囲"};
+}
+function refText(test){
+  var r = refFor(test), parts=[];
+  if(r.judge){
+    if(isNum(r.lo) && isNum(r.hi)) parts.push("基準 "+r.lo+"–"+r.hi);
+    else if(isNum(r.lo)) parts.push("基準 ≥"+r.lo);
+    else if(isNum(r.hi)) parts.push("基準 ≤"+r.hi);
+  }
+  if(r.note) parts.push(r.note);
+  return parts.join(" / ");
+}
+function tearTest(){ return S.tearMethod==="tq" ? "tq" : "stt"; }
+function unitOf(test){ for(var i=0;i<TESTS.length;i++) if(TESTS[i].k===test) return TESTS[i].unit; return ""; }
+function spLabel(){
+  if(S.pt.sp==="other") return S.pt.spOther ? S.pt.spOther : "その他";
+  for(var i=0;i<SPECIES.length;i++) if(SPECIES[i].k===S.pt.sp) return SPECIES[i].l;
+  return "";
+}
+
+/* ===================== DOM helpers ===================== */
+function h(tag, attrs){
+  var el=document.createElement(tag);
+  if(attrs) for(var a in attrs){
+    if(a==="class") el.className=attrs[a];
+    else if(a==="text") el.textContent=attrs[a];
+    else if(a.slice(0,2)==="on") el.addEventListener(a.slice(2), attrs[a]);
+    else el.setAttribute(a, attrs[a]);
+  }
+  for(var i=2;i<arguments.length;i++){
+    var c=arguments[i]; if(c==null) continue;
+    if(Array.isArray(c)) c.forEach(function(x){ if(x!=null) el.appendChild(typeof x==="string"?document.createTextNode(x):x); });
+    else el.appendChild(typeof c==="string"?document.createTextNode(c):c);
+  }
+  return el;
+}
+var $main=document.getElementById("main"), $foot=document.getElementById("foot");
+
+function confirmBox(text, okLabel, cb){
+  var m=h("div",{class:"modal"},
+    h("div",{class:"box"},
+      h("p",{text:text}),
+      h("div",{class:"btns"},
+        h("button",{text:"キャンセル",onclick:function(){m.remove();}}),
+        h("button",{class:"danger",text:okLabel,onclick:function(){m.remove();cb();}})
+      )));
+  m.addEventListener("click",function(e){ if(e.target===m) m.remove(); });
+  document.body.appendChild(m);
+}
+
+/* ===================== 画面① 患者情報 ===================== */
+function viewPt(){
+  var p=S.pt;
+  function inp(key, ph, type, im){
+    var el=h("input",{class:"t",type:type||"text",placeholder:ph||""});
+    if(im) el.setAttribute("inputmode",im);
+    el.value=p[key]||"";
+    el.addEventListener("input",function(){ p[key]=el.value; if(key==="vet") lsSet("eye_vet", el.value); persist(); });
+    return el;
+  }
+  var spSeg=h("div",{class:"seg"});
+  SPECIES.forEach(function(s){
+    spSeg.appendChild(h("button",{class:p.sp===s.k?"on":"",text:s.l,onclick:function(){ p.sp=s.k; persist(); render(); }}));
+  });
+  var vetSeg=h("div",{class:"seg"});
+  VETS.forEach(function(v){
+    vetSeg.appendChild(h("button",{class:p.vet===v?"on":"",text:v,onclick:function(){ p.vet=v; lsSet("eye_vet",v); persist(); render(); }}));
+  });
+  var other = p.sp==="other" ? [h("label",{class:"f",text:"動物種（例：フェレット、セキセイインコ）"}), inp("spOther","動物種名")] : null;
+  return h("div",null,
+    h("div",{class:"card"},
+      h("h2",{text:"患者情報"}),
+      h("label",{class:"f",text:"検査日"}), inp("date","","date"),
+      h("label",{class:"f",text:"カルテ番号"}), inp("no","例：012345","text","numeric"),
+      h("label",{class:"f",text:"動物名"}), inp("name","例：もも"),
+      h("label",{class:"f",text:"飼い主名（任意）"}), inp("owner","例：山田"),
+      h("label",{class:"f",text:"動物種"}), spSeg, other,
+      h("p",{class:"hint",text:"基準値：犬・猫・兎は種別の値で自動判定（兎の涙液量は参考値のみ）。その他の種は記録のみ。"}),
+      h("label",{class:"f",text:"検査担当獣医師"}), vetSeg
+    )
+  );
+}
+
+/* ===================== 画面② 検査入力 ===================== */
+function get(eye,k){ return S.e[eye][k]; }
+function setv(eye,k,v){ S.e[eye][k]=v; persist(); }
+
+function rowTri(it){
+  var cells=h("div",{class:"cells"});
+  EYES.forEach(function(eye){
+    var c=h("div",{class:"cell"});
+    TRI.forEach(function(sym){
+      var on=get(eye,it.k)===sym;
+      c.appendChild(h("button",{class:(on?"on":"")+(on&&sym!=="+"?" bad":""),text:sym,onclick:function(){
+        setv(eye,it.k, get(eye,it.k)===sym?undefined:sym); refreshRow(it);
+      }}));
+    });
+    cells.appendChild(c);
+  });
+  return [h("div",{class:"rl"},it.l), cells];
+}
+
+function rowFind(it){
+  var cells=h("div",{class:"cells"}), details=[];
+  EYES.forEach(function(eye){
+    var st=get(eye,it.k)||{}, c=h("div",{class:"cell"});
+    it.opts.forEach(function(o,i){
+      var on=st.v===o;
+      c.appendChild(h("button",{class:(on?"on":"")+(on&&i===1?" bad":""),text:o,onclick:function(){
+        var cur=get(eye,it.k)||{};
+        if(cur.v===o) setv(eye,it.k,undefined);
+        else setv(eye,it.k,{v:o, chips:cur.chips||[], note:cur.note||""});
+        refreshRow(it);
+      }}));
+    });
+    cells.appendChild(c);
+    if(st.v===it.opts[1]){
+      var chips=h("div",{class:"chips"});
+      it.chips.forEach(function(ch){
+        var on=(st.chips||[]).indexOf(ch)>=0;
+        chips.appendChild(h("button",{class:on?"on":"",text:ch,onclick:function(){
+          var cur=get(eye,it.k); var arr=cur.chips||[]; var ix=arr.indexOf(ch);
+          if(ix>=0) arr.splice(ix,1); else arr.push(ch);
+          cur.chips=arr; setv(eye,it.k,cur); refreshRow(it);
+        }}));
+      });
+      var note=h("input",{class:"t",type:"text",placeholder:"補足（部位・程度など）"});
+      note.value=st.note||"";
+      note.addEventListener("input",function(){ var cur=get(eye,it.k); cur.note=note.value; setv(eye,it.k,cur); });
+      details.push(h("div",{class:"detail"}, h("div",{class:"dh",text:(eye==="OD"?"右眼 OD":"左眼 OS")+"：所見"}), chips, note));
+    }
+  });
+  return [h("div",{class:"rl"},it.l), cells].concat(details);
+}
+
+function numCell(eye, key, test){
+  var j0=judge(test,get(eye,key));
+  var input=h("input",{type:"text",inputmode:"decimal",placeholder:"—",autocomplete:"off"});
+  input.value=get(eye,key)||"";
+  var box=h("div",{class:"in"+(j0&&j0.c!=="n"?" "+j0.c:"")}, input, h("span",{class:"u",text:unitOf(test)}));
+  var jd=h("div",{class:"judge"+(j0?" "+j0.c:""),text:j0?j0.t:""});
+  input.addEventListener("input",function(){
+    var v=input.value.replace(/[^\d.]/g,""); if(v!==input.value) input.value=v;
+    setv(eye,key,v);
+    var j=judge(test,v);
+    box.className="in"+(j&&j.c!=="n"?" "+j.c:"");
+    jd.className="judge"+(j?" "+j.c:""); jd.textContent=j?j.t:"";
+  });
+  return h("div",{class:"cell"}, h("div",{class:"num"}, box, jd));
+}
+
+function rowNum(it){
+  var rt=refText(it.ref);
+  return [h("div",{class:"rl"},it.l, rt?h("span",{class:"ref",text:rt}):null),
+          h("div",{class:"cells"}, numCell("OD",it.k,it.ref), numCell("OS",it.k,it.ref))];
+}
+
+function rowTear(it){
+  var test=tearTest(), key=test;  // 値は stt / tq で別々に保持
+  var tog=h("div",{class:"seg tog"});
+  [["stt","STT"],["tq","ティアQ"]].forEach(function(o){
+    tog.appendChild(h("button",{class:S.tearMethod===o[0]?"on":"",text:o[1],style:"min-height:36px;padding:0 12px;font-size:14px",onclick:function(){
+      S.tearMethod=o[0]; persist(); refreshRow(it);
+    }}));
+  });
+  var rt=refText(test);
+  return [h("div",{class:"rl"}, it.l, tog),
+          rt?h("div",{class:"rl",style:"margin-top:-4px"},h("span",{class:"ref",text:rt})):null,
+          h("div",{class:"cells"}, numCell("OD",key,test), numCell("OS",key,test))];
+}
+
+var rowEls={};
+function buildRow(it){
+  var parts = it.t==="tri"?rowTri(it): it.t==="find"?rowFind(it): it.t==="num"?rowNum(it): rowTear(it);
+  return h("div",{class:"row"},parts);
+}
+function refreshRow(it){
+  var old=rowEls[it.k], nw=buildRow(it);
+  old.replaceWith(nw); rowEls[it.k]=nw;
+}
+
+function setAllNormal(){
+  EYES.forEach(function(eye){
+    ITEMS.forEach(function(it){
+      if(it.t==="tri") S.e[eye][it.k]="+";
+      else if(it.t==="find" && !it.opt){ S.e[eye][it.k]={v:it.opts[0],chips:[],note:""}; }
+    });
+  });
+  persist(); render();
+}
+
+function viewEx(){
+  var wrap=h("div");
+  wrap.appendChild(h("button",{class:"allnormal",text:"✓ 両眼とも正常で一括入力（反射・所見のみ）",onclick:function(){
+    confirmBox("反射・前眼部所見をすべて「正常」で上書きします。眼圧・涙液量・フルオレセイン・TBUTは変わりません。","一括入力",setAllNormal);
+  }}));
+  rowEls={};
+  ITEMS.forEach(function(it){
+    if(it.sec){ wrap.appendChild(h("div",{class:"sec",text:it.sec})); return; }
+    var r=buildRow(it); rowEls[it.k]=r; wrap.appendChild(r);
+  });
+  var ta=h("textarea",{class:"t",rows:"4",placeholder:"総合コメント・診断・指示など"});
+  ta.value=S.comment||"";
+  var ctr=h("div",{class:"counter"});
+  function upd(){ var n=ta.value.length; ctr.textContent=n+" / 目安"+COMMENT_LIMIT+"字"+(n>COMMENT_LIMIT?"（超過分は2ページ目に送られます）":""); ctr.className="counter"+(n>COMMENT_LIMIT?" over":""); }
+  ta.addEventListener("input",function(){ S.comment=ta.value; persist(); upd(); }); upd();
+  wrap.appendChild(h("div",{class:"sec",text:"コメント"}));
+  wrap.appendChild(h("div",{class:"card"},ta,ctr));
+  return wrap;
+}
+
+/* ===================== 表示テキスト（PDF用） ===================== */
+function cellText(it, eye){
+  if(it.t==="tri"){ var v=get(eye,it.k); return v?{t:v, bad:v!=="+"}:{t:"—"}; }
+  if(it.t==="find"){
+    var st=get(eye,it.k); if(!st||!st.v) return {t:it.opt?"":"—"};
+    if(st.v===it.opts[0]) return {t:st.v};
+    var extra=(st.chips||[]).join("、"); if(st.note) extra += (extra?" / ":"")+st.note;
+    return {t:st.v+(extra?"："+extra:""), bad:true};
+  }
+  var test = it.t==="tear" ? tearTest() : it.ref, key = it.t==="tear" ? test : it.k;
+  var raw=get(eye,key); if(!isNum(raw)) return {t:""};
+  var j=judge(test,raw);
+  return {t:raw+" "+unitOf(test)+(j&&j.c!=="n"?"（"+j.t+"）":""), bad:!!(j&&j.c!=="n")};
+}
+function itemLabel(it){
+  if(it.t==="tear"){
+    var k=tearTest(); if(!isNum(get("OD",k)) && !isNum(get("OS",k))) return "涙液量";
+    return S.tearMethod==="tq" ? "涙液量（ティアQ）" : "涙液量（STT）";
+  }
+  return it.short || it.l;
+}
+function itemRef(it){
+  if(it.t==="num") return refText(it.ref);
+  if(it.t==="tear"){ var k=tearTest(); return (isNum(get("OD",k))||isNum(get("OS",k))) ? refText(k) : ""; }
+  return "";
+}
+
+/* ===================== PDF 描画 ===================== */
+var PW=1240, PH=1748, M=72;
+var FONT='"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif';
+function fnt(px, w){ return (w||400)+" "+px+"px "+FONT; }
+function wrap(ctx, text, maxW){
+  var lines=[], cur="";
+  String(text).split("\n").forEach(function(para){
+    cur="";
+    for(var i=0;i<para.length;i++){
+      var t=cur+para[i];
+      if(ctx.measureText(t).width>maxW && cur){ lines.push(cur); cur=para[i]; } else cur=t;
+    }
+    lines.push(cur);
+  });
+  return lines;
+}
+
+function renderPages(){
+  var pages=[], ctx, y, pageNo=0;
+  var colX=[M, M+330, M+330+(PW-2*M-330)/2], colW=[330, (PW-2*M-330)/2, (PW-2*M-330)/2];
+  function newPage(){
+    var c=document.createElement("canvas"); c.width=PW; c.height=PH;
+    ctx=c.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,PW,PH);
+    ctx.textBaseline="top"; pages.push(c); pageNo++;
+    y=M;
+    // ヘッダー
+    ctx.fillStyle="#1f2a2e"; ctx.font=fnt(40,700); ctx.fillText("眼科検査記録",M,y);
+    ctx.font=fnt(20,500); ctx.fillStyle="#6b7a80"; ctx.fillText("Ophthalmic Examination",M+262,y+16);
+    ctx.textAlign="right"; ctx.font=fnt(24,700); ctx.fillStyle="#1f8670"; ctx.fillText("ポックル動物病院",PW-M,y+8);
+    ctx.textAlign="left"; y+=58;
+    ctx.fillStyle="#2fa88e"; ctx.fillRect(M,y,PW-2*M,4); y+=16;
+    // 患者情報
+    var p=S.pt, d=(p.date||"").replace(/-/g,"/");
+    var info1=[["検査日",d],["カルテNo",p.no||"—"],["担当医",p.vet||"—"]];
+    var info2=[["動物名",p.name||"—"],["種",spLabel()],["飼い主",p.owner||"—"]];
+    [info1,info2].forEach(function(row){
+      var x=M, w=(PW-2*M)/3;
+      row.forEach(function(kv){
+        ctx.font=fnt(20,600); ctx.fillStyle="#6b7a80"; ctx.fillText(kv[0],x,y+4);
+        ctx.font=fnt(26,700); ctx.fillStyle="#1f2a2e";
+        var lab=ctx.measureText(kv[0]).width; ctx.font=fnt(20,600); lab=ctx.measureText(kv[0]).width;
+        ctx.font=fnt(26,700);
+        var val=kv[1], maxw=w-lab-24; while(ctx.measureText(val).width>maxw && val.length>1) val=val.slice(0,-1);
+        if(val!==kv[1]) val=val.slice(0,-1)+"…";
+        ctx.fillText(val,x+lab+12,y);
+        x+=w;
+      });
+      y+=40;
+    });
+    if(pageNo>1){ ctx.font=fnt(20,600); ctx.fillStyle="#6b7a80"; ctx.fillText("（続き）",M,y); y+=30; }
+    y+=6;
+  }
+  function tableHead(){
+    ctx.fillStyle="#e6f5f1"; ctx.fillRect(M,y,PW-2*M,40);
+    ctx.font=fnt(22,700); ctx.fillStyle="#1f8670";
+    ctx.fillText("項目",colX[0]+12,y+9);
+    ctx.fillText("右眼 OD",colX[1]+12,y+9);
+    ctx.fillText("左眼 OS",colX[2]+12,y+9);
+    y+=40;
+  }
+  var BOTTOM=PH-M-40;
+  newPage(); tableHead();
+
+  ITEMS.forEach(function(it){
+    if(it.sec){
+      if(y+34>BOTTOM){ newPage(); tableHead(); }
+      ctx.fillStyle="#f5f7f8"; ctx.fillRect(M,y,PW-2*M,32);
+      ctx.font=fnt(19,800); ctx.fillStyle="#6b7a80"; ctx.fillText(it.sec,colX[0]+12,y+6);
+      y+=32; return;
+    }
+    ctx.font=fnt(24,700);
+    var labL=wrap(ctx,itemLabel(it),colW[0]-24);
+    var ref=itemRef(it); ctx.font=fnt(18,500); var refL=ref?wrap(ctx,ref,colW[0]-24):[];
+    var cells=EYES.map(function(e){ return cellText(it,e); });
+    var cellL=cells.map(function(c,i){ ctx.font=fnt(24,c.bad?700:400); return wrap(ctx,c.t,colW[i+1]-24); });
+    var hgt=Math.max(labL.length*30+refL.length*24, cellL[0].length*30, cellL[1].length*30)+18;
+    if(y+hgt>BOTTOM){ newPage(); tableHead(); }
+    var yy=y+9;
+    ctx.font=fnt(24,700); ctx.fillStyle="#1f2a2e";
+    labL.forEach(function(l){ ctx.fillText(l,colX[0]+12,yy); yy+=30; });
+    ctx.font=fnt(18,500); ctx.fillStyle="#6b7a80";
+    refL.forEach(function(l){ ctx.fillText(l,colX[0]+12,yy); yy+=24; });
+    cells.forEach(function(c,i){
+      var cy=y+9; ctx.font=fnt(24,c.bad?700:400); ctx.fillStyle=c.bad?"#b0261a":"#1f2a2e";
+      cellL[i].forEach(function(l){ ctx.fillText((c.bad&&cy===y+9?"":"")+l,colX[i+1]+12,cy); cy+=30; });
+    });
+    y+=hgt;
+    ctx.fillStyle="#e3e8ea"; ctx.fillRect(M,y,PW-2*M,2);
+    // 縦線
+    ctx.fillRect(colX[1],y-hgt,2,hgt); ctx.fillRect(colX[2],y-hgt,2,hgt);
+  });
+
+  // コメント
+  y+=18;
+  var com=(S.comment||"").trim();
+  ctx.font=fnt(24,400);
+  var cl=com?wrap(ctx,com,PW-2*M-28):["—"];
+  if(y+40+30>BOTTOM){ newPage(); }
+  ctx.font=fnt(20,800); ctx.fillStyle="#1f8670"; ctx.fillText("コメント",M,y); y+=32;
+  var boxTop=y; ctx.font=fnt(24,400); ctx.fillStyle="#1f2a2e"; y+=12;
+  cl.forEach(function(l){
+    if(y+32>BOTTOM){
+      ctx.strokeStyle="#cfd8db"; ctx.lineWidth=2; ctx.strokeRect(M,boxTop,PW-2*M,y-boxTop+8);
+      newPage(); ctx.font=fnt(20,800); ctx.fillStyle="#1f8670"; ctx.fillText("コメント（続き）",M,y); y+=32; boxTop=y; y+=12;
+      ctx.font=fnt(24,400); ctx.fillStyle="#1f2a2e";
+    }
+    ctx.fillText(l,M+14,y); y+=32;
+  });
+  ctx.strokeStyle="#cfd8db"; ctx.lineWidth=2; ctx.strokeRect(M,boxTop,PW-2*M,Math.max(y-boxTop+8, 90));
+
+  // フッター（全ページ）
+  pages.forEach(function(c,i){
+    var g=c.getContext("2d"); g.textBaseline="top";
+    g.font=fnt(16,500); g.fillStyle="#8a979c";
+    g.fillText("+ 正常 / ± 減弱 / − 消失　赤字＝異常・基準外　基準値は院内設定値（ティアQ＝ストリップメニスコメトリー）",M,PH-M-8);
+    g.textAlign="right"; g.fillText((i+1)+" / "+pages.length,PW-M,PH-M-8); g.textAlign="left";
+  });
+  return pages;
+}
+
+/* ===================== PDF 生成（依存なし） ===================== */
+function b64ToBytes(b64){ var bin=atob(b64), u=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
+function strBytes(s){ var u=new Uint8Array(s.length); for(var i=0;i<s.length;i++) u[i]=s.charCodeAt(i)&255; return u; }
+function buildPdf(canvases){
+  var W=419.53, H=595.28; // A5 (pt)
+  var chunks=[], offset=0, offsets=[];
+  function push(u){ chunks.push(u); offset+=u.length; }
+  function pushS(s){ push(strBytes(s)); }
+  var n=canvases.length, pageIds=[], objs=[];
+  // 1: catalog, 2: pages, then page/content/image triples
+  for(var i=0;i<n;i++) pageIds.push(3+i*3);
+  pushS("%PDF-1.4\n%âãÏÓ\n");
+  offsets[1]=offset; pushS("1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  offsets[2]=offset; pushS("2 0 obj\n<< /Type /Pages /Kids ["+pageIds.map(function(x){return x+" 0 R";}).join(" ")+"] /Count "+n+" >>\nendobj\n");
+  canvases.forEach(function(cv,i){
+    var pid=3+i*3, cid=pid+1, iid=pid+2;
+    var jpg=b64ToBytes(cv.toDataURL("image/jpeg",0.9).split(",")[1]);
+    offsets[pid]=offset;
+    pushS(pid+" 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+W+" "+H+"] /Resources << /XObject << /Im0 "+iid+" 0 R >> >> /Contents "+cid+" 0 R >>\nendobj\n");
+    var cs="q "+W+" 0 0 "+H+" 0 0 cm /Im0 Do Q";
+    offsets[cid]=offset;
+    pushS(cid+" 0 obj\n<< /Length "+cs.length+" >>\nstream\n"+cs+"\nendstream\nendobj\n");
+    offsets[iid]=offset;
+    pushS(iid+" 0 obj\n<< /Type /XObject /Subtype /Image /Width "+cv.width+" /Height "+cv.height+" /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+jpg.length+" >>\nstream\n");
+    push(jpg); pushS("\nendstream\nendobj\n");
+  });
+  var total=3+n*3, xref=offset;
+  var x="xref\n0 "+total+"\n0000000000 65535 f \n";
+  for(var k=1;k<total;k++) x+=("0000000000"+offsets[k]).slice(-10)+" 00000 n \n";
+  x+="trailer\n<< /Size "+total+" /Root 1 0 R >>\nstartxref\n"+xref+"\n%%EOF\n";
+  pushS(x);
+  return new Blob(chunks,{type:"application/pdf"});
+}
+
+function fileName(){
+  var p=S.pt, d=(p.date||today()).replace(/-/g,"");
+  var parts=[d, p.no||"番号なし", p.name||"名前なし", "眼科"];
+  return parts.join("_").replace(/[\\\/:*?"<>|\s]/g,"")+".pdf";
+}
+
+/* ===================== 保存・共有 ===================== */
+var dl=null;
+try{
+  if(window.claude && typeof window.claude.use==="function"){
+    window.claude.use("downloads").then(function(ns){ dl=ns; }).catch(function(){});
+  }
+}catch(e){}
+
+function savePdf(msgEl){
+  var blob=buildPdf(renderPages()), name=fileName();
+  function ok(t){ msgEl.className="msg ok"; msgEl.textContent=t; msgEl.classList.remove("hide"); }
+  function ng(t){ msgEl.className="msg ng"; msgEl.textContent=t; msgEl.classList.remove("hide"); }
+  if(dl){
+    dl.save({filename:name, data:blob}).then(function(){ ok("保存しました："+name); })
+      .catch(function(e){ if(e&&e.code==="declined") ng("保存をキャンセルしました。"); else fallback(); });
+    return;
+  }
+  fallback();
+  function fallback(){
+    try{
+      var file=new File([blob],name,{type:"application/pdf"});
+      if(navigator.canShare && navigator.canShare({files:[file]})){
+        navigator.share({files:[file], title:name}).then(function(){ ok("共有しました："+name); })
+          .catch(function(e){ if(e&&e.name==="AbortError") ng("共有をキャンセルしました。"); else anchor(); });
+        return;
+      }
+    }catch(e){}
+    anchor();
+  }
+  function anchor(){
+    try{
+      var url=URL.createObjectURL(blob), a=document.createElement("a");
+      a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(url); }, 30000);
+      ok("ダウンロードしました："+name);
+    }catch(e){ ng("この環境では保存できませんでした。"); }
+  }
+}
+
+/* ===================== 画面③ 出力 ===================== */
+function viewOut(){
+  var pages=renderPages();
+  var prev=h("div",{class:"preview"});
+  pages.forEach(function(c){ prev.appendChild(h("img",{src:c.toDataURL("image/jpeg",0.85),alt:"PDFプレビュー"})); });
+  var warn=[];
+  if(!S.pt.no) warn.push("カルテ番号");
+  if(!S.pt.name) warn.push("動物名");
+  var msg=h("div",{class:"msg hide"});
+  outMsgEl=msg;
+  return h("div",null,
+    warn.length?h("div",{class:"msg ng",text:"未入力："+warn.join("・")+"（ファイル名に使われます）"}):null,
+    msg,
+    h("div",{class:"fname",text:"ファイル名："+fileName()+"（A5・"+pages.length+"ページ）"}),
+    prev,
+    h("p",{class:"hint",text:"保存先：共有メニュー →「ファイルに保存」→ Googleドライブの「眼科検査」フォルダ。院内PCで開いて印刷・ARMIXに添付。"})
+  );
+}
+var outMsgEl=null;
+
+/* ===================== ルーティング ===================== */
+function go(v){ view=v; render(); window.scrollTo(0,0); }
+document.getElementById("steps").addEventListener("click",function(e){ var b=e.target.closest("button"); if(b) go(b.getAttribute("data-v")); });
+
+function render(){
+  Array.prototype.forEach.call(document.querySelectorAll("#steps button"),function(b){ b.classList.toggle("on", b.getAttribute("data-v")===view); });
+  document.getElementById("colhead").classList.toggle("show", view==="ex");
+  $main.innerHTML=""; $foot.innerHTML="";
+  if(view==="pt"){
+    $main.appendChild(viewPt());
+    $foot.appendChild(h("button",{text:"新しい検査",onclick:function(){
+      confirmBox("入力中の内容をすべて消去して、新しい検査を始めます。","消去して開始",function(){ S=blankState(); persist(); go("pt"); });
+    }}));
+    $foot.appendChild(h("button",{class:"pri",text:"検査入力へ →",onclick:function(){ go("ex"); }}));
+  }else if(view==="ex"){
+    $main.appendChild(viewEx());
+    $foot.appendChild(h("button",{text:"← 患者情報",onclick:function(){ go("pt"); }}));
+    $foot.appendChild(h("button",{class:"pri",text:"完了・PDFへ →",onclick:function(){ go("out"); }}));
+  }else if(view==="out"){
+    $main.appendChild(viewOut());
+    $foot.appendChild(h("button",{text:"← 修正",onclick:function(){ go("ex"); }}));
+    $foot.appendChild(h("button",{class:"pri",text:"PDFを保存・共有",onclick:function(){ savePdf(outMsgEl); }}));
+  }
+}
+render();
+})();
+</script>
+</body>
+</html>

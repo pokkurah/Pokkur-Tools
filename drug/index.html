@@ -29,6 +29,7 @@ label.f:first-of-type{margin-top:0}
 .seg{display:flex;flex-wrap:wrap;gap:6px}
 .seg button{border:1px solid var(--line);background:#fff;border-radius:10px;min-height:42px;padding:0 12px;font-weight:700;font-size:15px}
 .seg button.on{background:var(--mint);border-color:var(--mint);color:#fff}
+.seg.prep button{flex:1;min-height:52px;font-size:17px}
 .seg.sp button{min-width:calc(25% - 5px);padding:0 6px;font-size:14px}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .inbox{display:flex;align-items:center;border:1px solid var(--line);border-radius:10px;padding:0 12px;min-height:46px;background:#fff}
@@ -86,9 +87,11 @@ a.open{display:block;text-align:center;background:var(--mint);color:#fff;text-de
 
 /* ===== 動物種 ===== */
 var SPECIES=[
- {k:"hamster",l:"ハムスター"},{k:"bird",l:"鳥"},{k:"lizard",l:"トカゲ"},{k:"gecko",l:"ヤモリ"},
- {k:"rabbit",l:"ウサギ"},{k:"chinchilla",l:"チンチラ"},{k:"degu",l:"デグー"},{k:"hedgehog",l:"ハリネズミ"},
- {k:"mouse",l:"マウス"},{k:"rat",l:"ラット"},{k:"turtle",l:"カメ"},{k:"snake",l:"ヘビ"},{k:"newt",l:"イモリ"}
+ {k:"rabbit",l:"ウサギ"},
+ {k:"hamster",l:"ハムスター"},{k:"mouse",l:"マウス"},{k:"rat",l:"ラット"},
+ {k:"guineapig",l:"モルモット"},{k:"chinchilla",l:"チンチラ"},{k:"degu",l:"デグー"},
+ {k:"hedgehog",l:"ハリネズミ"},{k:"bird",l:"鳥"},
+ {k:"lizard",l:"トカゲ"},{k:"gecko",l:"ヤモリ"},{k:"turtle",l:"カメ"},{k:"snake",l:"ヘビ"},{k:"newt",l:"イモリ"}
 ];
 
 /* ===== データ源：Googleスプレッドシート（失敗時は前回読込分 → 内蔵の下書き） ===== */
@@ -98,7 +101,7 @@ function gviz(name){ return "https://docs.google.com/spreadsheets/d/"+SHEET_ID+"
 
 /* 内蔵の下書き（スプレッドシートと同じ列構成） */
 var BUILTIN_MASTER=[
- ["ダイフェン","ST合剤","錠","480","","","SMX400＋TMP80。用量は合計量(mg/kg)"],
+ ["ダイフェン","ST合剤","錠","480","","","SMX400＋TMP80。用量は合計量(mg/kg)","500"],
  ["エンロフロキサシン","エンロフロキサシン","錠","15,50","","",""],
  ["メロキシカム錠","メロキシカム","錠","5","","",""],
  ["メタカムシロップ","メロキシカム","液","0.5,1.5","","","規格はmg/mL"],
@@ -118,10 +121,13 @@ var BUILTIN_MASTER=[
  ["ハイシー","アスコルビン酸","散","200","","","ビタミンC。規格はmg/g"],
  ["マイトマックス","","量指定","","カプセル","1","5mLあたり1カプセル"]
 ];
-var BUILTIN_DOSES=[["エンロフロキサシン", "ウサギ", "10", "5", "15", "BID", "Small Animal Pediatrics 表176-5（ウサギ）", "", "", ""], ["エンロフロキサシン", "ハムスター", "10", "5", "20", "BID", "ISVMA 小型齧歯類 10mg/kg q12h", "", "", ""], ["エンロフロキサシン", "マウス", "10", "5", "20", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["エンロフロキサシン", "ラット", "10", "5", "20", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["エンロフロキサシン", "鳥", "15", "15", "20", "BID", "MSD獣医マニュアル（Pet Birds）", "", "", ""], ["エンロフロキサシン", "トカゲ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "ヤモリ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "カメ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "ヘビ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "ハリネズミ", "10", "10", "20", "BID", "BSAVA Formulary Exotic Pets（ヨーロッパハリネズミ）", "ヨーロッパハリネズミの用量", "", ""], ["エンロフロキサシン", "イモリ", "5", "5", "10", "SID", "MSD獣医マニュアル（Amphibians）", "", "", ""], ["ST合剤", "ウサギ", "30", "30", "40", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["ST合剤", "マウス", "30", "15", "30", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["ST合剤", "ラット", "30", "15", "30", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["ST合剤", "鳥", "50", "50", "100", "BID", "MSD獣医マニュアル（Pet Birds）", "", "", ""], ["ST合剤", "トカゲ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["ST合剤", "ヤモリ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["ST合剤", "カメ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["ST合剤", "ヘビ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["メロキシカム", "ウサギ", "1", "0.3", "1.5", "SID", "MSD獣医マニュアル 1mg/kg/日、UVic 0.3–1.5 PO", "", "", ""], ["メロキシカム", "マウス", "2", "1", "5", "SID", "UVic 実験動物フォーミュラリー", "", "", ""], ["メロキシカム", "ラット", "1", "1", "2", "SID", "UVic / Montana State IACUC", "", "", ""], ["メロキシカム", "鳥", "1", "0.5", "1.6", "BID", "MSD獣医マニュアル 1mg/kg q12–24h、オウム1.6mg/kg q12h", "", "", ""], ["メロキシカム", "トカゲ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "ヤモリ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "カメ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "ヘビ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "ハリネズミ", "0.5", "0.5", "0.5", "SID", "BSAVA Formulary Exotic Pets（ハリネズミ）", "", "", ""], ["メロキシカム", "イモリ", "0.2", "0.2", "0.2", "SID", "MSD獣医マニュアル（Amphibians）", "頻度の記載なし", "", ""], ["アジスロマイシン", "ハムスター", "30", "30", "30", "SID", "ISVMA 小型齧歯類", "", "", ""], ["アジスロマイシン", "マウス", "30", "30", "50", "SID", "UNSW 研究動物フォーミュラリー2023（q12–24h）", "", "", ""], ["アジスロマイシン", "ラット", "30", "30", "50", "SID", "UNSW 研究動物フォーミュラリー2023（q12–24h）", "", "", ""], ["アジスロマイシン", "ウサギ", "30", "15", "30", "SID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["アジスロマイシン", "鳥", "45", "45", "45", "SID", "Dorrestein（抗酸菌症の多剤併用）", "抗酸菌症の併用療法での用量", "", ""], ["アジスロマイシン", "ヘビ", "10", "10", "10", "3〜7日ごと", "MSD獣医マニュアル（ボールパイソン）", "3〜7日ごとの投与", "", ""], ["クラリスロマイシン", "鳥", "85", "85", "85", "SID", "Dorrestein（抗酸菌症の多剤併用）", "抗酸菌症の併用療法での用量", "", ""], ["クラリスロマイシン", "カメ", "15", "15", "15", "2〜3日ごと", "MSD獣医マニュアル（サバクゴファーガメ）", "2〜3日ごとの投与", "", ""], ["メトクロプラミド", "ウサギ", "0.5", "0.5", "0.5", "BID", "BSAVA Manual of Rabbit Medicine 2nd", "", "", ""], ["ファモチジン", "ハムスター", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "鳥", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "トカゲ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "ヤモリ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "ウサギ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "チンチラ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "デグー", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "ハリネズミ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "マウス", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "ラット", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "カメ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "ヘビ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "イモリ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ハムスター", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "鳥", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "トカゲ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ヤモリ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ウサギ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "チンチラ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "デグー", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ハリネズミ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "マウス", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ラット", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "カメ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ヘビ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "イモリ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ハムスター", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "鳥", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "トカゲ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ヤモリ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ウサギ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "チンチラ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "デグー", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ハリネズミ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "マウス", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ラット", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "カメ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ヘビ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "イモリ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ハムスター", "1", "1", "10", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "鳥", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "トカゲ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ヤモリ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ウサギ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "チンチラ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "デグー", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ハリネズミ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "マウス", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ラット", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "カメ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ヘビ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "イモリ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ハムスター", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "鳥", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "トカゲ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ヤモリ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ウサギ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "チンチラ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "デグー", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ハリネズミ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "マウス", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ラット", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "カメ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ヘビ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "イモリ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"]];
+var BUILTIN_DOSES=[["エンロフロキサシン", "ウサギ", "10", "5", "15", "BID", "Small Animal Pediatrics 表176-5（ウサギ）", "", "", ""], ["エンロフロキサシン", "ハムスター", "10", "5", "20", "BID", "ISVMA 小型齧歯類 10mg/kg q12h", "", "", ""], ["エンロフロキサシン", "マウス", "10", "5", "20", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["エンロフロキサシン", "ラット", "10", "5", "20", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["エンロフロキサシン", "鳥", "15", "15", "20", "BID", "MSD獣医マニュアル（Pet Birds）", "", "", ""], ["エンロフロキサシン", "トカゲ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "ヤモリ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "カメ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "ヘビ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "ハリネズミ", "10", "10", "20", "BID", "BSAVA Formulary Exotic Pets（ヨーロッパハリネズミ）", "ヨーロッパハリネズミの用量", "", ""], ["エンロフロキサシン", "イモリ", "5", "5", "10", "SID", "MSD獣医マニュアル（Amphibians）", "", "", ""], ["ST合剤", "ウサギ", "30", "30", "40", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["ST合剤", "マウス", "30", "15", "30", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["ST合剤", "ラット", "30", "15", "30", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["ST合剤", "鳥", "50", "50", "100", "BID", "MSD獣医マニュアル（Pet Birds）", "", "", ""], ["ST合剤", "トカゲ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["ST合剤", "ヤモリ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["ST合剤", "カメ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["ST合剤", "ヘビ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["メロキシカム", "ウサギ", "1", "0.3", "1.5", "SID", "MSD獣医マニュアル 1mg/kg/日、UVic 0.3–1.5 PO", "", "", ""], ["メロキシカム", "マウス", "2", "1", "5", "SID", "UVic 実験動物フォーミュラリー", "", "", ""], ["メロキシカム", "ラット", "1", "1", "2", "SID", "UVic / Montana State IACUC", "", "", ""], ["メロキシカム", "鳥", "0.2", "0.2", "1.6", "BID", "MSD獣医マニュアル 1mg/kg q12–24h、オウム1.6mg/kg q12h", "", "", ""], ["メロキシカム", "トカゲ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "ヤモリ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "カメ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "ヘビ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "ハリネズミ", "0.5", "0.5", "0.5", "SID", "BSAVA Formulary Exotic Pets（ハリネズミ）", "", "", ""], ["メロキシカム", "イモリ", "0.2", "0.2", "0.2", "SID", "MSD獣医マニュアル（Amphibians）", "頻度の記載なし", "", ""], ["アジスロマイシン", "ハムスター", "30", "30", "30", "SID", "ISVMA 小型齧歯類", "", "", ""], ["アジスロマイシン", "マウス", "30", "30", "50", "SID", "UNSW 研究動物フォーミュラリー2023（q12–24h）", "", "", ""], ["アジスロマイシン", "ラット", "30", "30", "50", "SID", "UNSW 研究動物フォーミュラリー2023（q12–24h）", "", "", ""], ["アジスロマイシン", "ウサギ", "30", "15", "30", "SID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["アジスロマイシン", "鳥", "45", "45", "45", "SID", "Dorrestein（抗酸菌症の多剤併用）", "抗酸菌症の併用療法での用量", "", ""], ["アジスロマイシン", "ヘビ", "10", "10", "10", "3〜7日ごと", "MSD獣医マニュアル（ボールパイソン）", "3〜7日ごとの投与", "", ""], ["クラリスロマイシン", "鳥", "80", "40", "80", "SID", "Dorrestein（抗酸菌症の多剤併用）", "抗酸菌症の併用療法での用量", "", ""], ["クラリスロマイシン", "カメ", "15", "15", "15", "2〜3日ごと", "MSD獣医マニュアル（サバクゴファーガメ）", "2〜3日ごとの投与", "", ""], ["メトクロプラミド", "ウサギ", "0.5", "0.5", "0.5", "BID", "BSAVA Manual of Rabbit Medicine 2nd", "", "", ""], ["ファモチジン", "ハムスター", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "鳥", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "トカゲ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "ヤモリ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "ウサギ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "チンチラ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "デグー", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "ハリネズミ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "マウス", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "ラット", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "カメ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "ヘビ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "イモリ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ハムスター", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "鳥", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "トカゲ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ヤモリ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ウサギ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "チンチラ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "デグー", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ハリネズミ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "マウス", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ラット", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "カメ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ヘビ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "イモリ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ハムスター", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "鳥", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "トカゲ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ヤモリ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ウサギ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "チンチラ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "デグー", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ハリネズミ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "マウス", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ラット", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "カメ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ヘビ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "イモリ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ハムスター", "1", "1", "10", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "鳥", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "トカゲ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ヤモリ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ウサギ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "チンチラ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "デグー", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ハリネズミ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "マウス", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ラット", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "カメ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ヘビ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "イモリ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ハムスター", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "鳥", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "トカゲ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ヤモリ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ウサギ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "チンチラ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "デグー", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ハリネズミ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "マウス", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ラット", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "カメ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ヘビ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "イモリ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["アスコルビン酸", "モルモット", "50", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11", "mg/頭/日"], ["アジスロマイシン", "チンチラ", "40", "", "", "", "", "", "", ""], ["ST合剤", "ハムスター", "30", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ST合剤", "チンチラ", "30", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ST合剤", "デグー", "30", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ST合剤", "ハリネズミ", "30", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"]];
 
 var DRUGS=[], DOSES={}, ING=[], SRC={kind:"builtin",at:""};
 var SP_BY_NAME={}; SPECIES.forEach(function(x){ SP_BY_NAME[x.l]=x.k; });
+var UNITS=["mg/kg","mg/頭","mg/頭/日"];
+function normUnit(v){ v=String(v==null?"":v).replace(/\s/g,""); return UNITS.indexOf(v)>=0?v:"mg/kg"; }
+var PER_DAY={SID:1,BID:2,TID:3,EOD:1};
 function tnum(v){ v=String(v==null?"":v).trim(); return v===""||isNaN(+v)?null:+v; }
 function buildData(master, doses){
   var drugs=[], dmap={}, ings=[];
@@ -131,7 +137,8 @@ function buildData(master, doses){
     var ing=String(r[1]||"").trim()||null;
     var str=String(r[3]||"").split(/[,、，\s]+/).map(tnum).filter(function(x){return x!==null&&x>0;});
     if(form!=="fixed" && !str.length) return;
-    drugs.push({id:name,name:name,ing:ing,form:form,str:str,unit:String(r[4]||"").trim()||"個",per5:tnum(r[5])||1,note:String(r[6]||"").trim()});
+    var tw=String(r[7]||"").split(/[,、，\s]+/).map(tnum);
+    drugs.push({id:name,name:name,ing:ing,form:form,str:str,tw:tw,unit:String(r[4]||"").trim()||"個",per5:tnum(r[5])||1,note:String(r[6]||"").trim()});
     if(ing && ings.indexOf(ing)<0) ings.push(ing);
   });
   doses.forEach(function(r){
@@ -139,7 +146,7 @@ function buildData(master, doses){
     if(!ing||!sp||d===null) return;
     var mn=tnum(r[3]), mx=tnum(r[4]);
     (dmap[ing]=dmap[ing]||{})[sp]={d:d,min:mn,max:mx,f:String(r[5]||"").trim(),
-      src:String(r[6]||"").trim(),note:String(r[7]||"").trim(),by:String(r[8]||"").trim(),date:String(r[9]||"").trim()};
+      src:String(r[6]||"").trim(),note:String(r[7]||"").trim(),by:String(r[8]||"").trim(),date:String(r[9]||"").trim(),u:normUnit(r[10])};
     if(ings.indexOf(ing)<0) ings.push(ing);
   });
   DRUGS=drugs; DOSES=dmap; ING=ings;
@@ -175,7 +182,8 @@ var FREQS=["SID","BID","TID","EOD"];
 var PERDOSE=[0.05,0.1,0.2,0.3,0.5];
 
 /* ===== 状態 ===== */
-var S={sp:null, wt:"", per:0.1, freq:"SID", total:5, veh:"water", items:[]};
+function blankS(){ return {prep:null, sp:null, wt:"", per:0.1, freq:"SID", total:5, veh:"water", days:7, pack:0.1, items:[]}; }
+var S=blankS();
 var view="calc";
 
 /* ===== helpers ===== */
@@ -196,9 +204,25 @@ function unitOf(d){ return d.form==="fixed"?d.unit : d.form==="liq"?"mL" : d.for
 function fmtQty(q,u){ return u==="錠" ? fmtTab(q) : u==="g" ? q.toFixed(3) : fmt(q,2); }
 
 /* ===== 計算 ===== */
+function packs(){ var n=+S.days||0; return S.freq==="EOD" ? Math.ceil(n/2) : n*(PER_DAY[S.freq]||1); }
+function powWeight(r){ // 散剤に入る粉の重さ(g)。不明ならnull
+  var d=r.d, it=r.it;
+  if(d.form==="pow") return r.qty;
+  if(d.form==="tab"){ var w=d.tw&&d.tw[it.si]; return (w!=null&&w>0) ? r.qty*w/1000 : null; }
+  return null;
+}
 function calcItem(it){
-  var d=drug(it.id), r={d:d};
+  var d=drug(it.id), r={d:d,it:it};
   var tot=+S.total;
+  if(S.prep==="pow"){
+    if(it.mode==="fixed"){ r.qty=num(it.fixed)?+it.fixed:NaN; r.ok=num(it.fixed); r.unit=unitOf(d); r.liqMl=0; return r; }
+    var u0=it.unit||"mg/kg";
+    r.ok=(u0!=="mg/kg"||(num(S.wt)&&+S.wt>0))&&num(it.dose)&&+it.dose>0&&packs()>0;
+    if(!r.ok) return r;
+    r.mgDose = u0==="mg/kg" ? +it.dose*(+S.wt/1000) : u0==="mg/頭" ? +it.dose : +it.dose/(PER_DAY[S.freq]||1);
+    r.mgTotal = r.mgDose*packs(); r.qty=r.mgTotal/d.str[it.si]; r.unit=unitOf(d); r.liqMl=0;
+    return r;
+  }
   if(it.mode==="fixed"){
     var q=num(it.fixed)?+it.fixed:NaN;
     r.qty=q*tot/5; r.ok=num(it.fixed);
@@ -206,14 +230,20 @@ function calcItem(it){
     r.liqMl = d.form==="liq" ? r.qty : 0;
     return r;
   }
-  var wt=+S.wt/1000, dose=+it.dose, per=+S.per, str=d.str[it.si];
-  r.ok = num(S.wt) && +S.wt>0 && num(it.dose) && +it.dose>0;
+  var wt=+S.wt/1000, dose=+it.dose, per=+S.per, str=d.str[it.si], u=it.unit||"mg/kg";
+  r.ok = (u!=="mg/kg" || (num(S.wt) && +S.wt>0)) && num(it.dose) && +it.dose>0;
   if(!r.ok) return r;
-  r.mgDose = dose*wt;            // 1回量 mg
+  r.mgDose = u==="mg/kg" ? dose*wt : u==="mg/頭" ? dose : dose/(PER_DAY[S.freq]||1);  // 1回量 mg
   r.conc   = r.mgDose/per;       // mg/mL
   r.mgTotal= r.conc*tot;         // 総液量に入れる mg
   r.qty=r.mgTotal/str; r.unit=unitOf(d); r.liqMl = d.form==="liq" ? r.qty : 0;
   return r;
+}
+function filler(results){
+  var sum=0, unknown=[];
+  results.forEach(function(r){ if(!r.ok) return; var w=powWeight(r); if(w===null) unknown.push(r.d.name); else sum+=w; });
+  var total=(+S.pack)*packs();
+  return {sum:sum, total:total, bio:total-sum, unknown:unknown};
 }
 function vehicle(results){
   var liq=0; results.forEach(function(r){ if(r.ok && r.liqMl) liq+=r.liqMl; });
@@ -224,14 +254,16 @@ function vehicle(results){
 /* ===== カルテ文 ===== */
 function karteText(){
   var lines=[], res=S.items.map(calcItem);
-  lines.push("1回"+fmt(+S.per,3)+"mL "+S.freq+"／全量"+S.total+"mL "+(S.veh==="water"?"水":"半シロ"));
+  if(S.prep==="pow") lines.push("散剤 "+S.freq+" "+S.days+"日分（"+packs()+"包・1包"+S.pack+"g）");
+  else lines.push("1回"+fmt(+S.per,3)+"mL "+S.freq+"／全量"+S.total+"mL "+(S.veh==="water"?"水":"半シロ"));
   S.items.forEach(function(it,i){
     var r=res[i], d=r.d;
     var name=d.name+(d.form!=="fixed"&&d.str.length>1?strLabel(d,d.str[it.si]):"");
     if(!r.ok){ lines.push("・"+name+"：未計算"); return; }
     if(it.mode==="fixed") lines.push("・"+name+" "+fmt(r.qty,2)+r.unit);
-    else lines.push("・"+name+"｜"+fmt(+it.dose,3)+"mg/kg → "+fmtQty(r.qty,r.unit)+r.unit);
+    else lines.push("・"+name+"｜"+fmt(+it.dose,3)+(it.unit||"mg/kg")+" → "+fmtQty(r.qty,r.unit)+r.unit);
   });
+  if(S.prep==="pow"){ var f=filler(res); if(f.bio>0) lines.push("・ビオフェルミン末 "+f.bio.toFixed(2)+"g"); }
   return lines.join("\n");
 }
 
@@ -259,6 +291,10 @@ function viewCalc(){
   var w=h("div");
   S.items=S.items.filter(function(it){ return !!drug(it.id); });
   w.appendChild(statusBar());
+  w.appendChild(h("div",{class:"card"},h("label",{class:"f",text:"剤形"}),
+    segBtns([{v:"liq",l:"液剤"},{v:"pow",l:"散剤（粉薬）"}],S.prep,function(v){ S.prep=v;
+      if(v==="pow") S.items=S.items.filter(function(it){ return drug(it.id).form!=="liq"; }); render(); },"prep")));
+  if(!S.prep){ w.appendChild(h("p",{class:"hint",text:"まず液剤か散剤かを選んでください。"})); return w; }
   // 基本設定
   var wtIn=h("input",{type:"text",inputmode:"decimal",placeholder:"必須"}); wtIn.value=S.wt;
   var wtBox=h("div",{class:"inbox"+(num(S.wt)&&+S.wt>0?"":" req")},wtIn,h("span",{class:"u",text:"g"}));
@@ -270,35 +306,44 @@ function viewCalc(){
   for(var i=1;i<=10;i++){ var o=h("option",{value:String(i),text:i+" mL"}); if(i===+S.total)o.selected=true; totSel.appendChild(o); }
   totSel.addEventListener("change",function(){ S.total=+totSel.value; refreshDrugs(); });
 
-  w.appendChild(h("div",{class:"card"},
-    h("label",{class:"f",text:"動物種"}),
-    segBtns(SPECIES.map(function(s){return{v:s.k,l:s.l};}),S.sp,function(v){
-      S.sp=v; S.items.forEach(function(it){ var dd=doseFor(drug(it.id).ing,v); if(it.mode==="calc") it.dose=dd?dd.d:""; }); render();
-    },"sp"),
-    h("div",{class:"row2",style:"margin-top:4px"},
-      h("div",null,h("label",{class:"f",text:"体重"}),wtBox),
-      h("div",null,h("label",{class:"f",text:"総液量"}),totSel)),
+  var daysIn=h("input",{type:"text",inputmode:"numeric"}); daysIn.value=S.days;
+  daysIn.addEventListener("input",function(){ daysIn.value=daysIn.value.replace(/[^\d]/g,""); S.days=daysIn.value; refreshDrugs(); });
+  var powRows = S.prep==="pow" ? [
+    h("div",{class:"row2"},
+      h("div",null,h("label",{class:"f",text:"日数"}),h("div",{class:"inbox"},daysIn,h("span",{class:"u",text:"日"}))),
+      h("div",null,h("label",{class:"f",text:"1包の重さ"}),segBtns([0.05,0.075,0.1].map(function(x){return{v:x,l:x+"g"};}),S.pack,function(v){S.pack=v;render();})))
+  ] : [
     h("label",{class:"f",text:"1回量"}),
     h("div",{class:"row2"},
       segBtns(PERDOSE,S.per,function(v){S.per=v;render();}),
       h("div",{class:"inbox"},perIn,h("span",{class:"u",text:"mL"}))),
+  ];
+  w.appendChild(h("div",{class:"card"},
+    h("label",{class:"f",text:"動物種"}),
+    segBtns(SPECIES.map(function(s){return{v:s.k,l:s.l};}),S.sp,function(v){
+      S.sp=v; S.items.forEach(function(it){ var dd=doseFor(drug(it.id).ing,v); if(it.mode==="calc"){ it.dose=dd?dd.d:""; it.unit=dd?dd.u:"mg/kg"; } }); render();
+    },"sp"),
+    h("div",{class:"row2",style:"margin-top:4px"},
+      h("div",null,h("label",{class:"f",text:"体重"}),wtBox),
+      S.prep==="liq" ? h("div",null,h("label",{class:"f",text:"総液量"}),totSel) : h("div")),
     h("label",{class:"f",text:"回数"}),
     segBtns(FREQS,S.freq,function(v){S.freq=v;render();}),
-    h("label",{class:"f",text:"溶解液"}),
-    segBtns([{v:"water",l:"水のみ"},{v:"half",l:"半シロ"}],S.veh,function(v){S.veh=v;render();})
+    powRows,
+    S.prep==="liq" ? [h("label",{class:"f",text:"溶解液"}),
+      segBtns([{v:"water",l:"水のみ"},{v:"half",l:"半シロ"}],S.veh,function(v){S.veh=v;render();})] : null
   ));
 
   // 薬
   w.appendChild(h("div",{id:"drugs"}));
   var sel=h("select",{class:"t"}); sel.appendChild(h("option",{value:"",text:"＋ 薬を追加"}));
-  DRUGS.forEach(function(d){ sel.appendChild(h("option",{value:d.id,text:d.name+(d.note&&d.form!=="fixed"?"（"+d.note.split("。")[0]+"）":"")})); });
+  DRUGS.forEach(function(d){ if(S.prep==="pow"&&d.form==="liq") return; sel.appendChild(h("option",{value:d.id,text:d.name+(d.note&&d.form!=="fixed"?"（"+d.note.split("。")[0]+"）":"")})); });
   sel.addEventListener("change",function(){ if(!sel.value)return; addDrug(sel.value); sel.value=""; });
   w.appendChild(h("div",{class:"card"},h("div",{class:"add"},sel)));
 
   // 結果
   w.appendChild(h("div",{id:"karte"}));
   w.appendChild(h("button",{class:"clear",text:"すべてクリア",onclick:function(){
-    S={sp:null,wt:"",per:0.1,freq:"SID",total:5,veh:"water",items:[]}; render(); window.scrollTo(0,0);
+    S=blankS(); render(); window.scrollTo(0,0);
   }}));
   setTimeout(refreshDrugs,0);
   return w;
@@ -306,7 +351,7 @@ function viewCalc(){
 
 function addDrug(id){
   var d=drug(id), dd=doseFor(d.ing,S.sp);
-  S.items.push({id:id, si:0, mode:d.form==="fixed"?"fixed":"calc", dose:dd?dd.d:"", fixed:d.form==="fixed"?d.per5:""});
+  S.items.push({id:id, si:0, mode:d.form==="fixed"?"fixed":"calc", dose:dd?dd.d:"", unit:dd?dd.u:"mg/kg", fixed:d.form==="fixed"?d.per5:""});
   refreshDrugs();
 }
 
@@ -322,7 +367,7 @@ function drugCard(it, idx){
     d.str.forEach(function(s,i){ mini.appendChild(h("button",{class:it.si===i?"on":"",text:strLabel(d,s),onclick:function(){it.si=i;refreshDrugs();}})); });
     mini.appendChild(h("span",{style:"flex:1"}));
     [["calc","計算"],["fixed","量指定"]].forEach(function(m){
-      mini.appendChild(h("button",{class:it.mode===m[0]?"on":"",text:m[1],onclick:function(){it.mode=m[0]; if(m[0]==="fixed"&&!num(it.fixed)) it.fixed=""; if(m[0]==="calc"&&!num(it.dose)) it.dose=dd?dd.d:""; refreshDrugs();}}));
+      mini.appendChild(h("button",{class:it.mode===m[0]?"on":"",text:m[1],onclick:function(){it.mode=m[0]; if(m[0]==="fixed"&&!num(it.fixed)) it.fixed=""; if(m[0]==="calc"&&!num(it.dose)){ it.dose=dd?dd.d:""; it.unit=dd?dd.u:"mg/kg"; } refreshDrugs();}}));
     });
   }
   card.appendChild(mini);
@@ -331,17 +376,19 @@ function drugCard(it, idx){
     var unit = unitOf(d);
     var fin=h("input",{type:"text",inputmode:"decimal"}); fin.value=it.fixed;
     fin.addEventListener("input",function(){ fin.value=fin.value.replace(/[^\d.]/g,""); it.fixed=fin.value; updateResult(card,it); updateKarte(); });
-    card.appendChild(h("div",{class:"inbox"+(num(it.fixed)?"":" req")},fin,h("span",{class:"u",text:unit+" / 5mLあたり"})));
+    card.appendChild(h("div",{class:"inbox"+(num(it.fixed)?"":" req")},fin,h("span",{class:"u",text:unit+(S.prep==="pow"?"（全量）":" / 5mLあたり")})));
   }else{
     var din=h("input",{type:"text",inputmode:"decimal",placeholder:dd?"":"用量を入力"}); din.value=it.dose;
-    var dbox=h("div",{class:"inbox"+(num(it.dose)?"":" req")},din,h("span",{class:"u",text:"mg/kg"}));
+    var dbox=h("div",{class:"inbox"+(num(it.dose)?"":" req")},din,h("span",{class:"u",text:it.unit||"mg/kg"}));
+    var um=h("div",{class:"mini",style:"margin:6px 0 0"});
+    UNITS.forEach(function(u){ um.appendChild(h("button",{class:(it.unit||"mg/kg")===u?"on":"",text:u,onclick:function(){ it.unit=u; refreshDrugs(); }})); });
     din.addEventListener("input",function(){ din.value=din.value.replace(/[^\d.]/g,""); it.dose=din.value;
       dbox.className="inbox"+(num(it.dose)?"":" req"); updateResult(card,it); updateKarte(); });
-    card.appendChild(dbox);
+    card.appendChild(dbox); card.appendChild(um);
     if(!S.sp) card.appendChild(h("div",{class:"caut",text:"動物種を選ぶと用量が自動で入ります"}));
     else if(dd){
       card.appendChild(h("div",{class:"ref"},
-        h("b",{text:"用量表 "+rangeTxt(dd)+" mg/kg "+(dd.f||"")}), badge(dd),
+        h("b",{text:"用量表 "+rangeTxt(dd)+" "+dd.u+" "+(dd.f||"")}), badge(dd),
         h("div",{text:dd.src+(dd.note?"／"+dd.note:"")})));
     }else{
       card.appendChild(h("div",{class:"warn",text:spName(S.sp)+"の用量は未登録です。用量を手入力してください。"}));
@@ -356,7 +403,18 @@ function updateResult(card,it){
   var slot=card.querySelector(".slot"); slot.innerHTML="";
   var d=drug(it.id), r=calcItem(it), dd=doseFor(d.ing,S.sp);
   if(!r.ok){
-    if(it.mode==="calc" && !(num(S.wt)&&+S.wt>0)) slot.appendChild(h("div",{class:"warn",text:"体重を入力してください"}));
+    if(it.mode==="calc" && (it.unit||"mg/kg")==="mg/kg" && !(num(S.wt)&&+S.wt>0)) slot.appendChild(h("div",{class:"warn",text:"体重を入力してください"}));
+    return;
+  }
+  if(S.prep==="pow"){
+    var w=powWeight(r);
+    slot.appendChild(h("div",{class:"res"},
+      h("div",{class:"big",text:fmtQty(r.qty,r.unit)+" "+r.unit+(it.mode==="fixed"?"":"（"+packs()+"包分）")}),
+      it.mode==="fixed"?null:h("div",{class:"sm",text:"薬剤量 "+fmtMg(r.mgTotal)+"mg ／ 1包 "+fmtMg(r.mgDose)+"mg（"+fmt(+it.dose,3)+(it.unit||"mg/kg")+"）"+(w!==null?" ／ 粉の重さ "+w.toFixed(3)+"g":"")})));
+    if(w===null) slot.appendChild(h("div",{class:"caut",text:"この薬の粉の重さが未登録です（薬剤マスタの「1錠の重さ(mg)」）。ビオフェルミン量の計算に含まれていません。"}));
+    if(dd && it.mode==="calc"){ var v2=+it.dose; if((it.unit||"mg/kg")!==dd.u) v2=NaN;
+      if((dd.min!==null&&v2<dd.min)||(dd.max!==null&&v2>dd.max)) slot.appendChild(h("div",{class:"warn",text:"用量表の範囲（"+rangeTxt(dd)+dd.u+"）を外れています"}));
+      if(dd.f && dd.f!==S.freq) slot.appendChild(h("div",{class:"caut",text:"用量表の回数は「"+dd.f+"」です（設定："+S.freq+"）"})); }
     return;
   }
   if(it.mode==="fixed"){
@@ -368,10 +426,10 @@ function updateResult(card,it){
   var qtyTxt = fmtQty(r.qty,r.unit)+" "+r.unit;
   slot.appendChild(h("div",{class:"res"},
     h("div",{class:"big",text:qtyTxt+" を全量"+S.total+"mLに"}),
-    h("div",{class:"sm",text:"薬剤量 "+fmtMg(r.mgTotal)+"mg ／ 1回 "+fmtMg(r.mgDose)+"mg（"+fmt(+it.dose,3)+"mg/kg）／ 濃度 "+fmt(r.conc,3)+"mg/mL"})));
+    h("div",{class:"sm",text:"薬剤量 "+fmtMg(r.mgTotal)+"mg ／ 1回 "+fmtMg(r.mgDose)+"mg（"+fmt(+it.dose,3)+(it.unit||"mg/kg")+"）／ 濃度 "+fmt(r.conc,3)+"mg/mL"})));
   if(dd){
-    var v=+it.dose;
-    if((dd.min!==null&&v<dd.min)||(dd.max!==null&&v>dd.max)) slot.appendChild(h("div",{class:"warn",text:"用量表の範囲（"+rangeTxt(dd)+"mg/kg）を外れています"}));
+    var v=+it.dose; if((it.unit||"mg/kg")!==dd.u) v=NaN;
+    if((dd.min!==null&&v<dd.min)||(dd.max!==null&&v>dd.max)) slot.appendChild(h("div",{class:"warn",text:"用量表の範囲（"+rangeTxt(dd)+dd.u+"）を外れています"}));
     if(dd.f && dd.f!==S.freq) slot.appendChild(h("div",{class:"caut",text:"用量表の回数は「"+dd.f+"」です（設定："+S.freq+"）"}));
   }
 }
@@ -389,7 +447,13 @@ function updateKarte(){
   if(!S.items.length) return;
   var res=S.items.map(calcItem), v=vehicle(res);
   var card=h("div",{class:"card"},h("h2",{text:"カルテ転記"}));
-  if(v.rem<0) card.appendChild(h("div",{class:"warn",style:"margin:0 0 10px",text:"液剤だけで総液量を超えています（"+fmt(v.liq,2)+"mL）。総液量か1回量を見直してください。"}));
+  if(S.prep==="pow"){ var f=filler(res);
+    if(!(packs()>0)) card.appendChild(h("div",{class:"warn",style:"margin:0 0 10px",text:"日数を入力してください"}));
+    else if(f.bio<0) card.appendChild(h("div",{class:"warn",style:"margin:0 0 10px",text:"薬だけで1包"+S.pack+"gを超えています（合計"+f.sum.toFixed(2)+"g）。1包の重さを増やしてください。"}));
+    else card.appendChild(h("div",{class:"caut",style:"margin:0 0 10px;color:var(--mint-d);background:var(--mint-l)",text:"粉の合計 "+f.total.toFixed(2)+"g（"+packs()+"包×"+S.pack+"g）＝ 薬 "+f.sum.toFixed(2)+"g ＋ ビオフェルミン末 "+f.bio.toFixed(2)+"g"}));
+    if(f.unknown.length) card.appendChild(h("div",{class:"caut",style:"margin:0 0 10px",text:"重さ未登録："+f.unknown.join("・")+"（ビオフェルミン量に未反映）"}));
+  }
+  else if(v.rem<0) card.appendChild(h("div",{class:"warn",style:"margin:0 0 10px",text:"液剤だけで総液量を超えています（"+fmt(v.liq,2)+"mL）。総液量か1回量を見直してください。"}));
   var txt=karteText();
   card.appendChild(h("pre",{class:"karte",text:txt}));
   var msg=h("div",{class:"copied"});
@@ -414,10 +478,10 @@ function viewTable(){
   ING.forEach(function(ing){
     if(!DOSES[ing]) DOSES[ing]={};
     var drugsUsing=DRUGS.filter(function(d){return d.ing===ing;}).map(function(d){return d.name;}).join("・");
-    var tb=h("table",{class:"dt"},h("tr",null,h("th",{text:"動物種"}),h("th",{text:"mg/kg"}),h("th",{text:"回数"}),h("th",{text:"出典・備考"})));
+    var tb=h("table",{class:"dt"},h("tr",null,h("th",{text:"動物種"}),h("th",{text:"用量(mg/kg)"}),h("th",{text:"回数"}),h("th",{text:"出典・備考"})));
     SPECIES.forEach(function(s){
       var d=DOSES[ing][s.k];
-      if(d) tb.appendChild(h("tr",null,h("td",{text:s.l}),h("td",{text:rangeTxt(d)+(d.min!==null||d.max!==null?"（"+d.d+"）":"")}),h("td",{text:d.f||"—"}),h("td",null,d.src+(d.note?"／"+d.note:""),h("div",null,badge(d)))));
+      if(d) tb.appendChild(h("tr",null,h("td",{text:s.l}),h("td",{text:rangeTxt(d)+(d.min!==null||d.max!==null?"（"+d.d+"）":"")+(d.u!=="mg/kg"?" "+d.u:"")}),h("td",{text:d.f||"—"}),h("td",null,d.src+(d.note?"／"+d.note:""),h("div",null,badge(d)))));
       else tb.appendChild(h("tr",null,h("td",{text:s.l}),h("td",{class:"na",text:"未登録"}),h("td",{class:"na",text:""}),h("td",{class:"na",text:""})));
     });
     w.appendChild(h("div",{class:"card"},h("h2",{text:ing}),h("p",{class:"hint",style:"margin:-6px 0 8px",text:"対象：" + drugsUsing}),tb));

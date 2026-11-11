@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="麻酔薬計算">
+<meta name="theme-color" content="#ffffff">
+<meta name="robots" content="noindex,nofollow">
+<title>麻酔薬計算 β | ポックル動物病院</title>
+<style>
+:root{--mint:#2fa88e;--mint-d:#1f8670;--mint-l:#e6f5f1;--ink:#1f2a2e;--sub:#6b7a80;--line:#e3e8ea;--bg:#f5f7f8;
+  --warn:#c0392b;--warn-l:#fdecea;--amber:#9a6200;--amber-l:#fdf3e1}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",sans-serif;font-size:16px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+header{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid var(--line)}
+.hbar{display:flex;align-items:center;gap:8px;padding:10px 14px 4px}
+.hbar h1{font-size:17px;margin:0;flex:1}
+.hbar h1 small{display:block;font-size:11px;color:var(--sub);font-weight:500}
+.beta{font-size:11px;font-weight:800;color:#fff;background:var(--amber);border-radius:6px;padding:2px 6px;margin-left:4px;vertical-align:2px}
+.src{font-size:11px;color:var(--sub);text-align:right;line-height:1.3}
+.src button{border:0;background:none;color:var(--mint-d);font-weight:700;font-size:11px;padding:0}
+.pt{display:flex;gap:8px;padding:4px 12px 8px;align-items:center;flex-wrap:wrap}
+.pt select{flex:1 1 150px;min-height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 8px;background:#fff;font-weight:700;font-size:16px}
+.wt{display:flex;align-items:center;gap:4px;flex:1 1 170px}
+.wt input{width:100%;min-height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 10px;font-size:20px;font-weight:800;text-align:right}
+.unit2{display:flex;border:1.5px solid var(--line);border-radius:10px;overflow:hidden;flex:none}
+.unit2 button{border:0;background:#fff;min-width:44px;min-height:41px;font-weight:800}
+.unit2 button.on{background:var(--mint);color:#fff}
+.ptnote{width:100%;font-size:13px;color:var(--sub);padding:0 2px}
+.ptnote b{color:var(--ink)}
+.tabs{display:flex;gap:6px;padding:0 10px 8px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{flex:none;border:0;background:var(--bg);border-radius:9px;padding:8px 12px;font-size:14px;color:var(--sub);font-weight:700}
+.tabs button.on{background:var(--mint);color:#fff}
+.tabs button.em{color:var(--warn)}
+.tabs button.em.on{background:var(--warn);color:#fff}
+main{padding:12px 12px 60px;max-width:680px;margin:0 auto}
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+.card h2{font-size:15px;margin:0 0 10px;color:var(--mint-d)}
+.card h3{font-size:17px;margin:0;line-height:1.3}
+.card h3 small{display:block;font-size:12px;color:var(--sub);font-weight:500}
+label.f{display:block;font-size:13px;color:var(--sub);margin:12px 0 5px;font-weight:700}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{border:1.5px solid var(--line);background:#fff;border-radius:10px;min-height:42px;padding:0 12px;font-weight:700;font-size:15px}
+.seg button.on{background:var(--mint);border-color:var(--mint);color:#fff}
+.seg button:disabled{opacity:.35}
+.pick{display:flex;flex-wrap:wrap;gap:6px}
+.pick button{border:1.5px dashed var(--mint);background:#fff;color:var(--mint-d);border-radius:10px;min-height:42px;padding:4px 12px;font-weight:700;font-size:15px;text-align:left}
+.pick button.on{border-style:solid;background:var(--mint-l)}
+.pick button small{display:block;font-size:11px;font-weight:500;color:var(--sub)}
+.row{display:flex;align-items:center;gap:8px}
+.row .grow{flex:1}
+.din{display:flex;align-items:center;gap:6px;margin-top:6px}
+.din input{width:110px;min-height:44px;border:1.5px solid var(--line);border-radius:10px;padding:0 10px;font-size:18px;font-weight:800;text-align:right}
+.din span{font-weight:700;color:var(--sub)}
+.range{font-size:13px;color:var(--sub);margin-top:4px}
+.res{margin-top:12px;background:var(--mint-l);border-radius:12px;padding:12px}
+.res .big{font-size:30px;font-weight:900;color:var(--mint-d);line-height:1.1;letter-spacing:.01em}
+.res .big small{font-size:15px;font-weight:700;color:var(--ink);margin-left:4px}
+.res .sub{font-size:14px;color:var(--ink);margin-top:4px}
+.res .syr{display:inline-block;font-size:12px;font-weight:800;background:#fff;border:1px solid var(--mint);color:var(--mint-d);border-radius:6px;padding:1px 6px;margin-top:6px}
+.res.blocked{background:var(--warn-l)}
+.res.blocked .big{font-size:18px;color:var(--warn)}
+.steps{margin:10px 0 0;padding:10px 12px;background:#fff;border:1.5px solid var(--amber);border-radius:10px}
+.steps b.t{display:block;color:var(--amber);font-size:14px;margin-bottom:4px}
+.steps ol{margin:0;padding-left:20px}
+.steps li{margin:3px 0}
+.steps .key{font-weight:900;font-size:17px;color:var(--mint-d)}
+.badge{display:inline-block;font-size:11px;font-weight:800;border-radius:6px;padding:1px 6px;vertical-align:2px;margin-left:4px}
+.badge.no{background:var(--warn-l);color:var(--warn)}
+.badge.ok{background:var(--mint-l);color:var(--mint-d)}
+.alert{border-radius:10px;padding:8px 10px;font-size:14px;margin-top:8px;font-weight:700}
+.alert.red{background:var(--warn-l);color:var(--warn)}
+.alert.amber{background:var(--amber-l);color:var(--amber)}
+.alert.grey{background:var(--bg);color:var(--sub);font-weight:500}
+.note{font-size:13px;color:var(--sub);margin-top:6px}
+.x{border:0;background:var(--bg);border-radius:8px;min-width:36px;min-height:36px;font-weight:800;color:var(--sub)}
+.copy{white-space:pre-wrap;background:var(--bg);border-radius:10px;padding:10px;font-size:14px;font-family:inherit;margin:0}
+.btn{border:0;border-radius:10px;min-height:44px;padding:0 16px;font-weight:800;background:var(--mint);color:#fff}
+.btn.ghost{background:#fff;color:var(--mint-d);border:1.5px solid var(--mint)}
+.empty{text-align:center;color:var(--sub);padding:28px 10px}
+.empty b{display:block;font-size:17px;color:var(--ink);margin-bottom:4px}
+table.tb{width:100%;border-collapse:collapse;font-size:13px}
+table.tb th,table.tb td{border-bottom:1px solid var(--line);padding:6px 4px;text-align:left;vertical-align:top}
+table.tb th{color:var(--sub);font-weight:700;font-size:12px}
+.em-item{border-bottom:1px solid var(--line);padding:10px 0}
+.em-item:last-child{border-bottom:0}
+.em-item .nm{font-weight:800;font-size:16px}
+.em-item .ml{font-size:24px;font-weight:900;color:var(--warn)}
+.em-item .ml small{font-size:14px;color:var(--ink);font-weight:700;margin-left:4px}
+.bar{height:12px;background:var(--bg);border-radius:6px;overflow:hidden;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--mint)}
+.bar.amber i{background:var(--amber)} .bar.red i{background:var(--warn)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px;z-index:50}
+</style>
+</head>
+<body>
+<header>
+  <div class="hbar"><h1>麻酔薬計算<span class="beta">β</span><small>ポックル動物病院</small></h1><div class="src" id="src"></div></div>
+  <div class="pt" id="pt"></div>
+  <div class="tabs" id="tabs"></div>
+</header>
+<main id="app"></main>
+<script>
+(function(){
+"use strict";
+
+/* ===== 動物種（表示名 → 用量表の群名） ===== */
+var SPECIES=[
+ {l:"犬",g:"犬",grp:"犬・猫",max:90},{l:"猫",g:"猫",grp:"犬・猫",max:12},
+ {l:"ウサギ",g:"ウサギ",grp:"小型哺乳類",max:8},{l:"フェレット",g:"フェレット",grp:"小型哺乳類",max:3},
+ {l:"モルモット",g:"モルモット・チンチラ・デグー",grp:"小型哺乳類",max:2},
+ {l:"チンチラ",g:"モルモット・チンチラ・デグー",grp:"小型哺乳類",max:1},
+ {l:"デグー",g:"モルモット・チンチラ・デグー",grp:"小型哺乳類",max:0.5},
+ {l:"ハムスター",g:"ハムスター・マウス・ラット",grp:"小型哺乳類",max:0.25,small:1},
+ {l:"マウス",g:"ハムスター・マウス・ラット",grp:"小型哺乳類",max:0.08,small:1},
+ {l:"ラット",g:"ハムスター・マウス・ラット",grp:"小型哺乳類",max:1,small:1},
+ {l:"ハリネズミ",g:"ハリネズミ",grp:"小型哺乳類",max:1.5,small:1},
+ {l:"小鳥・インコ類",g:"鳥",grp:"鳥類",max:2,small:1},{l:"猛禽",g:"猛禽",grp:"鳥類",max:15},
+ {l:"トカゲ",g:"トカゲ・ヤモリ",grp:"爬虫類",max:10},{l:"ヤモリ",g:"トカゲ・ヤモリ",grp:"爬虫類",max:0.5,small:1},
+ {l:"カメ",g:"カメ",grp:"爬虫類",max:100},{l:"ヘビ",g:"ヘビ",grp:"爬虫類",max:30},
+ {l:"カエル",g:"両生類",grp:"両生類",max:1,small:1},{l:"イモリ",g:"両生類",grp:"両生類",max:0.2,small:1},
+ {l:"サンショウウオ",g:"両生類",grp:"両生類",max:2,small:1}
+];
+function spObj(l){for(var i=0;i<SPECIES.length;i++)if(SPECIES[i].l===l)return SPECIES[i];return null;}
+
+/* ===== データ源：Googleスプレッドシート（失敗時は前回読込分 → 内蔵の下書き） ===== */
+var SHEET_ID="1yBlnA-iun1W7lky1rIzBrKZ7ZG1yvp-gqc7d5tEklaE";
+var SHEET_URL="https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/edit";
+var CACHE_KEY="anes_cache";   /* 他アプリ（eye_*, dose_cache）と重ならない名前 */
+function gviz(name){ return "https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:csv&headers=1&sheet="+encodeURIComponent(name); }
+var BUILTIN_MASTER=[["アルファキサン", "アルファキサロン", "導入", "10", "mg/mL", "生食", "○", "", "", ""], ["デクスドミトール0.5", "デクスメデトミジン塩酸塩", "前投与", "0.5", "mg/mL", "生食", "○", "塩酸塩としての濃度", "", ""], ["メパチア注「Meiji」", "アチパメゾール塩酸塩", "拮抗", "5", "mg/mL", "生食", "○", "", "", ""], ["ベトルファール5mg", "ブトルファノール酒石酸塩", "前投与", "5", "mg/mL", "生食", "○", "", "", ""], ["ミダゾラム注", "ミダゾラム", "前投与", "5", "mg/mL", "生食", "○", "", "", ""], ["プロポフォール", "プロポフォール", "導入", "10", "mg/mL", "（希釈しない）", "○", "", "", ""], ["フェンタニル注射液", "フェンタニル", "前投与", "0.05", "mg/mL", "生食", "○", "0.05mg/mL＝50μg/mL", "", ""], ["ケタミン", "ケタミン塩酸塩", "導入", "100", "mg/mL", "生食", "○", "100mg/mL製剤", "", ""], ["レペタン注", "ブプレノルフィン", "前投与", "0.2", "mg/mL", "生食", "○", "", "", ""], ["アトロピン硫酸塩注0.5mg", "アトロピン硫酸塩", "緊急", "0.5", "mg/mL", "生食", "○", "", "", ""], ["グリコピロレート", "グリコピロレート", "緊急", "10", "mg/mL", "生食", "○", "10mg/mL（一般的製剤の50倍）", "", ""], ["ノルアドリナリン注1mg", "ノルアドレナリン", "緊急", "1", "mg/mL", "生食／5%ブドウ糖", "○", "", "", ""], ["ドパミン（イノバン注100mg等）", "ドパミン塩酸塩", "緊急", "20", "mg/mL", "生食／5%ブドウ糖", "○", "", "", ""], ["ドブタミン（ドブトレックス注射液100mg等）", "ドブタミン塩酸塩", "緊急", "20", "mg/mL", "生食／5%ブドウ糖", "○", "", "", ""], ["ヱフェドリン「ナガヰ」注射液40mg", "エフェドリン塩酸塩", "緊急", "40", "mg/mL", "生食", "○", "", "", ""], ["静注用キシロカイン2%", "リドカイン塩酸塩", "緊急", "20", "mg/mL", "生食", "○", "局麻用と取り違え注意", "", ""], ["ドプラム注射液400mg", "ドキサプラム塩酸塩水和物", "緊急", "20", "mg/mL", "生食／5%ブドウ糖", "○", "", "", ""], ["アドレナリン（ボスミン注1mg等）", "アドレナリン", "緊急", "1", "mg/mL", "生食", "○", "", "", ""], ["リドカイン（局麻用）", "リドカイン塩酸塩", "局所麻酔", "", "mg/mL", "生食", "○", "【要確認】%未入力", "", ""], ["マーカイン注", "ブピバカイン塩酸塩水和物", "局所麻酔", "", "mg/mL", "生食", "○", "【要確認】%未入力。静脈内投与禁忌", "", ""], ["乳酸リンゲル", "乳酸リンゲル液", "輸液", "", "", "", "○", "", "", ""], ["生理食塩水", "生理食塩水", "輸液", "", "", "", "○", "", "", ""], ["ソリタ-T2号", "脱水補給液", "輸液", "", "", "", "○", "", "", ""]];
+var BUILTIN_DOSES=[["デクスメデトミジン塩酸塩", "犬", "前投与", "IM", 5, 2, 10, "μg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["デクスメデトミジン塩酸塩", "犬", "前投与", "IV", 2, 1, 5, "μg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ミダゾラム", "犬", "前投与", "IV/IM", 0.2, 0.1, 0.3, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ブトルファノール酒石酸塩", "犬", "前投与", "IM", 0.2, 0.1, 0.3, "mg/kg", "", "ベトルファール5mg 添付文書（犬0.1〜0.3mg/kg IM）", "", "", ""], ["ブプレノルフィン", "犬", "前投与", "IV/IM", 0.02, 0.01, 0.02, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["フェンタニル", "犬", "前投与", "IV", 3, 2, 5, "μg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ケタミン塩酸塩", "犬", "導入", "IV", 3, 2, 5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "ベンゾジアゼピン併用", "", ""], ["アルファキサロン", "犬", "導入", "IV", 2, 1, 3, "mg/kg", "", "下書き（Claude作成・要出典確認）", "前投与なしは上限寄り。効果を見ながら分割投与", "", ""], ["プロポフォール", "犬", "導入", "IV", 4, 2, 6, "mg/kg", "", "下書き（Claude作成・要出典確認）", "効果を見ながら分割投与", "", ""], ["フェンタニル", "犬", "CRI", "IV", 5, 2, 10, "μg/kg/h", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ケタミン塩酸塩", "犬", "CRI", "IV", 5, 2, 10, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["リドカイン塩酸塩", "犬", "CRI", "IV", 50, 25, 80, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["デクスメデトミジン塩酸塩", "犬", "CRI", "IV", 1, 0.5, 3, "μg/kg/h", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アトロピン硫酸塩", "犬", "緊急", "IV", 0.02, 0.02, 0.04, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["グリコピロレート", "犬", "緊急", "IV/IM", 0.01, 0.005, 0.01, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ノルアドレナリン", "犬", "緊急", "IV(CRI)", 0.1, 0.05, 1, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ドパミン塩酸塩", "犬", "緊急", "IV(CRI)", 5, 2, 10, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ドブタミン塩酸塩", "犬", "緊急", "IV(CRI)", 5, 1, 10, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["エフェドリン塩酸塩", "犬", "緊急", "IV", 0.1, 0.05, 0.2, "mg/kg", "", "下書き（Claude作成・要出典確認）", "10倍希釈（4mg/mL）して使用", "", ""], ["リドカイン塩酸塩", "犬", "緊急", "IV", 2, 1, 4, "mg/kg", "", "下書き（Claude作成・要出典確認）", "心室性不整脈。ゆっくり静注", "", ""], ["ドキサプラム塩酸塩水和物", "犬", "緊急", "IV", 1, 1, 2, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アチパメゾール塩酸塩", "犬", "拮抗", "IM", 10, 10, 10, "×デクス量", "", "デクスドミトール 添付文書（犬：デクス投与量の10倍量）", "", "", ""], ["リドカイン塩酸塩", "犬", "局所麻酔", "局所", "", "", "", "mg/kg", 6, "下書き（Claude作成・要出典確認）", "", "", ""], ["ブピバカイン塩酸塩水和物", "犬", "局所麻酔", "局所", "", "", "", "mg/kg", 2, "下書き（Claude作成・要出典確認）", "静脈内投与禁忌", "", ""], ["輸液（静脈内・骨髄内）", "犬", "輸液", "IV/IO", 5, 2, 10, "mL/kg/h", "", "下書き（Claude作成・要出典確認）", "麻酔中の目安", "", ""], ["輸液（皮下）", "犬", "輸液", "SC", 10, 5, 20, "mL/kg", "", "下書き（Claude作成・要出典確認）", "1回量", "", ""], ["デクスメデトミジン塩酸塩", "猫", "前投与", "IM", 10, 3, 40, "μg/kg", "", "デクスドミトール添付文書（猫25〜40μg/kg：単独鎮静）＋併用時の一般的範囲", "他剤併用の前投与では低用量側", "", ""], ["デクスメデトミジン塩酸塩", "猫", "前投与", "IV", 2, 1, 5, "μg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ミダゾラム", "猫", "前投与", "IV/IM", 0.2, 0.1, 0.3, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ブトルファノール酒石酸塩", "猫", "前投与", "IM", 0.2, 0.1, 0.4, "mg/kg", "", "ベトルファール5mg 添付文書（猫0.1〜0.4mg/kg IM）", "", "", ""], ["ブプレノルフィン", "猫", "前投与", "IV/IM", 0.02, 0.01, 0.03, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["フェンタニル", "猫", "前投与", "IV", 2, 1, 3, "μg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ケタミン塩酸塩", "猫", "前投与", "IM", 5, 3, 10, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ケタミン塩酸塩", "猫", "導入", "IV", 3, 2, 5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "ベンゾジアゼピン併用", "", ""], ["アルファキサロン", "猫", "導入", "IV", 3, 1, 5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "効果を見ながら分割投与", "", ""], ["アルファキサロン", "猫", "前投与", "IM", 2, 1, 3, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["プロポフォール", "猫", "導入", "IV", 4, 2, 8, "mg/kg", "", "下書き（Claude作成・要出典確認）", "効果を見ながら分割投与", "", ""], ["フェンタニル", "猫", "CRI", "IV", 3, 1, 5, "μg/kg/h", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ケタミン塩酸塩", "猫", "CRI", "IV", 5, 2, 10, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["デクスメデトミジン塩酸塩", "猫", "CRI", "IV", 1, 0.5, 2, "μg/kg/h", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アトロピン硫酸塩", "猫", "緊急", "IV", 0.02, 0.02, 0.04, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["グリコピロレート", "猫", "緊急", "IV/IM", 0.01, 0.005, 0.01, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ノルアドレナリン", "猫", "緊急", "IV(CRI)", 0.1, 0.05, 1, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ドパミン塩酸塩", "猫", "緊急", "IV(CRI)", 5, 2, 10, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ドブタミン塩酸塩", "猫", "緊急", "IV(CRI)", 2, 1, 5, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "猫は高用量で痙攣の報告", "", ""], ["エフェドリン塩酸塩", "猫", "緊急", "IV", 0.1, 0.05, 0.2, "mg/kg", "", "下書き（Claude作成・要出典確認）", "10倍希釈（4mg/mL）して使用", "", ""], ["リドカイン塩酸塩", "猫", "緊急", "IV", 0.25, 0.25, 0.5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "猫はリドカイン感受性が高い。CRIは避ける", "", ""], ["ドキサプラム塩酸塩水和物", "猫", "緊急", "IV", 1, 1, 2, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アチパメゾール塩酸塩", "猫", "拮抗", "IM", 5, 5, 5, "×デクス量", "", "デクスドミトール 添付文書（猫：デクス投与量の5倍量）", "", "", ""], ["リドカイン塩酸塩", "猫", "局所麻酔", "局所", "", "", "", "mg/kg", 4, "下書き（Claude作成・要出典確認）", "", "", ""], ["ブピバカイン塩酸塩水和物", "猫", "局所麻酔", "局所", "", "", "", "mg/kg", 1, "下書き（Claude作成・要出典確認）", "静脈内投与禁忌", "", ""], ["輸液（静脈内・骨髄内）", "猫", "輸液", "IV/IO", 3, 2, 5, "mL/kg/h", "", "下書き（Claude作成・要出典確認）", "麻酔中の目安", "", ""], ["輸液（皮下）", "猫", "輸液", "SC", 10, 5, 20, "mL/kg", "", "下書き（Claude作成・要出典確認）", "1回量", "", ""], ["デクスメデトミジン塩酸塩", "ウサギ", "前投与", "IM", 50, 25, 100, "μg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ミダゾラム", "ウサギ", "前投与", "IM/IV", 0.5, 0.25, 1, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ブトルファノール酒石酸塩", "ウサギ", "前投与", "IM/SC", 0.3, 0.1, 0.5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ブプレノルフィン", "ウサギ", "前投与", "IM/SC", 0.03, 0.01, 0.05, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["フェンタニル", "ウサギ", "前投与", "IV", 3, 2, 5, "μg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ケタミン塩酸塩", "ウサギ", "導入", "IM", 10, 5, 15, "mg/kg", "", "下書き（Claude作成・要出典確認）", "α2作動薬・ベンゾジアゼピン併用", "", ""], ["ケタミン塩酸塩", "ウサギ", "導入", "IV", 3, 2, 5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アルファキサロン", "ウサギ", "導入", "IV", 2, 1, 3, "mg/kg", "", "下書き（Claude作成・要出典確認）", "ゆっくり静注。効果を見ながら", "", ""], ["プロポフォール", "ウサギ", "導入", "IV", 4, 2, 6, "mg/kg", "", "下書き（Claude作成・要出典確認）", "無呼吸に注意", "", ""], ["フェンタニル", "ウサギ", "CRI", "IV", 10, 5, 20, "μg/kg/h", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ケタミン塩酸塩", "ウサギ", "CRI", "IV", 10, 5, 15, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["リドカイン塩酸塩", "ウサギ", "CRI", "IV", 50, 25, 100, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アトロピン硫酸塩", "ウサギ", "緊急", "IV/IM", 0.1, 0.05, 0.5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "アトロピンエステラーゼで効きにくい個体あり。グリコピロレート優先", "", ""], ["グリコピロレート", "ウサギ", "緊急", "IV/IM", 0.01, 0.01, 0.02, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ドパミン塩酸塩", "ウサギ", "緊急", "IV(CRI)", 5, 2, 10, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ドブタミン塩酸塩", "ウサギ", "緊急", "IV(CRI)", 5, 2, 10, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ドキサプラム塩酸塩水和物", "ウサギ", "緊急", "IV", 2, 2, 5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アチパメゾール塩酸塩", "ウサギ", "拮抗", "IM", 10, 5, 10, "×デクス量", "", "下書き（Claude作成・要出典確認）", "エキゾは犬の比率を準用（下書き）", "", ""], ["リドカイン塩酸塩", "ウサギ", "局所麻酔", "局所", "", "", "", "mg/kg", 4, "下書き（Claude作成・要出典確認）", "", "", ""], ["ブピバカイン塩酸塩水和物", "ウサギ", "局所麻酔", "局所", "", "", "", "mg/kg", 1, "下書き（Claude作成・要出典確認）", "静脈内投与禁忌", "", ""], ["輸液（静脈内・骨髄内）", "ウサギ", "輸液", "IV/IO", 10, 5, 10, "mL/kg/h", "", "下書き（Claude作成・要出典確認）", "麻酔中の目安", "", ""], ["輸液（皮下）", "ウサギ", "輸液", "SC", 10, 5, 20, "mL/kg", "", "下書き（Claude作成・要出典確認）", "1回量", "", ""], ["デクスメデトミジン塩酸塩", "フェレット", "前投与", "IM", 20, 10, 40, "μg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ミダゾラム", "フェレット", "前投与", "IM/IV", 0.3, 0.2, 0.5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ブトルファノール酒石酸塩", "フェレット", "前投与", "IM/SC", 0.2, 0.1, 0.5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ブプレノルフィン", "フェレット", "前投与", "IM/SC", 0.02, 0.01, 0.03, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["フェンタニル", "フェレット", "前投与", "IV", 3, 2, 5, "μg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ケタミン塩酸塩", "フェレット", "導入", "IM", 5, 5, 10, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ケタミン塩酸塩", "フェレット", "導入", "IV", 3, 2, 5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アルファキサロン", "フェレット", "導入", "IV", 2, 1, 3, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["プロポフォール", "フェレット", "導入", "IV", 4, 2, 6, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["フェンタニル", "フェレット", "CRI", "IV", 5, 2, 10, "μg/kg/h", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ケタミン塩酸塩", "フェレット", "CRI", "IV", 5, 2, 10, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アトロピン硫酸塩", "フェレット", "緊急", "IV/IM", 0.04, 0.02, 0.05, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["グリコピロレート", "フェレット", "緊急", "IV/IM", 0.01, 0.01, 0.02, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ドキサプラム塩酸塩水和物", "フェレット", "緊急", "IV", 2, 1, 2, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アチパメゾール塩酸塩", "フェレット", "拮抗", "IM", 10, 5, 10, "×デクス量", "", "下書き（Claude作成・要出典確認）", "エキゾは犬の比率を準用（下書き）", "", ""], ["リドカイン塩酸塩", "フェレット", "局所麻酔", "局所", "", "", "", "mg/kg", 4, "下書き（Claude作成・要出典確認）", "", "", ""], ["ブピバカイン塩酸塩水和物", "フェレット", "局所麻酔", "局所", "", "", "", "mg/kg", 1, "下書き（Claude作成・要出典確認）", "静脈内投与禁忌", "", ""], ["輸液（静脈内・骨髄内）", "フェレット", "輸液", "IV/IO", 5, 3, 10, "mL/kg/h", "", "下書き（Claude作成・要出典確認）", "麻酔中の目安", "", ""], ["輸液（皮下）", "フェレット", "輸液", "SC", 10, 5, 20, "mL/kg", "", "下書き（Claude作成・要出典確認）", "1回量", "", ""], ["デクスメデトミジン塩酸塩", "モルモット・チンチラ・デグー", "前投与", "IM", 50, 25, 100, "μg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ミダゾラム", "モルモット・チンチラ・デグー", "前投与", "IM", 1, 0.5, 2, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ブトルファノール酒石酸塩", "モルモット・チンチラ・デグー", "前投与", "IM/SC", 0.5, 0.2, 2, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ブプレノルフィン", "モルモット・チンチラ・デグー", "前投与", "IM/SC", 0.05, 0.02, 0.05, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ケタミン塩酸塩", "モルモット・チンチラ・デグー", "導入", "IM", 20, 5, 40, "mg/kg", "", "下書き（Claude作成・要出典確認）", "α2作動薬併用時は低用量側", "", ""], ["アトロピン硫酸塩", "モルモット・チンチラ・デグー", "緊急", "IM/SC", 0.05, 0.05, 0.1, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["グリコピロレート", "モルモット・チンチラ・デグー", "緊急", "IM/SC", 0.01, 0.01, 0.02, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ドキサプラム塩酸塩水和物", "モルモット・チンチラ・デグー", "緊急", "IV/IM", 5, 2, 5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アチパメゾール塩酸塩", "モルモット・チンチラ・デグー", "拮抗", "IM", 10, 5, 10, "×デクス量", "", "下書き（Claude作成・要出典確認）", "エキゾは犬の比率を準用（下書き）", "", ""], ["リドカイン塩酸塩", "モルモット・チンチラ・デグー", "局所麻酔", "局所", "", "", "", "mg/kg", 4, "下書き（Claude作成・要出典確認）", "", "", ""], ["ブピバカイン塩酸塩水和物", "モルモット・チンチラ・デグー", "局所麻酔", "局所", "", "", "", "mg/kg", 1, "下書き（Claude作成・要出典確認）", "静脈内投与禁忌", "", ""], ["輸液（静脈内・骨髄内）", "モルモット・チンチラ・デグー", "輸液", "IV/IO", 10, 5, 10, "mL/kg/h", "", "下書き（Claude作成・要出典確認）", "麻酔中の目安", "", ""], ["輸液（皮下）", "モルモット・チンチラ・デグー", "輸液", "SC", 10, 5, 20, "mL/kg", "", "下書き（Claude作成・要出典確認）", "1回量", "", ""], ["デクスメデトミジン塩酸塩", "ハムスター・マウス・ラット", "前投与", "IM/SC", 100, 50, 250, "μg/kg", "", "下書き（Claude作成・要出典確認）", "マウスは高用量側、ラットは低用量側の傾向", "", ""], ["ミダゾラム", "ハムスター・マウス・ラット", "前投与", "IM/SC", 1, 1, 2, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ブトルファノール酒石酸塩", "ハムスター・マウス・ラット", "前投与", "SC", 1, 1, 2, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ブプレノルフィン", "ハムスター・マウス・ラット", "前投与", "SC", 0.05, 0.05, 0.1, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ケタミン塩酸塩", "ハムスター・マウス・ラット", "導入", "IM/IP", 50, 20, 100, "mg/kg", "", "下書き（Claude作成・要出典確認）", "種差大。α2作動薬併用時は低用量側", "", ""], ["アトロピン硫酸塩", "ハムスター・マウス・ラット", "緊急", "SC/IM", 0.05, 0.04, 0.1, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["グリコピロレート", "ハムスター・マウス・ラット", "緊急", "SC/IM", 0.01, 0.01, 0.02, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ドキサプラム塩酸塩水和物", "ハムスター・マウス・ラット", "緊急", "IP/SC", 5, 5, 10, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アチパメゾール塩酸塩", "ハムスター・マウス・ラット", "拮抗", "SC/IM", 10, 5, 10, "×デクス量", "", "下書き（Claude作成・要出典確認）", "エキゾは犬の比率を準用（下書き）", "", ""], ["リドカイン塩酸塩", "ハムスター・マウス・ラット", "局所麻酔", "局所", "", "", "", "mg/kg", 4, "下書き（Claude作成・要出典確認）", "", "", ""], ["ブピバカイン塩酸塩水和物", "ハムスター・マウス・ラット", "局所麻酔", "局所", "", "", "", "mg/kg", 1, "下書き（Claude作成・要出典確認）", "静脈内投与禁忌", "", ""], ["輸液（皮下）", "ハムスター・マウス・ラット", "輸液", "SC", 10, 5, 20, "mL/kg", "", "下書き（Claude作成・要出典確認）", "1回量", "", ""], ["ミダゾラム", "ハリネズミ", "前投与", "IM/SC", 0.5, 0.25, 1, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ブトルファノール酒石酸塩", "ハリネズミ", "前投与", "IM/SC", 0.3, 0.2, 0.5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ブプレノルフィン", "ハリネズミ", "前投与", "IM/SC", 0.03, 0.01, 0.05, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ケタミン塩酸塩", "ハリネズミ", "導入", "IM", 10, 5, 20, "mg/kg", "", "下書き（Claude作成・要出典確認）", "導入はイソフルラン（箱・マスク）が主", "", ""], ["アトロピン硫酸塩", "ハリネズミ", "緊急", "IM/SC", 0.04, 0.01, 0.04, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["グリコピロレート", "ハリネズミ", "緊急", "IM/SC", 0.01, 0.01, 0.02, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["リドカイン塩酸塩", "ハリネズミ", "局所麻酔", "局所", "", "", "", "mg/kg", 4, "下書き（Claude作成・要出典確認）", "", "", ""], ["ブピバカイン塩酸塩水和物", "ハリネズミ", "局所麻酔", "局所", "", "", "", "mg/kg", 1, "下書き（Claude作成・要出典確認）", "静脈内投与禁忌", "", ""], ["輸液（皮下）", "ハリネズミ", "輸液", "SC", 10, 5, 20, "mL/kg", "", "下書き（Claude作成・要出典確認）", "1回量", "", ""], ["ミダゾラム", "鳥", "前投与", "IM/IN", 1, 0.5, 2, "mg/kg", "", "下書き（Claude作成・要出典確認）", "鼻腔内（IN）投与も可", "", ""], ["ブトルファノール酒石酸塩", "鳥", "前投与", "IM", 2, 1, 4, "mg/kg", "", "下書き（Claude作成・要出典確認）", "オウム・インコ類のデータ中心", "", ""], ["アルファキサロン", "鳥", "導入", "IV", 3, 2, 5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "種差大。導入はイソフルランが主", "", ""], ["プロポフォール", "鳥", "導入", "IV/IO", 3, 1, 5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "無呼吸に注意。挿管・換気の準備", "", ""], ["アトロピン硫酸塩", "鳥", "緊急", "IV/IM", 0.02, 0.01, 0.05, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["グリコピロレート", "鳥", "緊急", "IV/IM", 0.01, 0.01, 0.02, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ドキサプラム塩酸塩水和物", "鳥", "緊急", "IV/IM", 10, 5, 20, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["リドカイン塩酸塩", "鳥", "局所麻酔", "局所", "", "", "", "mg/kg", 2.5, "下書き（Claude作成・要出典確認）", "文献により2.5〜4mg/kg。小鳥は特に注意", "", ""], ["ブピバカイン塩酸塩水和物", "鳥", "局所麻酔", "局所", "", "", "", "mg/kg", 2, "下書き（Claude作成・要出典確認）", "静脈内投与禁忌", "", ""], ["輸液（静脈内・骨髄内）", "鳥", "輸液", "IV/IO", 10, 5, 15, "mL/kg/h", "", "下書き（Claude作成・要出典確認）", "麻酔中の目安", "", ""], ["輸液（皮下）", "鳥", "輸液", "SC", 10, 5, 20, "mL/kg", "", "下書き（Claude作成・要出典確認）", "1回量（鼠径部・肩甲間）", "", ""], ["ミダゾラム", "猛禽", "前投与", "IM/IN", 0.5, 0.5, 1, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ブトルファノール酒石酸塩", "猛禽", "前投与", "IM", 1, 0.5, 2, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ブプレノルフィン", "猛禽", "前投与", "IM", 0.3, 0.1, 0.6, "mg/kg", "", "下書き（Claude作成・要出典確認）", "チョウゲンボウのデータ中心", "", ""], ["アルファキサロン", "猛禽", "導入", "IV", 3, 2, 5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["プロポフォール", "猛禽", "導入", "IV/IO", 3, 1, 5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "無呼吸に注意", "", ""], ["アトロピン硫酸塩", "猛禽", "緊急", "IV/IM", 0.02, 0.01, 0.05, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["グリコピロレート", "猛禽", "緊急", "IV/IM", 0.01, 0.01, 0.02, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ドキサプラム塩酸塩水和物", "猛禽", "緊急", "IV/IM", 10, 5, 20, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["リドカイン塩酸塩", "猛禽", "局所麻酔", "局所", "", "", "", "mg/kg", 2.5, "下書き（Claude作成・要出典確認）", "文献により2.5〜4mg/kg", "", ""], ["ブピバカイン塩酸塩水和物", "猛禽", "局所麻酔", "局所", "", "", "", "mg/kg", 2, "下書き（Claude作成・要出典確認）", "静脈内投与禁忌", "", ""], ["輸液（静脈内・骨髄内）", "猛禽", "輸液", "IV/IO", 10, 5, 15, "mL/kg/h", "", "下書き（Claude作成・要出典確認）", "麻酔中の目安", "", ""], ["輸液（皮下）", "猛禽", "輸液", "SC", 10, 5, 20, "mL/kg", "", "下書き（Claude作成・要出典確認）", "1回量", "", ""], ["ミダゾラム", "トカゲ・ヤモリ", "前投与", "IM", 1, 0.5, 2, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["デクスメデトミジン塩酸塩", "トカゲ・ヤモリ", "前投与", "IM", 100, 50, 150, "μg/kg", "", "下書き（Claude作成・要出典確認）", "ケタミン併用", "", ""], ["ケタミン塩酸塩", "トカゲ・ヤモリ", "導入", "IM", 10, 5, 20, "mg/kg", "", "下書き（Claude作成・要出典確認）", "単独では回復が遅い", "", ""], ["アルファキサロン", "トカゲ・ヤモリ", "導入", "IV/IO", 5, 2, 10, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アルファキサロン", "トカゲ・ヤモリ", "導入", "IM", 10, 5, 20, "mg/kg", "", "下書き（Claude作成・要出典確認）", "小型個体向け。効果発現・回復に時間", "", ""], ["プロポフォール", "トカゲ・ヤモリ", "導入", "IV/IO", 5, 3, 10, "mg/kg", "", "下書き（Claude作成・要出典確認）", "無呼吸に注意。換気の準備", "", ""], ["アトロピン硫酸塩", "トカゲ・ヤモリ", "緊急", "IV/IM", 0.02, 0.01, 0.04, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["グリコピロレート", "トカゲ・ヤモリ", "緊急", "IV/IM", 0.01, 0.01, 0.01, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ドキサプラム塩酸塩水和物", "トカゲ・ヤモリ", "緊急", "IV/IM", 5, 4, 10, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アチパメゾール塩酸塩", "トカゲ・ヤモリ", "拮抗", "IM", 10, 5, 10, "×デクス量", "", "下書き（Claude作成・要出典確認）", "エキゾは犬の比率を準用（下書き）", "", ""], ["リドカイン塩酸塩", "トカゲ・ヤモリ", "局所麻酔", "局所", "", "", "", "mg/kg", 4, "下書き（Claude作成・要出典確認）", "文献により2〜5mg/kg", "", ""], ["ブピバカイン塩酸塩水和物", "トカゲ・ヤモリ", "局所麻酔", "局所", "", "", "", "mg/kg", 1, "下書き（Claude作成・要出典確認）", "静脈内投与禁忌", "", ""], ["輸液（静脈内・骨髄内）", "トカゲ・ヤモリ", "輸液", "IV/IO", 3, 1, 5, "mL/kg/h", "", "下書き（Claude作成・要出典確認）", "維持量は10〜25mL/kg/日が目安", "", ""], ["輸液（皮下）", "トカゲ・ヤモリ", "輸液", "SC/体腔内", 10, 5, 20, "mL/kg", "", "下書き（Claude作成・要出典確認）", "1回量", "", ""], ["ミダゾラム", "カメ", "前投与", "IM", 1, 0.5, 2, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["デクスメデトミジン塩酸塩", "カメ", "前投与", "IM", 50, 25, 100, "μg/kg", "", "下書き（Claude作成・要出典確認）", "ケタミン併用", "", ""], ["ケタミン塩酸塩", "カメ", "導入", "IM", 10, 5, 20, "mg/kg", "", "下書き（Claude作成・要出典確認）", "単独では回復が遅い", "", ""], ["アルファキサロン", "カメ", "導入", "IV/IO", 5, 2, 10, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アルファキサロン", "カメ", "導入", "IM", 10, 5, 20, "mg/kg", "", "下書き（Claude作成・要出典確認）", "小型個体向け。効果発現・回復に時間", "", ""], ["プロポフォール", "カメ", "導入", "IV/IO", 5, 3, 10, "mg/kg", "", "下書き（Claude作成・要出典確認）", "無呼吸に注意。換気の準備", "", ""], ["アトロピン硫酸塩", "カメ", "緊急", "IV/IM", 0.02, 0.01, 0.04, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["グリコピロレート", "カメ", "緊急", "IV/IM", 0.01, 0.01, 0.01, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ドキサプラム塩酸塩水和物", "カメ", "緊急", "IV/IM", 5, 4, 10, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アチパメゾール塩酸塩", "カメ", "拮抗", "IM", 10, 5, 10, "×デクス量", "", "下書き（Claude作成・要出典確認）", "エキゾは犬の比率を準用（下書き）", "", ""], ["リドカイン塩酸塩", "カメ", "局所麻酔", "局所", "", "", "", "mg/kg", 4, "下書き（Claude作成・要出典確認）", "文献により2〜5mg/kg", "", ""], ["ブピバカイン塩酸塩水和物", "カメ", "局所麻酔", "局所", "", "", "", "mg/kg", 1, "下書き（Claude作成・要出典確認）", "静脈内投与禁忌", "", ""], ["輸液（静脈内・骨髄内）", "カメ", "輸液", "IV/IO", 3, 1, 5, "mL/kg/h", "", "下書き（Claude作成・要出典確認）", "維持量は10〜25mL/kg/日が目安", "", ""], ["輸液（皮下）", "カメ", "輸液", "SC/体腔内", 10, 5, 20, "mL/kg", "", "下書き（Claude作成・要出典確認）", "1回量", "", ""], ["ミダゾラム", "ヘビ", "前投与", "IM", 1, 0.5, 2, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ケタミン塩酸塩", "ヘビ", "導入", "IM", 10, 5, 20, "mg/kg", "", "下書き（Claude作成・要出典確認）", "単独では回復が遅い", "", ""], ["アルファキサロン", "ヘビ", "導入", "IV/IO", 5, 2, 10, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["アルファキサロン", "ヘビ", "導入", "IM", 10, 5, 20, "mg/kg", "", "下書き（Claude作成・要出典確認）", "小型個体向け。効果発現・回復に時間", "", ""], ["プロポフォール", "ヘビ", "導入", "IV/IO", 5, 3, 10, "mg/kg", "", "下書き（Claude作成・要出典確認）", "無呼吸に注意。換気の準備", "", ""], ["アトロピン硫酸塩", "ヘビ", "緊急", "IV/IM", 0.02, 0.01, 0.04, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["グリコピロレート", "ヘビ", "緊急", "IV/IM", 0.01, 0.01, 0.01, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["ドキサプラム塩酸塩水和物", "ヘビ", "緊急", "IV/IM", 5, 4, 10, "mg/kg", "", "下書き（Claude作成・要出典確認）", "", "", ""], ["リドカイン塩酸塩", "ヘビ", "局所麻酔", "局所", "", "", "", "mg/kg", 4, "下書き（Claude作成・要出典確認）", "文献により2〜5mg/kg", "", ""], ["ブピバカイン塩酸塩水和物", "ヘビ", "局所麻酔", "局所", "", "", "", "mg/kg", 1, "下書き（Claude作成・要出典確認）", "静脈内投与禁忌", "", ""], ["輸液（静脈内・骨髄内）", "ヘビ", "輸液", "IV/IO", 3, 1, 5, "mL/kg/h", "", "下書き（Claude作成・要出典確認）", "維持量は10〜25mL/kg/日が目安", "", ""], ["輸液（皮下）", "ヘビ", "輸液", "SC/体腔内", 10, 5, 20, "mL/kg", "", "下書き（Claude作成・要出典確認）", "1回量", "", ""], ["アドレナリン", "犬", "緊急", "IV/IO", 0.01, 0.01, 0.1, "mg/kg", "", "下書き（Claude作成・要出典確認）", "心停止：3〜5分ごと（低用量）。高用量0.1mg/kgは長時間CPR時に検討", "", ""], ["アドレナリン", "犬", "緊急", "IV(CRI)", 0.1, 0.05, 1, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "低血圧・ショック時の持続投与", "", ""], ["アドレナリン", "猫", "緊急", "IV/IO", 0.01, 0.01, 0.1, "mg/kg", "", "下書き（Claude作成・要出典確認）", "心停止：3〜5分ごと（低用量）。高用量0.1mg/kgは長時間CPR時に検討", "", ""], ["アドレナリン", "猫", "緊急", "IV(CRI)", 0.1, 0.05, 1, "μg/kg/min", "", "下書き（Claude作成・要出典確認）", "低血圧・ショック時の持続投与", "", ""], ["アドレナリン", "ウサギ", "緊急", "IV/IO", 0.01, 0.01, 0.1, "mg/kg", "", "下書き（Claude作成・要出典確認）", "心停止：3〜5分ごと（犬猫を準用）", "", ""], ["アドレナリン", "フェレット", "緊急", "IV/IO", 0.01, 0.01, 0.1, "mg/kg", "", "下書き（Claude作成・要出典確認）", "心停止：3〜5分ごと（犬猫を準用）", "", ""], ["アドレナリン", "モルモット・チンチラ・デグー", "緊急", "IV/IO", 0.01, 0.01, 0.1, "mg/kg", "", "下書き（Claude作成・要出典確認）", "心停止：3〜5分ごと（犬猫を準用）", "", ""], ["アドレナリン", "ハリネズミ", "緊急", "IV/IO", 0.01, 0.01, 0.1, "mg/kg", "", "下書き（Claude作成・要出典確認）", "心停止：3〜5分ごと（犬猫を準用）", "", ""], ["アドレナリン", "ハムスター・マウス・ラット", "緊急", "IV/IO/IP", 0.01, 0.01, 0.1, "mg/kg", "", "下書き（Claude作成・要出典確認）", "心停止（犬猫を準用）", "", ""], ["アドレナリン", "鳥", "緊急", "IV/IO", 0.5, 0.1, 1, "mg/kg", "", "下書き（Claude作成・要出典確認）", "鳥類の心停止用量は哺乳類より高い文献が多い。要確認", "", ""], ["アドレナリン", "猛禽", "緊急", "IV/IO", 0.5, 0.1, 1, "mg/kg", "", "下書き（Claude作成・要出典確認）", "鳥類の心停止用量は哺乳類より高い文献が多い。要確認", "", ""], ["アドレナリン", "トカゲ・ヤモリ", "緊急", "IV/IO", 0.5, 0.1, 0.5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "爬虫類の心停止用量。要確認", "", ""], ["アドレナリン", "カメ", "緊急", "IV/IO", 0.5, 0.1, 0.5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "爬虫類の心停止用量。要確認", "", ""], ["アドレナリン", "ヘビ", "緊急", "IV/IO", 0.5, 0.1, 0.5, "mg/kg", "", "下書き（Claude作成・要出典確認）", "爬虫類の心停止用量。要確認", "", ""]];
+var BUILTIN_PROTO=[];
+
+var MASTER=[], DOSES=[], PROTO=[], SRC={kind:"builtin",at:""};
+function tnum(v){ v=String(v==null?"":v).replace(/[,，\s]/g,""); return v===""||isNaN(+v)?null:+v; }
+function str(v){ return String(v==null?"":v).trim(); }
+function buildData(m,d,p){
+  MASTER=[]; DOSES=[]; PROTO=[];
+  (m||[]).forEach(function(r){
+    var name=str(r[0]); if(!name) return;
+    if(str(r[6])==="×") return;               // 在庫なしは除外
+    var c=tnum(r[3]), u=str(r[4]);
+    if(c!==null && /μg|mcg/.test(u)) c=c/1000;  // μg/mL → mg/mL
+    MASTER.push({name:name,ing:str(r[1]),cat:str(r[2]),conc:c,dil:str(r[5])||"生食",note:str(r[7]),src:str(r[8])});
+  });
+  (d||[]).forEach(function(r){
+    var ing=str(r[0]), sp=str(r[1]); if(!ing||!sp) return;
+    DOSES.push({ing:ing,sp:sp,cat:str(r[2]),route:str(r[3]),d:tnum(r[4]),min:tnum(r[5]),max:tnum(r[6]),
+      u:str(r[7]),cap:tnum(r[8]),src:str(r[9]),note:str(r[10]),by:str(r[11]),date:str(r[12])});
+  });
+  (p||[]).forEach(function(r){
+    var n=str(r[0]); if(!n) return;
+    PROTO.push({name:n,sp:str(r[1]),ord:tnum(r[2])||0,ing:str(r[3]),d:tnum(r[4]),u:str(r[5]),route:str(r[6]),note:str(r[7])});
+  });
+}
+function parseCSV(t){
+  var rows=[],row=[],f="",q=false;
+  for(var i=0;i<t.length;i++){var c=t[i];
+    if(q){ if(c==='"'){ if(t[i+1]==='"'){f+='"';i++;} else q=false; } else f+=c; }
+    else if(c==='"') q=true; else if(c===','){row.push(f);f="";} else if(c==='\n'){row.push(f);rows.push(row);row=[];f="";} else if(c!=='\r') f+=c; }
+  if(f!==""||row.length){row.push(f);rows.push(row);}
+  return rows;
+}
+function nowStr(){ var d=new Date(); return (d.getMonth()+1)+"/"+d.getDate()+" "+d.getHours()+":"+("0"+d.getMinutes()).slice(-2); }
+function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+function lsSet(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+function getTab(name){ return fetch(gviz(name)).then(function(r){ if(!r.ok) throw 0; return r.text(); }); }
+function loadSheet(){
+  SRC.loading=true; renderHeader();
+  Promise.all([getTab("麻酔薬マスタ"),getTab("麻酔用量"),getTab("麻酔プロトコル").catch(function(){return "";})])
+  .then(function(t){
+    var m=parseCSV(t[0]).slice(1), d=parseCSV(t[1]).slice(1), p=t[2]?parseCSV(t[2]).slice(1):[];
+    if(!m.length||!d.length||(m[0][0]||"").indexOf("<")===0) throw 0;
+    buildData(m,d,p); SRC={kind:"sheet",at:nowStr()}; lsSet(CACHE_KEY,{m:m,d:d,p:p,at:SRC.at}); render();
+  }).catch(function(){
+    var c=lsGet(CACHE_KEY);
+    if(c&&c.m){ buildData(c.m,c.d,c.p); SRC={kind:"cache",at:c.at}; } else { buildData(BUILTIN_MASTER,BUILTIN_DOSES,BUILTIN_PROTO); SRC={kind:"builtin",at:""}; }
+    render();
+  });
+}
+(function(){ var c=lsGet(CACHE_KEY); if(c&&c.m){ buildData(c.m,c.d,c.p); SRC={kind:"cache",at:c.at}; } else buildData(BUILTIN_MASTER,BUILTIN_DOSES,BUILTIN_PROTO); })();
+
+/* ===== 状態（患者データは端末に保存しない） ===== */
+var S={sp:"",wt:"",wu:"kg",tab:"pre",pre:[],
+  cri:{key:"",dose:"",V:10,R:"1"},
+  fl:{route:"iv",fluid:"乳酸リンゲル",rate:"",rk:"",hrs:"1",sites:1},
+  la:{lido:{ml:"",pct:null},bupi:{ml:"",pct:null}},
+  rev:{dexMl:null}};
+var TABS=[["pre","前投与・導入"],["cri","CRI"],["fl","輸液"],["la","局所麻酔"],["em","緊急薬"],["rev","拮抗"],["tb","用量表"]];
+
+/* ===== helpers ===== */
+function h(tag,attrs){var el=document.createElement(tag);if(attrs)for(var a in attrs){var v=attrs[a];if(v==null||v===false)continue;if(a==="class")el.className=v;else if(a==="text")el.textContent=v;else if(a==="html")el.innerHTML=v;else if(a.slice(0,2)==="on")el.addEventListener(a.slice(2),v);else el.setAttribute(a,v===true?"":v);}
+ for(var i=2;i<arguments.length;i++){var c=arguments[i];if(c==null||c===false)continue;(Array.isArray(c)?c:[c]).forEach(function(x){if(x!=null&&x!==false)el.appendChild(typeof x==="string"||typeof x==="number"?document.createTextNode(String(x)):x);});}return el;}
+function kg(){ var v=tnum(S.wt); if(v===null||v<=0) return null; return S.wu==="g"?v/1000:v; }
+function trim0(s){ return s.indexOf(".")<0?s:s.replace(/0+$/,"").replace(/\.$/,""); }
+function fnum(n){ if(n==null||!isFinite(n)) return "—"; var a=Math.abs(n);
+  var dp=a>=100?0:a>=10?1:a>=1?2:a>=0.1?3:a>=0.01?4:5; return trim0(n.toFixed(dp)); }
+function fml(n){ if(n==null||!isFinite(n)) return "—"; return n>=10?n.toFixed(1):n.toFixed(2); }   // 液量は桁をそろえて表示
+function fmg(mg){ return mg<1? fnum(mg*1000)+" μg" : fnum(mg)+" mg"; }
+function syr(ml){ return ml<=1?"1mLシリンジ":ml<=2.5?"2.5mLシリンジ":ml<=5?"5mLシリンジ":ml<=10?"10mLシリンジ":ml<=20?"20mLシリンジ":"50mLシリンジ"; }
+function sp(){ return spObj(S.sp); }
+function rowsFor(filter){ // 種名の行を優先、なければ群名の行
+  var o=sp(); if(!o) return [];
+  var exact=DOSES.filter(function(r){return r.sp===o.l && filter(r);});
+  var grp=DOSES.filter(function(r){return r.sp===o.g && o.g!==o.l && filter(r);});
+  var key=function(r){return r.ing+"|"+r.cat+"|"+r.route;};
+  var seen={}; exact.forEach(function(r){seen[key(r)]=1;});
+  return exact.concat(grp.filter(function(r){return !seen[key(r)];}));
+}
+function product(row){
+  var c=MASTER.filter(function(m){return m.ing===row.ing;});
+  if(row.cat==="局所麻酔") c=c.filter(function(m){return m.cat==="局所麻酔";}); else c=c.filter(function(m){return m.cat!=="局所麻酔";});
+  return c[0]||null;
+}
+function verified(r){ return !!r.by; }
+function vBadge(r){ return verified(r)?h("span",{class:"badge ok",text:"確認済 "+r.by}):h("span",{class:"badge no",text:"未確認"}); }
+function rid(r){ return [r.ing,r.sp,r.cat,r.route].join("|"); }
+function rowById(id){ for(var i=0;i<DOSES.length;i++) if(rid(DOSES[i])===id) return DOSES[i]; return null; }
+function dispName(p,r){ return p? p.name : r.ing; }
+/* 用量 → mg（ボーラス） */
+function bolusMg(d,u,w){ if(u==="mg/kg") return d*w; if(u==="μg/kg") return d*w/1000; if(u==="mg/頭") return d; return null; }
+/* 用量 → mg/h（持続） */
+function rateMgH(d,u,w){ if(u==="μg/kg/min") return d*w*60/1000; if(u==="μg/kg/h") return d*w/1000; if(u==="mg/kg/h") return d*w; if(u==="mg/kg/min") return d*w*60; return null; }
+function isRate(u){ return /\/(min|h)$/.test(u) && u.indexOf("mL")<0; }
+/* 液量と希釈 */
+function vol(mg,p){
+  if(!p) return {blocked:"薬剤マスタに未登録"};
+  if(p.conc==null) return {blocked:"濃度が未登録のため計算できません（スプレッドシートの「麻酔薬マスタ」に濃度を入れてください）"};
+  var ml=mg/p.conc, noDil=/希釈しない/.test(p.dil), f=1;
+  if(ml<0.1 && !noDil){ f=ml*10>=0.1?10:100; }
+  return {ml:ml,f:f,dml:ml*f,noDil:noDil,tiny:noDil?ml<0.05:ml*f<0.1,p:p};
+}
+function diluent(p){ return (p&&p.dil? p.dil.split(/[／\/]/)[0] : "生食").replace(/[（）()]/g,""); }
+function dilSteps(v){
+  var p=v.p, dl=diluent(p), c=p.conc;
+  var items=[];
+  items.push(h("li",null,"原液（",p.name,"）を ",h("b",null,"0.10 mL")," 取る"));
+  items.push(h("li",null,dl,"を ",h("b",null,"0.90 mL")," 足して、合計 1.00 mL にする → ",h("b",null,"10倍液"),"（",fnum(c/10)," mg/mL）"));
+  if(v.f===100){
+    items.push(h("li",null,"10倍液を ",h("b",null,"0.10 mL")," 取り、",dl,"を ",h("b",null,"0.90 mL")," 足して合計 1.00 mL → ",h("b",null,"100倍液"),"（",fnum(c/100)," mg/mL）"));
+  }
+  items.push(h("li",null,(v.f===100?"100倍液":"10倍液")," を ",h("span",{class:"key"},fml(v.dml)+" mL")," 使う"));
+  return h("div",{class:"steps"},h("b",{class:"t",text:"⚠ 量が少ないので"+v.f+"倍に薄めて使います"}),h("ol",null,items));
+}
+function volBox(mg,p,extra){
+  var v=vol(mg,p);
+  if(v.blocked) return h("div",{class:"res blocked"},h("div",{class:"big",text:"計算できません"}),h("div",{class:"sub",text:v.blocked}));
+  if(v.tiny) return h("div",{class:"res blocked"},h("div",{class:"big",text:"量が少なすぎて正確に測れません"}),
+    h("div",{class:"sub",text:"計算上 "+fmg(mg)+"（原液 "+fnum(v.ml)+" mL）。体重・用量・単位を確認し、獣医師に相談してください。"}));
+  var box=h("div",{class:"res"});
+  box.appendChild(h("div",{class:"sub",style:"margin:0 0 2px;font-weight:700",text:"シリンジで吸う量"}));
+  if(v.f===1){
+    box.appendChild(h("div",{class:"big"},h("small",{style:"margin:0 4px 0 0"},"原液を"),fml(v.ml),h("small",null,"mL")));
+  }else{
+    box.appendChild(h("div",{class:"big",style:"color:var(--amber)"},h("small",{style:"margin:0 4px 0 0;color:var(--amber)"},v.f+"倍液を"),fml(v.dml),h("small",null,"mL")));
+    box.appendChild(h("div",{class:"alert amber",text:"原液のまま "+fml(v.dml)+" mL 吸わないでください（"+v.f+"倍の量になります）"}));
+  }
+  box.appendChild(h("div",{class:"sub"},"薬の量 ",h("b",null,fmg(mg))," ／ 原液 ",fnum(p.conc)," mg/mL"));
+  box.appendChild(h("span",{class:"syr",text:syr(v.dml)}));
+  if(v.f>1) box.appendChild(dilSteps(v));
+  if(v.noDil && v.ml<0.1) box.appendChild(h("div",{class:"alert amber",text:"0.1 mL未満です。この薬は薄めずに使うため、計量に十分注意してください"}));
+  if(extra) box.appendChild(extra);
+  return box;
+}
+function rangeCheck(d,r){
+  if(d==null) return null;
+  if((r.max!=null && d>r.max*5) || (r.min!=null && d<r.min/5))
+    return h("div",{class:"alert red",text:"⚠ 範囲から大きく外れています。単位（"+r.u+"）や小数点の位置を確認してください"});
+  if(r.max!=null && d>r.max+1e-9) return h("div",{class:"alert red",text:"⚠ 最大量（"+fnum(r.max)+" "+r.u+"）を超えています"});
+  if(r.min!=null && d<r.min-1e-9) return h("div",{class:"alert amber",text:"最小量（"+fnum(r.min)+" "+r.u+"）より少ない量です"});
+  return null;
+}
+function rangeText(r){ if(r.min==null&&r.max==null) return ""; return "範囲 "+fnum(r.min)+"〜"+fnum(r.max)+" "+r.u+"（標準 "+fnum(r.d)+"）"; }
+function needPatient(){
+  var o=sp(), w=kg();
+  if(!o) return h("div",{class:"card empty"},h("b",null,"① 動物種を選んでください"),"画面上の「動物種」から選びます");
+  if(w===null) return h("div",{class:"card empty"},h("b",null,"② 体重を入れてください"),"小さい動物は「g」に切り替えると入力しやすいです");
+  return null;
+}
+function numInput(val,k,on){
+  return h("input",{type:"text",inputmode:"decimal",value:val==null?"":String(val),"data-k":k,
+    oninput:function(e){on(e.target.value); renderMain();}});
+}
+function toast(t){ var d=h("div",{class:"toast",text:t}); document.body.appendChild(d); setTimeout(function(){d.remove();},1600); }
+function copyBox(text){
+  return h("div",{class:"card"},h("h2",{text:"カルテ転記用"}),h("pre",{class:"copy",text:text}),
+    h("div",{style:"margin-top:8px"},h("button",{class:"btn",text:"コピー",onclick:function(){
+      var ok=function(){toast("コピーしました");};
+      if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok,function(){fallback();}); else fallback();
+      function fallback(){ var ta=h("textarea",null); ta.value=text; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");ok();}catch(e){} ta.remove(); }
+    }})));
+}
+function ptLine(){ var o=sp(), w=kg(); return o.l+" "+(S.wu==="g"?fnum(tnum(S.wt))+"g":fnum(w)+"kg"); }
+
+/* ===== ヘッダー ===== */
+function renderHeader(){
+  var s=document.getElementById("src"); s.innerHTML="";
+  var label=SRC.loading?"用量表を読込中…":SRC.kind==="sheet"?"用量表：最新（"+SRC.at+"）":SRC.kind==="cache"?"用量表：前回分（"+SRC.at+"）":"用量表：内蔵の下書き";
+  s.appendChild(h("div",{text:label})); s.appendChild(h("button",{text:"再読込",onclick:loadSheet}));
+  var pt=document.getElementById("pt"); pt.innerHTML="";
+  var sel=h("select",{"aria-label":"動物種",onchange:function(e){S.sp=e.target.value; var o=sp(); S.wt=""; S.wu=o&&o.small?"g":"kg"; S.pre=[]; S.cri.key=""; S.fl.rk=""; S.rev.dexMl=null; S.la={lido:{ml:"",pct:null},bupi:{ml:"",pct:null}}; render();}});
+  sel.appendChild(h("option",{value:"",text:"動物種を選ぶ"}));
+  var groups={}; SPECIES.forEach(function(x){ (groups[x.grp]=groups[x.grp]||[]).push(x); });
+  Object.keys(groups).forEach(function(g){ var og=h("optgroup",{label:g}); groups[g].forEach(function(x){ og.appendChild(h("option",{value:x.l,text:x.l,selected:S.sp===x.l})); }); sel.appendChild(og); });
+  pt.appendChild(sel);
+  var wi=h("input",{type:"text",inputmode:"decimal",placeholder:"体重","aria-label":"体重",value:S.wt,"data-k":"wt",oninput:function(e){S.wt=e.target.value; renderNote(); renderMain();}});
+  pt.appendChild(h("div",{class:"wt"},wi,h("div",{class:"unit2"},
+    h("button",{class:S.wu==="kg"?"on":"",text:"kg",onclick:function(){S.wu="kg";render();}}),
+    h("button",{class:S.wu==="g"?"on":"",text:"g",onclick:function(){S.wu="g";render();}}))));
+  pt.appendChild(h("div",{class:"ptnote",id:"ptnote"}));
+  renderNote();
+  var tb=document.getElementById("tabs"); tb.innerHTML="";
+  TABS.forEach(function(t){ tb.appendChild(h("button",{class:(S.tab===t[0]?"on":"")+(t[0]==="em"?" em":""),text:t[1],onclick:function(){S.tab=t[0];render();window.scrollTo(0,0);}})); });
+}
+function renderNote(){
+  var n=document.getElementById("ptnote"); if(!n) return; n.innerHTML="";
+  var o=sp(), w=kg(); if(!o||w===null) return;
+  n.appendChild(h("span",null,"計算に使う体重：",h("b",null,fnum(w)+" kg"),"（"+fnum(w*1000)+" g）"));
+  if(w>o.max*1.5) n.appendChild(h("div",{class:"alert red",text:"⚠ "+o.l+"にしては重すぎます。kg と g を確認してください"}));
+  else if(w<o.max/400) n.appendChild(h("div",{class:"alert red",text:"⚠ "+o.l+"にしては軽すぎます。kg と g を確認してください"}));
+}
+
+/* ===== 前投与・導入 ===== */
+function renderPre(){
+  var o=sp(), w=kg(), out=[];
+  var rows=rowsFor(function(r){return r.cat==="前投与"||r.cat==="導入";});
+  if(!rows.length) return [h("div",{class:"card empty"},h("b",null,"この動物種の用量データがありません"),o.g==="両生類"?"両生類の麻酔（浸漬など）は今後追加予定です":"スプレッドシートの「麻酔用量」に追加できます")];
+  // プロトコル
+  var protos={}; PROTO.filter(function(p){return p.sp===o.l||p.sp===o.g;}).forEach(function(p){(protos[p.name]=protos[p.name]||[]).push(p);});
+  if(Object.keys(protos).length){
+    out.push(h("div",{class:"card"},h("h2",{text:"プロトコルから選ぶ"}),h("div",{class:"pick"},Object.keys(protos).map(function(n){
+      return h("button",{onclick:function(){
+        S.pre=[]; protos[n].sort(function(a,b){return a.ord-b.ord;}).forEach(function(p){
+          var r=rows.filter(function(x){return x.ing===p.ing&&(!p.route||x.route===p.route);})[0]||rows.filter(function(x){return x.ing===p.ing;})[0];
+          if(r) S.pre.push({id:rid(r),ds:String(p.d!=null&&p.u===r.u?p.d:r.d)});
+        }); renderMain();
+      }},n);
+    }))));
+  }
+  // 薬の選択
+  var ings=[]; rows.forEach(function(r){ var k=r.ing+"|"+r.cat; if(ings.indexOf(k)<0) ings.push(k); });
+  out.push(h("div",{class:"card"},h("h2",{text:"使う薬をタップ"}),h("div",{class:"pick"},ings.map(function(k){
+    var ing=k.split("|")[0], cat=k.split("|")[1];
+    var r=rows.filter(function(x){return x.ing===ing&&x.cat===cat;})[0], p=product(r);
+    var on=S.pre.some(function(it){var rr=rowById(it.id);return rr&&rr.ing===ing&&rr.cat===cat;});
+    return h("button",{class:on?"on":"",onclick:function(){
+      if(on) S.pre=S.pre.filter(function(it){var rr=rowById(it.id);return !(rr&&rr.ing===ing&&rr.cat===cat);});
+      else S.pre.push({id:rid(r),ds:String(r.d)});
+      renderMain();
+    }},(on?"✓ ":"＋ ")+dispName(p,r),h("small",null,cat+"／"+ing));
+  }))));
+  if(!S.pre.length){ out.push(h("div",{class:"note",text:"薬をタップすると、ここに量が表示されます。"})); return out; }
+  var lines=["【麻酔 前投与・導入】"+ptLine()];
+  S.pre.forEach(function(it,idx){
+    var r=rowById(it.id); if(!r) return; var p=product(r);
+    var alts=rows.filter(function(x){return x.ing===r.ing&&x.cat===r.cat;});
+    var card=h("div",{class:"card"});
+    card.appendChild(h("div",{class:"row"},h("h3",{class:"grow"},dispName(p,r),vBadge(r),h("small",null,r.cat+"／"+r.ing)),
+      h("button",{class:"x",text:"✕","aria-label":"削除",onclick:function(){S.pre.splice(idx,1);renderMain();}})));
+    if(alts.length>1){
+      card.appendChild(h("label",{class:"f",text:"投与経路"}));
+      card.appendChild(h("div",{class:"seg"},alts.map(function(a){return h("button",{class:a===r?"on":"",text:a.route,onclick:function(){it.id=rid(a);it.ds=String(a.d);renderMain();}});})));
+    }else card.appendChild(h("div",{class:"range",text:"投与経路："+r.route}));
+    card.appendChild(h("label",{class:"f",text:"用量（獣医師の指示）"}));
+    card.appendChild(h("div",{class:"din"},numInput(it.ds,"pre"+idx,function(v){it.ds=v;}),h("span",{text:r.u})));
+    card.appendChild(h("div",{class:"range",text:rangeText(r)}));
+    var d=tnum(it.ds);
+    var rc=rangeCheck(d,r); if(rc) card.appendChild(rc);
+    var mg=d==null?null:bolusMg(d,r.u,w);
+    if(mg!=null){
+      card.appendChild(volBox(mg,p));
+      var v=vol(mg,p);
+      lines.push("・"+dispName(p,r)+" "+fnum(d)+r.u+" → "+fmg(mg)+" = "+(v.blocked||v.tiny?"計算不可（要確認）":(v.f>1?fml(v.dml)+"mL（"+v.f+"倍液）":fml(v.ml)+"mL"))+" "+r.route);
+    }
+    if(r.note) card.appendChild(h("div",{class:"note",text:"メモ："+r.note}));
+    out.push(card);
+  });
+  out.push(copyBox(lines.join("\n")));
+  return out;
+}
+
+/* ===== CRI ===== */
+function criCalc(r,p,d,w,V,R){
+  var mgh=rateMgH(d,r.u,w); if(mgh==null) return {err:"単位が読み取れません"};
+  if(!p||p.conc==null) return {blocked:true};
+  var undil=mgh/p.conc;                  // 原液のまま流すときの流速
+  var totMg=mgh*V/R, drugMl=totMg/p.conc;
+  return {mgh:mgh,undil:undil,drugMl:drugMl,dilMl:V-drugMl,over:drugMl>V,pre10:drugMl<0.1,hrs:V/R,ugml:totMg*1000/V};
+}
+function criResult(r,p,d,w,V,R,compact){
+  var c=criCalc(r,p,d,w,V,R);
+  if(c.err) return h("div",{class:"res blocked"},h("div",{class:"big",text:c.err}));
+  if(c.blocked) return h("div",{class:"res blocked"},h("div",{class:"big",text:"計算できません"}),h("div",{class:"sub",text:"濃度が未登録です"}));
+  var box=h("div",{class:"res"});
+  if(c.over){
+    box.appendChild(h("div",{class:"big"},fml(c.undil),h("small",null,"mL/h（原液のまま）")));
+    box.appendChild(h("div",{class:"sub",text:"この流速（"+fnum(R)+" mL/h）では薄められません。原液をそのまま上の流速で流すか、流速を上げてください。"}));
+    return box;
+  }
+  box.appendChild(h("div",{class:"big"},fnum(R),h("small",null,"mL/h で流す")));
+  if(c.pre10){
+    var m10=c.drugMl*10;
+    box.appendChild(h("div",{class:"steps"},h("b",{class:"t",text:"⚠ 原液が少量なので、先に10倍液を作ります"}),h("ol",null,
+      h("li",null,"原液 ",h("b",null,"0.10 mL")," ＋ ",diluent(p)," ",h("b",null,"0.90 mL")," ＝ 10倍液 1.00 mL"),
+      h("li",null,"シリンジに 10倍液 ",h("span",{class:"key"},fml(m10)+" mL")," を入れる"),
+      h("li",null,diluent(p)," を足して、シリンジの目盛り ",h("span",{class:"key"},fnum(V)+" mL")," に合わせる（",diluent(p),"は約 "+fnum(V-m10)+" mL）"),
+      h("li",null,"よく混ぜてから、シリンジポンプを ",h("span",{class:"key"},fnum(R)+" mL/h")," に設定"))));
+  }else{
+    box.appendChild(h("div",{class:"steps",style:"border-color:var(--mint)"},h("ol",null,
+      h("li",null,"シリンジに 原液 ",h("span",{class:"key"},fml(c.drugMl)+" mL")," を入れる"),
+      h("li",null,diluent(p)," を足して、シリンジの目盛り ",h("span",{class:"key"},fnum(V)+" mL")," に合わせる（",diluent(p),"は約 "+fnum(c.dilMl)+" mL）"),
+      h("li",null,"よく混ぜてから、シリンジポンプを ",h("span",{class:"key"},fnum(R)+" mL/h")," に設定"))));
+  }
+  if(!compact) box.appendChild(h("div",{class:"sub",text:"1時間あたり "+fmg(c.mgh)+"／混ぜた液の濃度 "+fnum(c.ugml)+" μg/mL／約 "+fnum(c.hrs)+" 時間もちます"}));
+  return box;
+}
+function criRows(){ return rowsFor(function(r){return (r.cat==="CRI"||r.cat==="緊急")&&isRate(r.u);}); }
+function renderCri(){
+  var w=kg(), out=[], rows=criRows();
+  if(!rows.length) return [h("div",{class:"card empty"},h("b",null,"この動物種のCRIデータがありません"),"スプレッドシートの「麻酔用量」に追加できます")];
+  var r=rowById(S.cri.key); if(!r||rows.indexOf(r)<0){ r=rows[0]; S.cri.key=rid(r); S.cri.dose=String(r.d); }
+  var p=product(r);
+  out.push(h("div",{class:"card"},h("h2",{text:"薬を選ぶ"}),h("div",{class:"pick"},rows.map(function(x){
+    var px=product(x); return h("button",{class:x===r?"on":"",onclick:function(){S.cri.key=rid(x);S.cri.dose=String(x.d);renderMain();}},dispName(px,x),h("small",null,x.cat));
+  }))));
+  var card=h("div",{class:"card"});
+  card.appendChild(h("h3",null,dispName(p,r),vBadge(r),h("small",null,r.ing)));
+  card.appendChild(h("label",{class:"f",text:"投与速度（獣医師の指示）"}));
+  card.appendChild(h("div",{class:"din"},numInput(S.cri.dose,"crid",function(v){S.cri.dose=v;}),h("span",{text:r.u})));
+  card.appendChild(h("div",{class:"range",text:rangeText(r)}));
+  var cd=tnum(S.cri.dose);
+  var rc=rangeCheck(cd,r); if(rc) card.appendChild(rc);
+  card.appendChild(h("label",{class:"f",text:"シリンジの合計量"}));
+  card.appendChild(h("div",{class:"seg"},[5,10,20,50].map(function(v){return h("button",{class:S.cri.V===v?"on":"",text:v+" mL",onclick:function(){S.cri.V=v;renderMain();}});})));
+  card.appendChild(h("label",{class:"f",text:"シリンジポンプの流速"}));
+  card.appendChild(h("div",{class:"din"},numInput(S.cri.R,"crir",function(v){S.cri.R=v;}),h("span",{text:"mL/h"})));
+  var R=tnum(S.cri.R);
+  if(cd!=null && R && R>0) card.appendChild(criResult(r,p,cd,w,S.cri.V,R));
+  if(r.note) card.appendChild(h("div",{class:"note",text:"メモ："+r.note}));
+  out.push(card);
+  var c=criCalc(r,p,cd||0,w,S.cri.V,R||1);
+  if(!c.blocked&&!c.err&&cd!=null&&R)
+    out.push(copyBox("【CRI】"+ptLine()+"\n・"+dispName(p,r)+" "+fnum(cd)+r.u+"（"+fmg(c.mgh)+"/h）\n"+(c.over?"  原液 "+fml(c.undil)+"mL/h":c.pre10?"  10倍液"+fml(c.drugMl*10)+"mL＋"+diluent(p)+"で"+fnum(S.cri.V)+"mL → "+fnum(R)+"mL/h":"  原液"+fml(c.drugMl)+"mL＋"+diluent(p)+"で"+fnum(S.cri.V)+"mL → "+fnum(R)+"mL/h")));
+  return out;
+}
+
+/* ===== 輸液 ===== */
+function renderFl(){
+  var w=kg(), out=[];
+  var iv=rowsFor(function(r){return r.cat==="輸液"&&r.u==="mL/kg/h";})[0], sc=rowsFor(function(r){return r.cat==="輸液"&&r.u==="mL/kg";})[0];
+  if(!iv&&!sc) return [h("div",{class:"card empty"},h("b",null,"この動物種の輸液データがありません"),sp().g==="両生類"?"両生類は浸漬などで水分補給します":"")];
+  if(S.fl.route==="iv"&&!iv) S.fl.route="sc"; if(S.fl.route==="sc"&&!sc) S.fl.route="iv";
+  var r=S.fl.route==="iv"?iv:sc;
+  if(S.fl.rk!==rid(r)){ S.fl.rate=String(r.d); S.fl.rk=rid(r); }
+  var fluids=MASTER.filter(function(m){return m.cat==="輸液";}).map(function(m){return m.name;});
+  if(fluids.indexOf(S.fl.fluid)<0) S.fl.fluid=fluids[0]||"";
+  var card=h("div",{class:"card"});
+  card.appendChild(h("label",{class:"f",text:"投与経路"}));
+  card.appendChild(h("div",{class:"seg"},
+    h("button",{class:S.fl.route==="sc"?"on":"",disabled:!sc,text:"皮下点滴",onclick:function(){S.fl.route="sc";renderMain();}}),
+    h("button",{class:S.fl.route==="iv"?"on":"",disabled:!iv,text:"静脈内・骨髄内点滴",onclick:function(){S.fl.route="iv";renderMain();}})));
+  if(!iv) card.appendChild(h("div",{class:"note",text:"この動物種は静脈内・骨髄内のデータが未登録です"}));
+  card.appendChild(h("label",{class:"f",text:"輸液剤"}));
+  card.appendChild(h("div",{class:"seg"},fluids.map(function(f){return h("button",{class:S.fl.fluid===f?"on":"",text:f,onclick:function(){S.fl.fluid=f;renderMain();}});})));
+  card.appendChild(h("label",{class:"f",text:S.fl.route==="iv"?"速度（獣医師の指示）":"1回量（獣医師の指示）"}));
+  card.appendChild(h("div",{class:"din"},numInput(S.fl.rate,"flr",function(v){S.fl.rate=v;}),h("span",{text:r.u})));
+  card.appendChild(h("div",{class:"range",text:rangeText(r)}));
+  var fr=tnum(S.fl.rate);
+  var rc=rangeCheck(fr,r); if(rc) card.appendChild(rc);
+  var text="";
+  if(fr!=null){
+    if(S.fl.route==="iv"){
+      var mlh=fr*w;
+      card.appendChild(h("label",{class:"f",text:"予定時間"}));
+      card.appendChild(h("div",{class:"din"},numInput(S.fl.hrs,"flh",function(v){S.fl.hrs=v;}),h("span",{text:"時間"})));
+      var hrs=tnum(S.fl.hrs)||0;
+      card.appendChild(h("div",{class:"res"},h("div",{class:"big"},fnum(mlh),h("small",null,"mL/h で流す")),
+        h("div",{class:"sub",text:hrs?"予定時間 "+fnum(hrs)+" 時間で 合計 "+fnum(mlh*hrs)+" mL":""}),
+        h("div",{class:"sub",text:"ポンプの設定値：流速 "+fnum(mlh)+" mL/h"})));
+      text="【輸液】"+ptLine()+"\n・"+S.fl.fluid+" 静脈内/骨髄内 "+fnum(fr)+"mL/kg/h → "+fnum(mlh)+"mL/h";
+    }else{
+      var tot=fr*w;
+      card.appendChild(h("label",{class:"f",text:"何か所に分ける？"}));
+      card.appendChild(h("div",{class:"seg"},[1,2,3,4].map(function(n){return h("button",{class:S.fl.sites===n?"on":"",text:n+"か所",onclick:function(){S.fl.sites=n;renderMain();}});})));
+      card.appendChild(h("div",{class:"res"},h("div",{class:"big"},fml(tot),h("small",null,"mL（合計）")),
+        S.fl.sites>1?h("div",{class:"sub"},"1か所あたり ",h("b",null,fml(tot/S.fl.sites)+" mL")," × "+S.fl.sites+"か所"):null,
+        h("span",{class:"syr",text:syr(S.fl.sites>1?tot/S.fl.sites:tot)})));
+      text="【輸液】"+ptLine()+"\n・"+S.fl.fluid+" 皮下 "+fnum(fr)+"mL/kg → "+fml(tot)+"mL"+(S.fl.sites>1?"（"+S.fl.sites+"か所に分割）":"");
+    }
+  }
+  if(r.note) card.appendChild(h("div",{class:"note",text:"メモ："+r.note}));
+  out.push(card);
+  if(text) out.push(copyBox(text));
+  return out;
+}
+
+/* ===== 局所麻酔 ===== */
+var LA_PCT={"リドカイン塩酸塩":[0.5,1,2],"ブピバカイン塩酸塩水和物":[0.125,0.25,0.5]};
+function renderLa(){
+  var w=kg(), out=[], rows=rowsFor(function(r){return r.cat==="局所麻酔";});
+  if(!rows.length) return [h("div",{class:"card empty"},h("b",null,"この動物種の局所麻酔データがありません"))];
+  var total=0, lines=["【局所麻酔】"+ptLine()];
+  rows.forEach(function(r){
+    var p=product(r), key=r.ing==="リドカイン塩酸塩"?"lido":"bupi", st=S.la[key];
+    var maxMg=r.cap*w;
+    var card=h("div",{class:"card"});
+    card.appendChild(h("h3",null,dispName(p,r),vBadge(r),h("small",null,r.ing)));
+    card.appendChild(h("div",{class:"res"},h("div",{class:"sub",text:"この子の上限（合計）"}),h("div",{class:"big"},fmg(maxMg)),h("div",{class:"sub",text:"上限 "+fnum(r.cap)+" mg/kg"})));
+    var pct, conc;
+    if(p&&p.conc!=null){ conc=p.conc; pct=conc/10; }
+    else{
+      var opts=LA_PCT[r.ing]||[];
+      card.appendChild(h("div",{class:"alert amber",text:"院内の濃度（%）が未登録です。使うボトルの%を選んでください"}));
+      card.appendChild(h("div",{class:"seg",style:"margin-top:8px"},opts.map(function(o){return h("button",{class:st.pct===o?"on":"",text:o+"%",onclick:function(){st.pct=o;renderMain();}});})));
+      pct=st.pct; conc=pct!=null?pct*10:null;
+    }
+    if(conc!=null){
+      card.appendChild(h("div",{class:"sub",style:"margin-top:8px"},fnum(pct)+"%（"+fnum(conc)+" mg/mL）なら 上限は ",h("b",{style:"font-size:20px;color:var(--mint-d)"},fml(maxMg/conc)+" mL")));
+      card.appendChild(h("label",{class:"f",text:"使う予定の量"}));
+      card.appendChild(h("div",{class:"din"},numInput(st.ml,"la"+key,function(v){st.ml=v;}),h("span",{text:"mL"})));
+      var ml=tnum(st.ml);
+      if(ml!=null){
+        var frac=ml*conc/maxMg; total+=frac;
+        card.appendChild(h("div",{class:"sub",style:"margin-top:6px",text:"＝ "+fmg(ml*conc)+"（上限の "+Math.round(frac*100)+"%）"}));
+        lines.push("・"+dispName(p,r)+" "+fnum(pct)+"% "+fml(ml)+"mL = "+fmg(ml*conc)+"（上限"+fnum(r.cap)+"mg/kg の"+Math.round(frac*100)+"%）");
+      }
+    }
+    if(r.note) card.appendChild(h("div",{class:"note",text:"メモ："+r.note}));
+    out.push(card);
+  });
+  if(total>0){
+    var cls=total>=1?"red":total>=0.8?"amber":"";
+    out.push(h("div",{class:"card"},h("h2",{text:"2剤を合わせた使用率"}),
+      h("div",{class:"big",style:"font-size:28px;font-weight:900;color:"+(cls==="red"?"var(--warn)":cls==="amber"?"var(--amber)":"var(--mint-d)"),text:Math.round(total*100)+"%"}),
+      h("div",{class:"bar "+cls},h("i",{style:"width:"+Math.min(100,total*100)+"%"})),
+      total>=1?h("div",{class:"alert red",text:"⚠ 上限を超えています。獣医師に確認してください"}):total>=0.8?h("div",{class:"alert amber",text:"上限に近づいています"}):null,
+      h("div",{class:"note",text:"リドカインとマーカインを両方使うときは、それぞれの「上限の%」を足して100%を超えないようにします。"})));
+    lines.push("・合計 上限の"+Math.round(total*100)+"%");
+    out.push(copyBox(lines.join("\n")));
+  }
+  return out;
+}
+
+/* ===== 緊急薬 ===== */
+function renderEm(){
+  var w=kg(), rows=rowsFor(function(r){return r.cat==="緊急";});
+  if(!rows.length) return [h("div",{class:"card empty"},h("b",null,"この動物種の緊急薬データがありません"))];
+  var card=h("div",{class:"card"});
+  card.appendChild(h("h2",{style:"color:var(--warn)",text:"緊急薬（標準量） "+ptLine()}));
+  rows.forEach(function(r){
+    var p=product(r), it=h("div",{class:"em-item"});
+    it.appendChild(h("div",{class:"nm"},dispName(p,r),vBadge(r)));
+    if(isRate(r.u)){
+      it.appendChild(h("div",{class:"range",text:"持続投与 "+fnum(r.d)+" "+r.u+"（10mLシリンジ・1mL/hで作る場合）"}));
+      it.appendChild(criResult(r,p,r.d,w,10,1,true));
+    }else{
+      var mg=bolusMg(r.d,r.u,w), v=vol(mg,p);
+      if(v.blocked) it.appendChild(h("div",{class:"alert red",text:"計算できません：濃度が未登録"}));
+      else if(v.tiny) it.appendChild(h("div",{class:"alert red",text:"量が少なすぎて正確に測れません（"+fmg(mg)+"）。獣医師に確認"}));
+      else{
+        it.appendChild(h("div",{class:"ml"},v.f>1?fml(v.dml):fml(v.ml),h("small",null,"mL"+(v.f>1?"（"+v.f+"倍液）":"（原液）")+"　"+r.route)));
+        it.appendChild(h("div",{class:"range",text:fnum(r.d)+" "+r.u+" ＝ "+fmg(mg)}));
+        if(v.f>1) it.appendChild(h("div",{class:"note",text:v.f===10?"10倍液＝原液0.10mL＋"+diluent(p)+"0.90mL":"100倍液＝10倍液0.10mL＋"+diluent(p)+"0.90mL（10倍液＝原液0.10mL＋"+diluent(p)+"0.90mL）"}));
+      }
+    }
+    if(r.note) it.appendChild(h("div",{class:"note",text:"メモ："+r.note}));
+    card.appendChild(it);
+  });
+  return [card,h("div",{class:"note",text:"量を変えたいときは「前投与・導入」または「CRI」タブで計算できます。"})];
+}
+
+/* ===== 拮抗 ===== */
+function renderRev(){
+  var w=kg(), out=[], r=rowsFor(function(r){return r.cat==="拮抗";})[0];
+  if(!r) return [h("div",{class:"card empty"},h("b",null,"この動物種の拮抗データがありません"))];
+  var p=product(r), dexP=MASTER.filter(function(m){return m.ing==="デクスメデトミジン塩酸塩"&&m.cat!=="局所麻酔";})[0];
+  // 前投与タブでデクスを使っていれば自動で入れる
+  if(S.rev.dexMl==null){
+    S.pre.forEach(function(it){ var rr=rowById(it.id); if(rr&&rr.ing==="デクスメデトミジン塩酸塩"&&tnum(it.ds)!=null&&dexP&&dexP.conc){ var v=vol(bolusMg(tnum(it.ds),rr.u,w),dexP); if(!v.blocked) S.rev.dexMl=fnum(v.ml); } });
+  }
+  var card=h("div",{class:"card"});
+  card.appendChild(h("h3",null,dispName(p,r),vBadge(r),h("small",null,r.ing+"（デクスメデトミジンの拮抗）")));
+  card.appendChild(h("label",{class:"f",text:"投与した "+(dexP?dexP.name:"デクスメデトミジン")+" の量（原液のmL）"}));
+  card.appendChild(h("div",{class:"din"},numInput(S.rev.dexMl,"revd",function(v){S.rev.dexMl=v;}),h("span",{text:"mL"})));
+  card.appendChild(h("div",{class:"note",text:"希釈液で投与した場合は、原液に直したmLを入れてください（10倍液 0.5mL → 原液 0.05mL）"}));
+  var dm=tnum(S.rev.dexMl);
+  if(dm!=null&&dexP&&dexP.conc){
+    var dexMg=dm*dexP.conc, mg=r.d*dexMg;
+    card.appendChild(h("div",{class:"range",style:"margin-top:8px",text:"デクス "+fmg(dexMg)+" × "+fnum(r.d)+"倍 ＝ "+fmg(mg)}));
+    var hint=null;
+    if(p&&p.conc){ var ratio=(mg/p.conc)/dm; hint=h("div",{class:"alert grey",text:Math.abs(ratio-1)<0.01?"目安：デクスと同じ液量です":"目安：デクスの "+fnum(ratio)+" 倍の液量です"}); }
+    card.appendChild(volBox(mg,p,hint));
+    card.appendChild(h("div",{class:"range",text:"投与経路："+r.route}));
+    var v=vol(mg,p);
+    if(!v.blocked&&!v.tiny) out.push(card,copyBox("【拮抗】"+ptLine()+"\n・"+dispName(p,r)+"（デクス"+fmg(dexMg)+"の"+fnum(r.d)+"倍）"+fmg(mg)+" = "+(v.f>1?fml(v.dml)+"mL（"+v.f+"倍液）":fml(v.ml)+"mL")+" "+r.route));
+    else out.push(card);
+  }else out.push(card);
+  if(r.note) card.appendChild(h("div",{class:"note",text:"メモ："+r.note}));
+  return out;
+}
+
+/* ===== 用量表 ===== */
+function renderTb(){
+  var o=sp(), out=[];
+  var rows=o?rowsFor(function(){return true;}):DOSES;
+  var nv=rows.filter(function(r){return !verified(r);}).length;
+  out.push(h("div",{class:"card"},h("h2",{text:(o?o.l+" の":"全")+"用量表（"+rows.length+"件）"}),
+    nv?h("div",{class:"alert red",text:"未確認 "+nv+"件：獣医師2名の確認後、スプレッドシートの「確認者」「確認日」を記入してください"}):h("div",{class:"alert grey",text:"すべて確認済みです"}),
+    h("div",{style:"margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"},
+      h("a",{class:"btn ghost",href:SHEET_URL,target:"_blank",rel:"noopener",style:"display:inline-flex;align-items:center;text-decoration:none"},"スプレッドシートを開く"),
+      h("button",{class:"btn ghost",text:"再読込",onclick:loadSheet}))));
+  var t=h("table",{class:"tb"},h("tr",null,h("th",{text:"薬"}),h("th",{text:"区分・経路"}),h("th",{text:"用量"}),h("th",{text:"確認"})));
+  rows.forEach(function(r){
+    var p=product(r);
+    t.appendChild(h("tr",null,h("td",null,dispName(p,r),o?null:h("div",{class:"note",text:r.sp})),h("td",{text:r.cat+"／"+r.route}),
+      h("td",{text:r.cap!=null?"上限 "+fnum(r.cap)+" "+r.u:fnum(r.d)+"（"+fnum(r.min)+"〜"+fnum(r.max)+"）"+r.u}),h("td",null,vBadge(r))));
+  });
+  out.push(h("div",{class:"card",style:"overflow-x:auto"},t));
+  var mm=h("table",{class:"tb"},h("tr",null,h("th",{text:"薬剤マスタ"}),h("th",{text:"濃度"})));
+  MASTER.filter(function(m){return m.cat!=="輸液";}).forEach(function(m){ mm.appendChild(h("tr",null,h("td",{text:m.name}),h("td",null,m.conc==null?h("span",{class:"badge no",text:"未登録"}):fnum(m.conc)+" mg/mL"))); });
+  out.push(h("div",{class:"card"},mm));
+  return out;
+}
+
+/* ===== 描画 ===== */
+function renderMain(){
+  var ae=document.activeElement, fk=ae&&ae.getAttribute&&ae.getAttribute("data-k"), pos=null;
+  try{ pos=ae.selectionStart; }catch(e){}
+  var app=document.getElementById("app"); app.innerHTML="";
+  var parts;
+  if(S.tab==="tb") parts=renderTb();
+  else{ var np=needPatient(); if(np) parts=[np];
+    else parts=({pre:renderPre,cri:renderCri,fl:renderFl,la:renderLa,em:renderEm,rev:renderRev})[S.tab](); }
+  parts.forEach(function(x){ if(x) app.appendChild(x); });
+  app.appendChild(h("div",{class:"note",style:"text-align:center;margin-top:16px",text:"β版：用量は下書きを含みます。投与前に必ず獣医師が確認してください。"}));
+  if(fk&&fk!=="wt"){ var el=app.querySelector('[data-k="'+fk+'"]'); if(el){ el.focus(); try{ if(pos!=null) el.setSelectionRange(pos,pos); }catch(e){} } }
+}
+function render(){
+  var ae=document.activeElement, wtFocus=ae&&ae.getAttribute&&ae.getAttribute("data-k")==="wt";
+  renderHeader(); renderMain();
+  if(wtFocus){ var w=document.querySelector('[data-k="wt"]'); if(w){ w.focus(); var l=w.value.length; try{w.setSelectionRange(l,l);}catch(e){} } }
+}
+render(); loadSheet();
+})();
+</script>
+</body>
+</html>

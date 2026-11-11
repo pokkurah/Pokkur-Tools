@@ -224,21 +224,14 @@ function vehicle(results){
 /* ===== カルテ文 ===== */
 function karteText(){
   var lines=[], res=S.items.map(calcItem);
-  lines.push("【調剤】"+(spName(S.sp)||"動物種未選択")+" "+(num(S.wt)?S.wt+"g":"体重未入力"));
-  lines.push("1回"+fmt(+S.per,3)+"mL "+S.freq+"／全量"+S.total+"mL");
+  lines.push("1回"+fmt(+S.per,3)+"mL "+S.freq+"／全量"+S.total+"mL "+(S.veh==="water"?"水":"半シロ"));
   S.items.forEach(function(it,i){
     var r=res[i], d=r.d;
-    var name=d.name+(d.form==="fixed"?"":d.form==="tab"?strLabel(d,d.str[it.si])+(/錠$/.test(d.name)?"":"錠"):"（"+strLabel(d,d.str[it.si])+"）");
+    var name=d.name+(d.form!=="fixed"&&d.str.length>1?strLabel(d,d.str[it.si]):"");
     if(!r.ok){ lines.push("・"+name+"：未計算"); return; }
-    if(it.mode==="fixed"){
-      lines.push("・"+name+" "+fmt(r.qty,2)+r.unit+"（"+fmt(+it.fixed,2)+r.unit+"/5mL）");
-    }else{
-      lines.push("・"+name+"｜"+fmt(+it.dose,3)+"mg/kg → "+fmtQty(r.qty,r.unit)+r.unit+"（"+fmtMg(r.mgTotal)+"mg）");
-    }
+    if(it.mode==="fixed") lines.push("・"+name+" "+fmt(r.qty,2)+r.unit);
+    else lines.push("・"+name+"｜"+fmt(+it.dose,3)+"mg/kg → "+fmtQty(r.qty,r.unit)+r.unit);
   });
-  var v=vehicle(res);
-  if(S.veh==="water") lines.push("溶解：水で全量"+S.total+"mL"+(v.liq>0?"（水 "+fmt(v.rem,2)+"mL）":""));
-  else lines.push("溶解：半シロ（単シロップ "+fmt(v.syrup,2)+"mL＋水 "+fmt(v.water,2)+"mL）");
   return lines.join("\n");
 }
 

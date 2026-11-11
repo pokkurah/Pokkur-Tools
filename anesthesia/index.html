@@ -699,7 +699,6 @@ function sheetData(){
 function volText(v){ return v.blocked?"計算不可":v.tiny?"測定不能":v.f>1?v.f+"倍液 "+fml(v.dml)+" mL":"原液 "+fml(v.ml)+" mL"; }
 
 /* ===== A5 シート描画（canvas → PDF） ===== */
-var PW=1240, PH=1748, PM=56;
 var PFONT='"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP","Yu Gothic",sans-serif';
 function pf(px,w){ return (w||400)+" "+px+"px "+PFONT; }
 function pwrap(ctx,text,maxW){
@@ -712,127 +711,132 @@ function pwrap(ctx,text,maxW){
   return lines;
 }
 function renderSheet(){
-  var pages=[], ctx, y, D=sheetData(), o=sp(), w=kg(), P=S.pt, BOTTOM=PH-PM-46;
-  var MINT="#1f8670", INK="#1f2a2e", SUB="#6b7a80", RED="#b0261a", LINE="#cfd8db";
-  var TITLE="麻酔 準備シート";
-  function newPage(){
-    var c=document.createElement("canvas"); c.width=PW; c.height=PH; c._em=(TITLE==="緊急薬シート"); ctx=c.getContext("2d");
-    ctx.fillStyle="#fff"; ctx.fillRect(0,0,PW,PH); ctx.textBaseline="top"; pages.push(c); y=PM;
-    ctx.fillStyle=TITLE==="緊急薬シート"?RED:INK; ctx.font=pf(38,800); ctx.fillText(TITLE,PM,y);
-    ctx.textAlign="right"; ctx.font=pf(22,700); ctx.fillStyle=MINT; ctx.fillText("ポックル動物病院",PW-PM,y+4);
-    ctx.font=pf(20,500); ctx.fillStyle=SUB; ctx.fillText((P.date||today()).replace(/-/g,"/"),PW-PM,y+32); ctx.textAlign="left";
-    y+=58; ctx.fillStyle="#2fa88e"; ctx.fillRect(PM,y,PW-2*PM,4); y+=14;
-    if(pages.length>1&&TITLE!=="緊急薬シート"){ ctx.font=pf(22,700); ctx.fillStyle=SUB; ctx.fillText("（続き）"+(P.name||"")+"　"+o.l+"　"+fnum(w)+" kg",PM,y); y+=36; }
-  }
-  function need(hgt){ if(y+hgt>BOTTOM) newPage(); }
-  function section(title,color){
-    need(90); y+=10; ctx.fillStyle=color||MINT; ctx.fillRect(PM,y,8,30);
-    ctx.font=pf(26,800); ctx.fillText(title,PM+18,y); y+=40;
-  }
-  // 表：cols=[{t,w}]、rows=[[{t,b,c,s}]]
-  function table(cols,rows,head){
-    var x0=PM, pad=10;
-    function header(){
-      ctx.fillStyle=head||"#e6f5f1"; ctx.fillRect(x0,y,PW-2*PM,36);
-      ctx.font=pf(19,700); ctx.fillStyle=head?"#fff":MINT; var x=x0;
-      cols.forEach(function(c){ ctx.fillText(c.t,x+pad,y+8); x+=c.w; }); y+=36;
-    }
-    need(80); header();
-    rows.forEach(function(row){
-      var lines=row.map(function(cell,i){ ctx.font=pf(cell.s||22,cell.b?800:400); return pwrap(ctx,cell.t,cols[i].w-2*pad); });
-      var lh=row.map(function(cell){ return (cell.s||22)+8; });
-      var hgt=Math.max.apply(null,lines.map(function(l,i){return l.length*lh[i];}))+16;
-      if(y+hgt>BOTTOM){ newPage(); header(); }
-      var x=x0;
-      row.forEach(function(cell,i){
-        ctx.font=pf(cell.s||22,cell.b?800:400); ctx.fillStyle=cell.c||INK;
-        var yy=y+8; lines[i].forEach(function(l){ ctx.fillText(l,x+pad,yy); yy+=lh[i]; }); x+=cols[i].w;
-      });
-      y+=hgt; ctx.fillStyle=LINE; ctx.fillRect(x0,y,PW-2*PM,2);
-      var xx=x0; cols.forEach(function(c,i){ if(i) ctx.fillRect(xx,y-hgt,2,hgt); xx+=c.w; });
-    });
-    y+=6;
-  }
-  function textLine(t,opt){ opt=opt||{}; ctx.font=pf(opt.s||22,opt.b?800:400); ctx.fillStyle=opt.c||INK;
-    pwrap(ctx,t,PW-2*PM-20).forEach(function(l){ need((opt.s||22)+10); ctx.fillText(l,PM+10,y); y+=(opt.s||22)+10; }); }
-
-  newPage();
-  // 症例情報
-  var W3=(PW-2*PM)/3;
-  var info=[["カルテNo",P.no||""],["動物名",P.name||""],["種",o.l],
-            ["体重",fnum(w)+" kg"+(w<1?"（"+fnum(w*1000)+" g）":"")],["術式・処置",P.proc||""],["担当医",P.vet||""],
-            ["ASA",asaText()],["疼痛",P.pain||"—"],["BCS",bcsText()],["麻酔管理者",P.mgr||""]];
-  ctx.strokeStyle=LINE; ctx.lineWidth=2;
-  for(var i=0;i<info.length;i+=3){
-    var row=info.slice(i,i+3), x=PM;
-    row.forEach(function(kv){
-      ctx.strokeRect(x,y,W3,56);
-      ctx.font=pf(17,700); ctx.fillStyle=SUB; ctx.fillText(kv[0],x+10,y+6);
-      var big=(kv[0]==="ASA"||kv[0]==="体重"), red=(kv[0]==="ASA"&&/III|IV|V|E/.test(kv[1]));
-      ctx.font=pf(big?26:23,big?800:700); ctx.fillStyle=red?RED:INK;
-      var val=kv[1]; while(ctx.measureText(val).width>W3-130&&val.length>1) val=val.slice(0,-1);
-      ctx.fillText(val,x+118,y+14); x+=W3;
-    });
-    y+=56;
-  }
-  if((P.memo||"").trim()){ y+=8; textLine("注意事項："+P.memo.trim(),{s:22,b:true,c:RED}); }
-  y+=4;
-
-  // 投与する薬
-  section("投与する薬（前投与・導入）");
-  if(D.pre.length){
-    table([{t:"薬",w:300},{t:"用量",w:170},{t:"薬の量",w:140},{t:"吸う量",w:270},{t:"経路",w:110},{t:"投与時刻",w:PW-2*PM-990}],
-      D.pre.map(function(r){ return [{t:r.name+(r.nv?" ※":""),b:true},{t:r.dose},{t:r.mg},{t:volText(r.v),b:true,s:26,c:r.v.f>1?"#9a6200":MINT},{t:r.route},{t:""}]; }));
-    if(D.pre.some(function(r){return r.v.f>1;})) textLine("「10倍液」＝原液0.1mL＋生食0.9mL。「100倍液」＝10倍液をさらに同じ手順で10倍。",{s:19,c:SUB});
-  }else textLine("（前投与・導入タブで薬を選ぶと、ここに載ります）",{s:20,c:SUB});
-
-  if(D.cri.length){ section("CRI（持続投与）");
-    table([{t:"薬",w:300},{t:"速度",w:200},{t:"シリンジの作り方",w:PW-2*PM-700},{t:"流速",w:200}],
-      D.cri.map(function(r){ return [{t:r.name+(r.nv?" ※":""),b:true},{t:r.dose},{t:r.how},{t:r.rate,b:true,s:26,c:MINT}]; })); }
-  if(D.fl){ section("輸液");
-    table([{t:"輸液剤",w:300},{t:"経路",w:200},{t:"指示",w:240},{t:"設定・量",w:PW-2*PM-740}],
-      [[{t:D.fl.fluid,b:true},{t:D.fl.route},{t:D.fl.dose},{t:D.fl.out,b:true,s:26,c:MINT}]]); }
-  if(D.la.length){ section("局所麻酔の上限（合計）");
-    table([{t:"薬",w:300},{t:"上限",w:170},{t:"上限量",w:150},{t:"液量の上限",w:PW-2*PM-620}],
-      D.la.map(function(r){ return [{t:r.name,b:true},{t:r.cap},{t:r.mg,b:true},{t:r.ml}]; }));
-    if(D.la.length>1) textLine("2剤を併用するときは、それぞれ「上限の何%」を足して100%以内。",{s:19,c:SUB}); }
-  if(D.rev){ section("拮抗（覚醒時）");
-    table([{t:"薬",w:300},{t:"計算",w:310},{t:"吸う量",w:270},{t:"経路",w:PW-2*PM-880}],
-      [[{t:D.rev.name+(D.rev.nv?" ※":""),b:true},{t:D.rev.dose+"＝"+D.rev.mg},{t:volText(D.rev.v),b:true,s:26,c:MINT},{t:D.rev.route}]]); }
-
-  // 緊急薬（独立したページ）
-  TITLE="緊急薬シート"; newPage();
-  ctx.fillStyle="#fdecea"; ctx.fillRect(PM,y,PW-2*PM,70);
-  ctx.font=pf(34,800); ctx.fillStyle=RED;
-  ctx.fillText([P.name||"（名前）",o.l,fnum(w)+" kg"+(w<1?"（"+fnum(w*1000)+" g）":""),asaText()].join("　"),PM+16,y+16); y+=84;
-  if(D.em.length){ section("すぐ打つ薬（この子の標準量）",RED);
-    table([{t:"薬",w:330},{t:"用量",w:250},{t:"吸う量",w:280},{t:"経路・準備",w:PW-2*PM-860}],
-      D.em.map(function(r){ return [{t:r.name+(r.nv?" ※":""),b:true},{t:r.dose,s:20},{t:r.prep,b:true,s:30,c:RED},{t:r.route+"\n"+r.memo,s:19}]; }),RED); }
-  if(D.emc.length){ section("持続投与（シリンジポンプ）",RED);
-    table([{t:"薬",w:330},{t:"速度",w:220},{t:"10mLシリンジの作り方",w:PW-2*PM-760},{t:"流速",w:210}],
-      D.emc.map(function(r){ return [{t:r.name+(r.nv?" ※":""),b:true},{t:r.dose,s:20},{t:r.how,s:22},{t:r.rate,b:true,s:28,c:RED}]; }),RED); }
-  if(!D.em.length&&!D.emc.length) textLine("（この動物種の緊急薬データがありません）",{s:20,c:SUB});
-  textLine("10倍液＝原液0.1mL＋生食0.9mL（合計1.0mL）。100倍液＝10倍液0.1mL＋生食0.9mL。",{s:20,c:SUB});
-  // 手書きの使用記録欄（残りのスペース）
-  var left=Math.floor((BOTTOM-y-140)/50);
-  if(left>=3){ section("緊急時の記録（手書き）",RED);
-    var blank=[]; for(var k=0;k<Math.min(left,10);k++) blank.push([{t:" "},{t:" "},{t:" "},{t:" "}]);
-    table([{t:"時刻",w:160},{t:"薬",w:420},{t:"量",w:260},{t:"記入者",w:PW-2*PM-840}],blank.map(function(r){return r.map(function(c){return {t:c.t,s:26};});})); }
-
-  // フッター
-  pages.forEach(function(c,i){
-    var g=c.getContext("2d"); g.textBaseline="top"; g.font=pf(16,500); g.fillStyle="#8a979c";
-    g.fillText("※＝用量が獣医師未確認（β版の下書き）。投与前に必ず獣医師が確認。　作成 "+nowStr(),PM,PH-PM-18);
-    g.textAlign="right"; g.fillText((i+1)+" / "+pages.length,PW-PM,PH-PM-18); g.textAlign="left";
+  // A5横（210×148mm）を300dpi相当で1枚に。入りきらなければ文字を自動で縮める
+  var scales=[1,0.93,0.86,0.8,0.74,0.68,0.62,0.56], last=null;
+  for(var i=0;i<scales.length;i++){ var r=drawSheet(scales[i]); last=r; if(!r.over) break; }
+  SHEET_OVER=last.over;
+  return [last.canvas];
+}
+var SHEET_OVER=false;
+var PW=2480, PH=1748, PM=60;
+function drawSheet(k){
+  var c=document.createElement("canvas"); c.width=PW; c.height=PH;
+  var ctx=c.getContext("2d"); ctx.fillStyle="#fff"; ctx.fillRect(0,0,PW,PH); ctx.textBaseline="top";
+  var D=sheetData(), o=sp(), w=kg(), P=S.pt, over=false;
+  var MINT="#1f8670", INK="#1f2a2e", SUB="#6b7a80", RED="#b0261a", LINE="#cfd8db", AMB="#9a6200";
+  function z(n){ return Math.round(n*k); }
+  var BOTTOM=PH-PM-z(40);
+  // ヘッダー
+  var y=PM;
+  ctx.fillStyle=INK; ctx.font=pf(z(54),800); ctx.fillText("麻酔 準備シート",PM,y);
+  ctx.textAlign="right"; ctx.font=pf(z(34),700); ctx.fillStyle=MINT; ctx.fillText("ポックル動物病院　"+(P.date||today()).replace(/-/g,"/"),PW-PM,y+z(12)); ctx.textAlign="left";
+  y+=z(70); ctx.fillStyle="#2fa88e"; ctx.fillRect(PM,y,PW-2*PM,z(5)); y+=z(16);
+  // 症例情報（2段×5）
+  var info=[["カルテNo",P.no||""],["動物名",P.name||""],["種",o.l],["体重",fnum(w)+" kg"+(w<1?"（"+fnum(w*1000)+" g）":"")],["ASA",P.asa?P.asa+(P.asaE?"E":""):"—"],
+            ["術式・処置",P.proc||""],["担当医",P.vet||""],["麻酔管理者",P.mgr||""],["疼痛",P.pain||"—"],["BCS",bcsText()]];
+  var cw=(PW-2*PM)/5, ch=z(78); ctx.strokeStyle=LINE; ctx.lineWidth=3;
+  info.forEach(function(kv,i){
+    var x=PM+(i%5)*cw, yy=y+Math.floor(i/5)*ch;
+    ctx.strokeRect(x,yy,cw,ch);
+    ctx.font=pf(z(24),700); ctx.fillStyle=SUB; ctx.fillText(kv[0],x+z(12),yy+z(8));
+    var big=(kv[0]==="ASA"||kv[0]==="体重"||kv[0]==="動物名"), red=(kv[0]==="ASA"&&/III|IV|V|E/.test(kv[1]));
+    ctx.font=pf(z(big?40:34),big?800:700); ctx.fillStyle=red?RED:INK;
+    var lw=ctx.measureText(kv[0]).width; ctx.font=pf(z(24),700); lw=ctx.measureText(kv[0]).width; ctx.font=pf(z(big?40:34),big?800:700);
+    var val=kv[1], mx=cw-lw-z(40); while(ctx.measureText(val).width>mx&&val.length>1) val=val.slice(0,-1);
+    ctx.fillText(val,x+lw+z(24),yy+z(big?20:24));
   });
-  return pages;
+  y+=ch*2+z(10);
+  if((P.memo||"").trim()){ ctx.font=pf(z(30),800); ctx.fillStyle=RED; var ml=pwrap(ctx,"注意事項："+P.memo.trim(),PW-2*PM); ml.slice(0,2).forEach(function(l){ ctx.fillText(l,PM+z(6),y); y+=z(38); }); }
+  y+=z(6);
+  var TOP=y, GAP=z(36), LW=Math.round((PW-2*PM-GAP)*0.55), RW=PW-2*PM-GAP-LW;
+  var L={x:PM,w:LW,y:TOP}, R={x:PM+LW+GAP,w:RW,y:TOP};
+
+  function section(col,title,color){
+    col.y+=z(8); ctx.fillStyle=color||MINT; ctx.fillRect(col.x,col.y,z(10),z(38));
+    ctx.font=pf(z(34),800); ctx.fillText(title,col.x+z(22),col.y); col.y+=z(48);
+  }
+  function table(col,cols,rows,head){
+    var pad=z(10), widths=cols.map(function(cc){return Math.round(cc.w*col.w);});
+    var hh=z(44); ctx.fillStyle=head||"#e6f5f1"; ctx.fillRect(col.x,col.y,col.w,hh);
+    ctx.font=pf(z(26),700); ctx.fillStyle=head?"#fff":MINT; var x=col.x;
+    cols.forEach(function(cc,i){ ctx.fillText(cc.t,x+pad,col.y+z(9)); x+=widths[i]; }); col.y+=hh;
+    rows.forEach(function(row){
+      var lines=row.map(function(cell,i){ ctx.font=pf(z(cell.s||30),cell.b?800:400); return pwrap(ctx,cell.t,widths[i]-2*pad); });
+      var lh=row.map(function(cell){ return z((cell.s||30)+8); });
+      var hgt=Math.max.apply(null,lines.map(function(l,i){return l.length*lh[i];}))+z(14);
+      if(col.y+hgt>BOTTOM) over=true;
+      var x=col.x;
+      row.forEach(function(cell,i){ ctx.font=pf(z(cell.s||30),cell.b?800:400); ctx.fillStyle=cell.c||INK;
+        var yy=col.y+z(7); lines[i].forEach(function(l){ ctx.fillText(l,x+pad,yy); yy+=lh[i]; }); x+=widths[i]; });
+      col.y+=hgt; ctx.fillStyle=LINE; ctx.fillRect(col.x,col.y,col.w,z(2));
+      var xx=col.x; widths.forEach(function(ww,i){ if(i) ctx.fillRect(xx,col.y-hgt,z(2),hgt); xx+=ww; });
+    });
+    col.y+=z(6);
+  }
+  function note(col,t,opt){ opt=opt||{}; ctx.font=pf(z(opt.s||24),opt.b?800:400); ctx.fillStyle=opt.c||SUB;
+    pwrap(ctx,t,col.w-z(10)).forEach(function(l){ if(col.y+z((opt.s||24)+8)>BOTTOM) over=true; ctx.fillText(l,col.x+z(6),col.y); col.y+=z((opt.s||24)+8); }); }
+
+  // ===== 左：投与する薬など =====
+  section(L,"投与する薬（前投与・導入）");
+  if(D.pre.length){
+    table(L,[{t:"薬",w:.27},{t:"用量",w:.15},{t:"薬の量",w:.12},{t:"吸う量",w:.22},{t:"経路",w:.1},{t:"時刻",w:.14}],
+      D.pre.map(function(r){ return [{t:r.name+(r.nv?"※":""),b:true,s:28},{t:r.dose,s:26},{t:r.mg,s:26},{t:volText(r.v),b:true,s:34,c:r.v.f>1?AMB:MINT},{t:r.route,s:26},{t:""}]; }));
+  }else note(L,"（前投与・導入タブで薬を選ぶと、ここに載ります）");
+  if(D.cri.length){ section(L,"CRI（持続投与）");
+    table(L,[{t:"薬",w:.27},{t:"速度",w:.18},{t:"シリンジの作り方",w:.37},{t:"流速",w:.18}],
+      D.cri.map(function(r){ return [{t:r.name+(r.nv?"※":""),b:true,s:28},{t:r.dose,s:26},{t:r.how,s:26},{t:r.rate,b:true,s:32,c:MINT}]; })); }
+  if(D.fl){ section(L,"輸液");
+    table(L,[{t:"輸液剤",w:.27},{t:"経路",w:.2},{t:"指示",w:.2},{t:"設定・量",w:.33}],
+      [[{t:D.fl.fluid,b:true,s:28},{t:D.fl.route,s:26},{t:D.fl.dose,s:26},{t:D.fl.out,b:true,s:32,c:MINT}]]); }
+  if(D.rev){ section(L,"拮抗（覚醒時）");
+    table(L,[{t:"薬",w:.27},{t:"計算",w:.33},{t:"吸う量",w:.25},{t:"経路",w:.15}],
+      [[{t:D.rev.name+(D.rev.nv?"※":""),b:true,s:28},{t:D.rev.dose+"＝"+D.rev.mg,s:26},{t:volText(D.rev.v),b:true,s:34,c:MINT},{t:D.rev.route,s:26}]]); }
+  if(D.la.length){ section(L,"局所麻酔の上限（合計）");
+    table(L,[{t:"薬",w:.27},{t:"上限",w:.2},{t:"液量の上限",w:.53}],
+      D.la.map(function(r){ return [{t:r.name,b:true,s:28},{t:r.cap+"\n＝"+r.mg,s:26},{t:r.ml,s:26}]; }));
+    if(D.la.length>1) note(L,"併用時は、それぞれの「上限の何%」を足して100%以内。"); }
+  if(D.pre.some(function(r){return r.v.f>1;})||(D.rev&&D.rev.v.f>1)) note(L,"10倍液＝原液0.1mL＋生食0.9mL（合計1.0mL）。100倍液＝10倍液をさらに同じ手順で10倍。");
+
+  // ===== 右：緊急薬 =====
+  ctx.fillStyle="#fdecea"; ctx.fillRect(R.x,R.y,R.w,z(64));
+  ctx.font=pf(z(36),800); ctx.fillStyle=RED; ctx.fillText("緊急薬",R.x+z(16),R.y+z(13));
+  ctx.font=pf(z(30),800); var tag=[o.l,fnum(w)+" kg"].join("　");
+  ctx.textAlign="right"; ctx.fillText(tag,R.x+R.w-z(16),R.y+z(16)); ctx.textAlign="left"; R.y+=z(74);
+  if(D.em.length){
+    table(R,[{t:"すぐ打つ薬",w:.4},{t:"用量",w:.27},{t:"吸う量",w:.33}],
+      D.em.map(function(r){ return [{t:r.name+(r.nv?"※":""),b:true,s:27},{t:r.dose+"\n"+r.route,s:23},{t:r.prep,b:true,s:34,c:RED}]; }),RED);
+  }
+  if(D.emc.length){
+    table(R,[{t:"持続（10mLシリンジ）",w:.4},{t:"作り方",w:.4},{t:"流速",w:.2}],
+      D.emc.map(function(r){ return [{t:r.name+(r.nv?"※":"")+"\n"+r.dose,b:true,s:25},{t:r.how,s:24},{t:r.rate,b:true,s:30,c:RED}]; }),RED);
+  }
+  if(!D.em.length&&!D.emc.length) note(R,"（この動物種の緊急薬データがありません）");
+  if(D.em.some(function(r){return /倍液/.test(r.prep);})) note(R,"10倍液＝原液0.1mL＋生食0.9mL。100倍液＝10倍液をさらに10倍。",{s:23});
+  // 手書き記録欄（残りスペース）
+  var rowH=z(54), n=Math.floor((BOTTOM-R.y-z(60))/rowH);
+  if(n>=2){
+    R.y+=z(6); ctx.font=pf(z(26),800); ctx.fillStyle=RED; ctx.fillText("緊急時の記録",R.x,R.y); R.y+=z(36);
+    var cws=[.2,.45,.35].map(function(f){return Math.round(f*R.w);});
+    ctx.fillStyle="#fdecea"; ctx.fillRect(R.x,R.y,R.w,z(36)); ctx.font=pf(z(22),700); ctx.fillStyle=RED;
+    ["時刻","薬","量・記入者"].forEach(function(t,i){ ctx.fillText(t,R.x+cws.slice(0,i).reduce(function(a,b){return a+b;},0)+z(10),R.y+z(7)); }); R.y+=z(36);
+    ctx.fillStyle=LINE;
+    for(var j=0;j<Math.min(n,8);j++){ R.y+=rowH; ctx.fillRect(R.x,R.y,R.w,z(2)); }
+    var xx=R.x; cws.slice(0,2).forEach(function(ww){ xx+=ww; ctx.fillRect(xx,R.y-rowH*Math.min(n,8),z(2),rowH*Math.min(n,8)); });
+  }
+  // 中央の区切り線
+  ctx.fillStyle=LINE; ctx.fillRect(PM+LW+Math.round(GAP/2),TOP,z(2),Math.max(L.y,R.y)-TOP);
+  // フッター
+  ctx.font=pf(z(22),500); ctx.fillStyle="#8a979c";
+  ctx.fillText("※＝用量が獣医師未確認（β版の下書き）。投与前に必ず獣医師が確認。　作成 "+nowStr(),PM,PH-PM-z(24));
+  if(L.y>BOTTOM||R.y>BOTTOM) over=true;
+  return {canvas:c,over:over};
 }
 
 /* ===== PDF 生成（眼科アプリと同じ方式・依存なし） ===== */
 function b64ToBytes(b64){ var bin=atob(b64), u=new Uint8Array(bin.length); for(var i=0;i<bin.length;i++) u[i]=bin.charCodeAt(i); return u; }
 function strBytes(s){ var u=new Uint8Array(s.length); for(var i=0;i<s.length;i++) u[i]=s.charCodeAt(i)&255; return u; }
 function buildPdf(canvases){
-  var W=419.53, H=595.28, chunks=[], offset=0, offsets=[];
+  var W=595.28, H=419.53, chunks=[], offset=0, offsets=[];
   function push(u){ chunks.push(u); offset+=u.length; } function pushS(s){ push(strBytes(s)); }
   var n=canvases.length, pageIds=[]; for(var i=0;i<n;i++) pageIds.push(3+i*3);
   pushS("%PDF-1.4\n%\xe2\xe3\xcf\xd3\n");
@@ -853,7 +857,7 @@ function buildPdf(canvases){
 }
 /* ===== パソコンから直接印刷（A5） ===== */
 function printPages(only){
-  var pages=renderSheet().filter(function(c){ return only==="prep"?!c._em:only==="em"?c._em:true; });
+  var pages=renderSheet();
   if(!pages.length) return;
   var old=document.getElementById("printFrame"); if(old) old.remove();
   var f=document.createElement("iframe"); f.id="printFrame";
@@ -861,7 +865,7 @@ function printPages(only){
   document.body.appendChild(f);
   var d=f.contentWindow.document;
   d.open();
-  d.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+pdfName().replace(/\.pdf$/,"")+'</title><style>@page{size:A5 portrait;margin:0}html,body{margin:0;padding:0}img{display:block;width:148mm;height:209.5mm;page-break-after:always;break-after:page}img:last-child{page-break-after:auto;break-after:auto}</style></head><body></body></html>');
+  d.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+pdfName().replace(/\.pdf$/,"")+'</title><style>@page{size:A5 landscape;margin:0}html,body{margin:0;padding:0}img{display:block;width:210mm;height:147.5mm}</style></head><body></body></html>');
   d.close();
   var left=pages.length;
   pages.forEach(function(cv){
@@ -918,10 +922,8 @@ function renderRec(){
   c2.appendChild(h("div",{id:"pwarn"}));
   var msg=h("div",{class:"alert grey",style:"display:none"});
   c2.appendChild(h("div",{style:"margin:10px 0 4px;display:flex;gap:8px;flex-wrap:wrap"},
-    h("button",{class:"btn",text:"🖨 印刷する（A5・全ページ）",onclick:function(){printPages("all");}}),
-    h("button",{class:"btn ghost",text:"準備シートだけ",onclick:function(){printPages("prep");}}),
-    h("button",{class:"btn ghost",text:"緊急薬シートだけ",onclick:function(){printPages("em");}})));
-  c2.appendChild(h("div",{class:"note",text:"パソコンから直接印刷できます。印刷画面で用紙サイズ「A5」、余白「なし」、倍率「100%」を選んでください。"}));
+    h("button",{class:"btn",text:"🖨 印刷する（A5横・1枚）",onclick:function(){printPages();}})));
+  c2.appendChild(h("div",{class:"note",text:"パソコンから直接印刷できます。印刷画面で用紙サイズ「A5」、向き「横」、余白「なし」、倍率「100%」を選んでください。"}));
   c2.appendChild(h("div",{style:"margin:12px 0 4px;display:flex;gap:8px;flex-wrap:wrap"},
     h("button",{class:"btn ghost",text:"PDFを保存・共有（スマホ用）",onclick:function(){ msg.style.display=""; msg.textContent="作成中…"; setTimeout(function(){savePdf(msg);},30); }})));
   c2.appendChild(msg);
@@ -937,7 +939,8 @@ function refreshPrint(){
   var warn=[]; if(!P.no) warn.push("カルテNo"); if(!P.name) warn.push("動物名"); if(!P.asa) warn.push("ASA"); if(!S.pre.length) warn.push("投与する薬");
   pw.innerHTML=""; if(warn.length) pw.appendChild(h("div",{class:"alert amber",text:"未入力："+warn.join("・")}));
   var pages=renderSheet();
-  fn.textContent="ファイル名："+pdfName()+"（A5・"+pages.length+"ページ）　共有メニューから Googleドライブ に保存 → 院内PCでA5印刷";
+  fn.textContent="ファイル名："+pdfName()+"（A5横・1枚）";
+  if(SHEET_OVER) pw.appendChild(h("div",{class:"alert red",text:"薬が多く、1枚に入りきっていません。使わない薬を外すか、輸液・局麻・拮抗の表示を外してください"}));
   pv.innerHTML=""; pages.forEach(function(cv){ pv.appendChild(h("img",{src:cv.toDataURL("image/jpeg",0.8),alt:"印刷プレビュー"})); });
 }
 

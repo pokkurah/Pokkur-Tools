@@ -2,7 +2,7 @@
    各ページの <head> で読み込む。院内パスコードを1回入れた端末だけが開ける。
    パスコードを変えるときは HASH を差し替える（設置手順を参照）。 */
 (function () {
-  var HASH = '5bd03614976a1b2916e23c651a97e609d3faf264e93dbfc1f33614a0ddedf555';
+  var HASH = '3bdb2e4b18c012c6d2be36a65286d48af7f996abd1e7a5328ff763143a9945c1';
   var KEY = 'pokkur_staff_pass';
   var de = document.documentElement;
   if (localStorage.getItem(KEY) === HASH) return;

@@ -73,6 +73,16 @@ table.dt td.na{color:#b5bfc3}
 .status span{flex:1}
 .status button{border:1px solid currentColor;background:#fff;color:inherit;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:800}
 a.open{display:block;text-align:center;background:var(--mint);color:#fff;text-decoration:none;font-weight:800;border-radius:10px;padding:12px;margin-top:8px}
+.seg.imode{margin-bottom:12px}.seg.imode button{flex:1;min-height:46px}
+.vcard{border-color:var(--mint)}
+textarea.vin{width:100%;border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:16px;font-family:inherit}
+.vrow{display:flex;gap:8px;margin-top:8px}
+.vbtn{flex:1;min-height:46px;border:0;border-radius:10px;background:var(--mint);color:#fff;font-weight:800;font-size:15px}
+.vbtn.alt{background:var(--ink)}.vbtn.ghost{background:#fff;border:1px solid var(--line);color:var(--sub);flex:0 0 70px}
+.vres{margin-top:10px;background:var(--bg);border-radius:10px;padding:10px 12px}
+.vh{font-size:12px;font-weight:800;color:var(--mint-d);margin-bottom:6px}
+.vr{display:flex;justify-content:space-between;gap:8px;font-size:14px;padding:3px 0;border-bottom:1px dashed var(--line)}
+.vr span{color:var(--sub)}
 .clear{width:100%;border:1px solid var(--line);background:#fff;border-radius:12px;min-height:46px;font-weight:800;color:var(--sub);margin-top:4px}
 </style>
 </head>
@@ -101,27 +111,8 @@ var SHEET_URL="https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/edit";
 function gviz(name){ return "https://docs.google.com/spreadsheets/d/"+SHEET_ID+"/gviz/tq?tqx=out:csv&headers=1&sheet="+encodeURIComponent(name); }
 
 /* 内蔵の下書き（スプレッドシートと同じ列構成） */
-var BUILTIN_MASTER=[
- ["ダイフェン","ST合剤","錠","480","","","SMX400＋TMP80。用量は合計量(mg/kg)","500"],
- ["エンロフロキサシン","エンロフロキサシン","錠","15,50","","",""],
- ["メロキシカム錠","メロキシカム","錠","5","","",""],
- ["メタカムシロップ","メロキシカム","液","0.5,1.5","","","規格はmg/mL"],
- ["フロセミド","フロセミド","錠","10","","",""],
- ["クラリスロマイシン","クラリスロマイシン","錠","200","","",""],
- ["アジスロマイシン","アジスロマイシン","錠","200","","",""],
- ["ビクタス","オルビフロキサシン","錠","10,20","","",""],
- ["ベトメディン","ピモベンダン","錠","2.5,5","","",""],
- ["フォルテコール","ベナゼプリル","錠","2.5,5","","",""],
- ["プリンペラン錠","メトクロプラミド","錠","5","","",""],
- ["プロナミド錠","モサプリド","錠","5","","",""],
- ["シプロヘプタジン錠","シプロヘプタジン","錠","4","","",""],
- ["ファモチジン錠","ファモチジン","錠","10","","",""],
- ["プレドニゾロン錠","プレドニゾロン","錠","5","","",""],
- ["オメプラゾール錠","オメプラゾール","錠","10","","",""],
- ["スピロノラクトン錠","スピロノラクトン","錠","25","","",""],
- ["ハイシー","アスコルビン酸","散","200","","","ビタミンC。規格はmg/g"],
- ["マイトマックス","","量指定","","カプセル","1","5mLあたり1カプセル","210"]
-];
+var BUILTIN_MASTER=[["ダイフェン", "ST合剤", "錠", "480", "", "", "SMX400＋TMP80。用量は合計量(mg/kg)", "500", "", ""], ["エンロフロキサシン", "エンロフロキサシン", "錠", "15,50", "", "", "", "", "", "エンロ"], ["メロキシカム錠", "メロキシカム", "錠", "5", "", "", "", "", "", "メロキ"], ["メタカムシロップ", "メロキシカム", "液", "0.5,1.5", "", "", "規格はmg/mL", "", "", "メタカム"], ["フロセミド", "フロセミド", "錠", "10", "", "", "", "", "", ""], ["クラリスロマイシン", "クラリスロマイシン", "錠", "200", "", "", "", "", "", ""], ["アジスロマイシン", "アジスロマイシン", "錠", "200", "", "", "", "", "", ""], ["ビクタス", "オルビフロキサシン", "錠", "10,20", "", "", "", "", "", ""], ["ベトメディン", "ピモベンダン", "錠", "2.5,5", "", "", "", "", "", "ベトメ"], ["フォルテコール", "ベナゼプリル", "錠", "2.5,5", "", "", "", "", "", "フォルテ"], ["プリンペラン錠", "メトクロプラミド", "錠", "5", "", "", "", "", "", ""], ["プロナミド錠", "モサプリド", "錠", "5", "", "", "", "", "", "プロナミ"], ["シプロヘプタジン錠", "シプロヘプタジン", "錠", "4", "", "", "", "", "ウサギ,ハムスター,マウス,ラット,モルモット,チンチラ,デグー,ハリネズミ", ""], ["ファモチジン錠", "ファモチジン", "錠", "10", "", "", "", "", "", "ファモチ,ファモ"], ["プレドニゾロン錠", "プレドニゾロン", "錠", "5", "", "", "", "", "", ""], ["オメプラゾール錠", "オメプラゾール", "錠", "10", "", "", "", "", "", ""], ["スピロノラクトン錠", "スピロノラクトン", "錠", "25", "", "", "", "", "", ""], ["ハイシー", "アスコルビン酸", "散", "200", "", "", "ビタミンC。規格はmg/g", "", "", ""], ["マイトマックス", "", "量指定", "", "カプセル", "1", "5mLあたり1カプセル", "210", "", ""], ["グリベンクラミド錠", "グリベンクラミド", "錠", "1.25,2.5", "", "", "", "", "鳥", ""], ["グリコラン錠", "メトホルミン", "錠", "250", "", "", "", "", "鳥", ""], ["タケキャブ錠", "ボノプラザン", "錠", "10,20", "", "", "", "", "鳥", ""], ["ホスミシン錠", "ホスホマイシン", "錠", "250,500", "", "", "規格は力価", "403,806", "鳥", ""], ["マーズレンS配合顆粒", "アズレン・L-グルタミン", "散", "1000", "", "", "グリマック配合顆粒（終売）の代替。1g中アズレン3mg＋L-グルタミン990mg。用量は製剤量(mg)で入力", "", "鳥", ""], ["セルベックスカプセル", "テプレノン", "カプセル", "50", "", "", "セルテプノン（終売）の代替", "160", "鳥", "セルテプ,セルテプノン,セルベックス"], ["ファンギゾンシロップ", "アムホテリシンB", "液", "100", "", "", "規格はmg/mL", "", "鳥", "ファンギ,ファンギゾン"], ["ボリコナゾール錠", "ボリコナゾール", "錠", "50,200", "", "", "", "", "鳥", ""], ["テルビナフィン錠", "テルビナフィン", "錠", "125", "", "", "", "", "", ""], ["イトラコナゾール錠", "イトラコナゾール", "錠", "50,100", "", "", "重さは日医工製品の値", "250,410", "", "イトラ"], ["アドナ錠", "カルバゾクロム", "錠", "10,30", "", "", "", "", "", ""], ["トランサミン錠", "トラネキサム酸", "錠", "250,500", "", "", "", "", "", ""], ["ペリアクチンシロップ", "シプロヘプタジン", "液", "0.4", "", "", "規格はmg/mL", "", "ウサギ,ハムスター,マウス,ラット,モルモット,チンチラ,デグー,ハリネズミ", ""], ["プリンペランシロップ", "メトクロプラミド", "液", "1", "", "", "1mL中 塩酸メトクロプラミド1mg（錠と同じく塩酸塩換算）", "", "", ""],
+ ["エンタイス", "カプロモレリン", "液", "30", "", "", "犬用カプロモレリン経口液。規格はmg/mL", "", "", ""]];
 var BUILTIN_DOSES=[["エンロフロキサシン", "ウサギ", "10", "5", "15", "BID", "Small Animal Pediatrics 表176-5（ウサギ）", "", "", ""], ["エンロフロキサシン", "ハムスター", "10", "5", "20", "BID", "ISVMA 小型齧歯類 10mg/kg q12h", "", "", ""], ["エンロフロキサシン", "マウス", "10", "5", "20", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["エンロフロキサシン", "ラット", "10", "5", "20", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["エンロフロキサシン", "鳥", "15", "15", "20", "BID", "MSD獣医マニュアル（Pet Birds）", "", "", ""], ["エンロフロキサシン", "トカゲ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "ヤモリ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "カメ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "ヘビ", "5", "5", "10", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["エンロフロキサシン", "ハリネズミ", "10", "10", "20", "BID", "BSAVA Formulary Exotic Pets（ヨーロッパハリネズミ）", "ヨーロッパハリネズミの用量", "", ""], ["エンロフロキサシン", "イモリ", "5", "5", "10", "SID", "MSD獣医マニュアル（Amphibians）", "", "", ""], ["ST合剤", "ウサギ", "30", "30", "40", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["ST合剤", "マウス", "30", "15", "30", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["ST合剤", "ラット", "30", "15", "30", "BID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["ST合剤", "鳥", "50", "50", "100", "BID", "MSD獣医マニュアル（Pet Birds）", "", "", ""], ["ST合剤", "トカゲ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["ST合剤", "ヤモリ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["ST合剤", "カメ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["ST合剤", "ヘビ", "30", "30", "30", "SID", "MSD獣医マニュアル（Reptiles）", "", "", ""], ["メロキシカム", "ウサギ", "1", "0.3", "1.5", "SID", "MSD獣医マニュアル 1mg/kg/日、UVic 0.3–1.5 PO", "", "", ""], ["メロキシカム", "マウス", "2", "1", "5", "SID", "UVic 実験動物フォーミュラリー", "", "", ""], ["メロキシカム", "ラット", "1", "1", "2", "SID", "UVic / Montana State IACUC", "", "", ""], ["メロキシカム", "鳥", "0.2", "0.2", "1.6", "BID", "MSD獣医マニュアル 1mg/kg q12–24h、オウム1.6mg/kg q12h", "", "", ""], ["メロキシカム", "トカゲ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "ヤモリ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "カメ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "ヘビ", "0.2", "0.1", "0.4", "SID", "MSD獣医マニュアル（Reptiles）", "注射の用量（q24–48h）。経口の根拠は乏しい", "", ""], ["メロキシカム", "ハリネズミ", "0.5", "0.5", "0.5", "SID", "BSAVA Formulary Exotic Pets（ハリネズミ）", "", "", ""], ["メロキシカム", "イモリ", "0.2", "0.2", "0.2", "SID", "MSD獣医マニュアル（Amphibians）", "頻度の記載なし", "", ""], ["アジスロマイシン", "ハムスター", "30", "30", "30", "SID", "ISVMA 小型齧歯類", "", "", ""], ["アジスロマイシン", "マウス", "30", "30", "50", "SID", "UNSW 研究動物フォーミュラリー2023（q12–24h）", "", "", ""], ["アジスロマイシン", "ラット", "30", "30", "50", "SID", "UNSW 研究動物フォーミュラリー2023（q12–24h）", "", "", ""], ["アジスロマイシン", "ウサギ", "30", "15", "30", "SID", "UNSW 研究動物フォーミュラリー2023", "", "", ""], ["アジスロマイシン", "鳥", "45", "45", "45", "SID", "Dorrestein（抗酸菌症の多剤併用）", "抗酸菌症の併用療法での用量", "", ""], ["アジスロマイシン", "ヘビ", "10", "10", "10", "3〜7日ごと", "MSD獣医マニュアル（ボールパイソン）", "3〜7日ごとの投与", "", ""], ["クラリスロマイシン", "鳥", "80", "40", "80", "SID", "Dorrestein（抗酸菌症の多剤併用）", "抗酸菌症の併用療法での用量", "", ""], ["クラリスロマイシン", "カメ", "15", "15", "15", "2〜3日ごと", "MSD獣医マニュアル（サバクゴファーガメ）", "2〜3日ごとの投与", "", ""], ["メトクロプラミド", "ウサギ", "0.5", "0.5", "0.5", "BID", "BSAVA Manual of Rabbit Medicine 2nd", "", "", ""], ["ファモチジン", "ハムスター", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "鳥", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "トカゲ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "ヤモリ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "ウサギ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "チンチラ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "デグー", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "ハリネズミ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "マウス", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "ラット", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "カメ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "ヘビ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ファモチジン", "イモリ", "0.5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ハムスター", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "鳥", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "トカゲ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ヤモリ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ウサギ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "チンチラ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "デグー", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ハリネズミ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "マウス", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ラット", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "カメ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "ヘビ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オメプラゾール", "イモリ", "1", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ハムスター", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "鳥", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "トカゲ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ヤモリ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ウサギ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "チンチラ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "デグー", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ハリネズミ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "マウス", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ラット", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "カメ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "ヘビ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["オルビフロキサシン", "イモリ", "5", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ハムスター", "1", "1", "10", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "鳥", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "トカゲ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ヤモリ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ウサギ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "チンチラ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "デグー", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ハリネズミ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "マウス", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ラット", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "カメ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "ヘビ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["フロセミド", "イモリ", "1", "1", "5", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ハムスター", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "鳥", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "トカゲ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ヤモリ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ウサギ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "チンチラ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "デグー", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ハリネズミ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "マウス", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ラット", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "カメ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "ヘビ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["スピロノラクトン", "イモリ", "1", "1", "3", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["アスコルビン酸", "モルモット", "50", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11", "mg/頭/日"], ["アジスロマイシン", "チンチラ", "40", "", "", "", "", "", "", ""], ["ST合剤", "ハムスター", "30", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ST合剤", "チンチラ", "30", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ST合剤", "デグー", "30", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"], ["ST合剤", "ハリネズミ", "30", "", "", "", "院内基準（院長指定）", "", "伊村", "2026-11-11"]];
 
 var DRUGS=[], DOSES={}, ING=[], SRC={kind:"builtin",at:""};
@@ -134,12 +125,14 @@ function buildData(master, doses){
   var drugs=[], dmap={}, ings=[];
   master.forEach(function(r){
     var name=String(r[0]||"").trim(); if(!name) return;
-    var formJ=String(r[2]||"").trim(), form=formJ==="液"?"liq":formJ==="散"?"pow":formJ==="量指定"?"fixed":"tab";
+    var formJ=String(r[2]||"").trim(), form=formJ==="液"?"liq":formJ==="散"?"pow":formJ==="量指定"?"fixed":"tab", cap=formJ==="カプセル";
     var ing=String(r[1]||"").trim()||null;
     var str=String(r[3]||"").split(/[,、，\s]+/).map(tnum).filter(function(x){return x!==null&&x>0;});
     if(form!=="fixed" && !str.length) return;
     var tw=String(r[7]||"").split(/[,、，\s]+/).map(tnum);
-    drugs.push({id:name,name:name,ing:ing,form:form,str:str,tw:tw,unit:String(r[4]||"").trim()||"個",per5:tnum(r[5])||1,note:String(r[6]||"").trim()});
+    var ali=String(r[9]||"").split(/[,、，\s]+/).map(function(x){return x.trim();}).filter(function(x){return x;});
+    var only=String(r[8]||"").split(/[,、，\s]+/).map(function(x){return x.trim();}).filter(function(x){return x;});
+    drugs.push({id:name,name:name,ing:ing,form:form,cap:cap,only:only,ali:ali,str:str,tw:tw,unit:String(r[4]||"").trim()||"個",per5:tnum(r[5])||1,note:String(r[6]||"").trim()});
     if(ing && ings.indexOf(ing)<0) ings.push(ing);
   });
   doses.forEach(function(r){
@@ -186,6 +179,8 @@ var PERDOSE=[0.05,0.1,0.2,0.3,0.5];
 function blankS(){ return {prep:null, sp:null, wt:"", per:0.1, freq:"SID", total:5, veh:"water", days:7, pack:0.1, items:[]}; }
 var S=blankS();
 var view="calc";
+var IMODE=(function(){ try{ return localStorage.getItem("drug_imode")||"hand"; }catch(e){ return "hand"; } })();
+var VOICE={text:"",result:null};
 
 /* ===== helpers ===== */
 function h(tag,attrs){var el=document.createElement(tag);if(attrs)for(var a in attrs){if(a==="class")el.className=attrs[a];else if(a==="text")el.textContent=attrs[a];else if(a.slice(0,2)==="on")el.addEventListener(a.slice(2),attrs[a]);else el.setAttribute(a,attrs[a]);}
@@ -201,8 +196,112 @@ function fmt(n,dp){ // 数値の表示
 function fmtTab(n){ return n<0.1 ? n.toFixed(3) : n.toFixed(2); }
 function fmtMg(n){ return n<1 ? fmt(n,3) : n<10 ? fmt(n,2) : fmt(n,1); }
 function strLabel(d,s){ return d.form==="liq" ? s+"mg/mL" : d.form==="pow" ? s+"mg/g" : s+"mg"; }
-function unitOf(d){ return d.form==="fixed"?d.unit : d.form==="liq"?"mL" : d.form==="pow"?"g" : "錠"; }
-function fmtQty(q,u){ return u==="錠" ? fmtTab(q) : u==="g" ? q.toFixed(3) : fmt(q,2); }
+function unitOf(d){ return d.form==="fixed"?d.unit : d.form==="liq"?"mL" : d.form==="pow"?"g" : d.cap?"カプセル":"錠"; }
+function allowed(d){ return !d.only || !d.only.length || (S.sp && d.only.indexOf(spName(S.sp))>=0); }
+function fmtQty(q,u){ return (u==="錠"||u==="カプセル") ? fmtTab(q) : u==="g" ? q.toFixed(3) : fmt(q,2); }
+
+/* ===== 音声入力の読み取り ===== */
+var SP_ALIAS={rabbit:["ウサギ","兎","ラビット"],hamster:["ハムスター","ハム"],mouse:["マウス"],rat:["ラット"],guineapig:["モルモット"],
+  chinchilla:["チンチラ"],degu:["デグー","デグ"],hedgehog:["ハリネズミ"],bird:["鳥","トリ","インコ","セキセイ","オカメ","文鳥","ブンチョウ","オウム","フィンチ"],
+  lizard:["トカゲ","フトアゴ"],gecko:["ヤモリ","レオパ","ヒョウモン"],turtle:["カメ","亀","リクガメ"],snake:["ヘビ","蛇"],newt:["イモリ"]};
+var FREQ_ALIAS=[["SID",["SID","シッド","1日1回","一日一回","1日一回"]],["BID",["BID","ビッド","ビーアイディー","1日2回","一日二回","1日二回"]],
+  ["TID",["TID","ティッド","1日3回","一日三回","1日三回"]],["EOD",["EOD","隔日","1日おき"]]];
+function kana(t){ return t.replace(/[ぁ-ゖ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)+0x60);}); }
+function normVoice(t){
+  t=kana(String(t||"").normalize("NFKC"));
+  t=t.replace(/(\d)\s*点\s*(\d)/g,"$1.$2").replace(/(\d)\s*てん\s*(\d)/g,"$1.$2");
+  t=t.replace(/ミリリットル|ml|ML|cc|CC/g,"mL").replace(/ミリグラム/g,"mg").replace(/グラム/g,"g").replace(/キログラム|キロ/g,"kg");
+  t=t.replace(/[a-z]{3}/g,function(m){ return /^(sid|bid|tid|eod)$/.test(m)?m.toUpperCase():m; });
+  return t;
+}
+function parseVoice(text){
+  var t=normVoice(text), toks=[], used=[];
+  var pats=[];
+  function add(word,type,val){ pats.push({w:kana(word.normalize("NFKC")),type:type,val:val}); }
+  add("液剤","prep","liq"); add("水剤","prep","liq"); add("散剤","prep","pow"); add("粉薬","prep","pow"); add("粉","prep","pow");
+  add("半シロ","veh","half"); add("ハンシロ","veh","half"); add("水のみ","veh","water"); add("水","veh","water");
+  add("全量","total",1); add("総量","total",1);
+  FREQ_ALIAS.forEach(function(f){ f[1].forEach(function(w){ add(w,"freq",f[0]); }); });
+  Object.keys(SP_ALIAS).forEach(function(k){ SP_ALIAS[k].forEach(function(w){ add(w,"sp",k); }); });
+  var stemCount={};
+  DRUGS.forEach(function(d){ var st=d.name.replace(/(錠|カプセル|シロップ|配合顆粒)$/,""); stemCount[st]=(stemCount[st]||0)+1; });
+  DRUGS.forEach(function(d){
+    var names=[d.name].concat(d.ali||[]);
+    var stem=d.name.replace(/(錠|カプセル)$/,""); if(stem!==d.name) names.push(stem);
+    var st2=d.name.replace(/(シロップ|配合顆粒)$/,""); if(st2!==d.name && stemCount[st2]===1) names.push(st2);
+    if(d.ing && d.form!=="fixed") names.push(d.ing);
+    names.forEach(function(n){ if(n) add(n,"drug",d.id); });
+  });
+  pats.sort(function(a,b){ return b.w.length-a.w.length; });
+  var i=0, unk="";
+  var FILLER=/^(ト|デ|ヲ|ニ|ノ|ハ|ガ|アト|ソレカラ|プラス|エート|エーット|エー|アノ|アノー|ンー|マズ|ツギ)$/;
+  function flush(){ var w=unk.trim(); unk=""; if(!w) return; if(FILLER.test(w)) return; used.push(w); toks.push({type:"unk",raw:w}); }
+  while(i<t.length){
+    var c=t[i];
+    if(/[\s、。，,・]/.test(c)){ flush(); i++; continue; }
+    var hit=null;
+    for(var k=0;k<pats.length;k++){ if(t.substr(i,pats[k].w.length)===pats[k].w){ hit=pats[k]; break; } }
+    if(hit){ flush(); toks.push({type:hit.type,val:hit.val,raw:hit.w}); i+=hit.w.length; continue; }
+    var m=/^(\d+(?:\.\d+)?)\s*(mg\/kg|mg\/頭\/日|mg\/頭|mg|kg|mL|g|日分|日|包|錠|カプセル|個)?/.exec(t.substr(i));
+    if(m){ flush(); toks.push({type:"num",val:+m[1],unit:m[2]||"",raw:m[0]}); i+=m[0].length; continue; }
+    unk+=c; i++;
+  }
+  flush();
+  // 状態機械（順番固定：剤形→動物種→体重→回数→[液剤:1回量→総液量→溶解液 / 散剤:日数→1包の重さ]→薬と用量）
+  var out={items:[],unknown:used.slice()}, stage="start", cur=null, nextTotal=false;
+  toks.forEach(function(tk){
+    if(tk.type==="unk"){ if(stage==="drug"){ cur=null; stage="lost"; } return; }
+    if(tk.type==="prep"){ out.prep=tk.val; return; }
+    if(tk.type==="sp"){ out.sp=tk.val; stage="wt"; return; }
+    if(tk.type==="freq"){ out.freq=tk.val; stage="after_freq"; return; }
+    if(tk.type==="veh"){ out.veh=tk.val; return; }
+    if(tk.type==="total"){ nextTotal=true; return; }
+    if(tk.type==="drug"){ cur={id:tk.val,nums:[]}; out.items.push(cur); stage="drug"; return; }
+    if(tk.type==="num"){
+      var v=tk.val,u=tk.unit;
+      if(stage==="drug"&&cur){ cur.nums.push(tk); return; }
+      if(nextTotal){ out.total=v; nextTotal=false; return; }
+      if(u==="kg"){ out.wt=v*1000; return; }
+      if(stage==="wt" || (u==="g" && !out.wt && stage!=="after_freq" && stage!=="after_freq2" && stage!=="after_freq3")){ out.wt=v; stage="after_wt"; return; }
+      var prep=out.prep||S.prep||"liq";
+      if(u==="日分"||u==="日"){ out.days=v; stage="after_freq2"; return; }
+      if(u==="包"){ out.pack=v; return; }
+      if(stage==="after_freq"){ if(prep==="pow"){ out.days=v; } else { out.per=v; } stage="after_freq2"; return; }
+      if(stage==="after_freq2"){ if(prep==="pow"){ out.pack=v; } else { out.total=v; } stage="after_freq3"; return; }
+      out.unknown.push(tk.raw);
+    }
+  });
+  return out;
+}
+function applyVoice(o){
+  var notes=[];
+  if(o.prep) S.prep=o.prep; if(!S.prep) S.prep="liq";
+  if(o.sp) S.sp=o.sp;
+  if(o.wt) S.wt=String(o.wt);
+  if(o.freq) S.freq=o.freq;
+  if(o.per) S.per=o.per;
+  if(o.total){ S.total=Math.min(10,Math.max(1,Math.round(o.total))); if(S.total!==o.total) notes.push("総液量は1〜10mLの整数に丸めました"); }
+  if(o.veh) S.veh=o.veh;
+  if(o.days) S.days=String(Math.round(o.days));
+  if(o.pack){ var ok=[0.05,0.075,0.1]; if(ok.indexOf(o.pack)>=0) S.pack=o.pack; else notes.push("1包の重さ "+o.pack+"g は選択肢にないため変更していません"); }
+  S.items=[];
+  o.items.forEach(function(x){
+    var d=drug(x.id); if(!d) return;
+    if(S.prep==="pow"&&d.form==="liq"){ notes.push(d.name+"は液剤のため散剤に入れられません"); return; }
+    if(!allowed(d)){ notes.push(d.name+"は"+(spName(S.sp)||"この動物種")+"では使えない設定です"); return; }
+    var dd=doseFor(d.ing,S.sp), it={id:d.id,si:0,mode:d.form==="fixed"?"fixed":"calc",dose:dd?dd.d:"",unit:dd?dd.u:"mg/kg",fixed:d.form==="fixed"?d.per5:"",voice:true};
+    var nums=x.nums.slice();
+    // 規格の指定（例：エンロ 50mg 10 → 50mg錠で10mg/kg）
+    if(nums.length>=2 && d.str && d.str.indexOf(nums[0].val)>=0){ it.si=d.str.indexOf(nums[0].val); nums.shift(); }
+    if(nums.length){
+      var n=nums[0];
+      if(/^(錠|カプセル|個)$/.test(n.unit)||d.form==="fixed"){ it.mode="fixed"; it.fixed=n.val; }
+      else { it.dose=n.val; if(/^mg\/頭/.test(n.unit)) it.unit=n.unit; }
+    } else if(!dd && d.form!=="fixed"){ notes.push(d.name+"：用量が聞き取れず、用量表にも未登録です"); }
+    S.items.push(it);
+  });
+  return notes;
+}
 
 /* ===== 計算 ===== */
 function packs(){ var n=+S.days||0; return S.freq==="EOD" ? Math.ceil(n/2) : n*(PER_DAY[S.freq]||1); }
@@ -293,6 +392,10 @@ function viewCalc(){
   var w=h("div");
   S.items=S.items.filter(function(it){ return !!drug(it.id); });
   w.appendChild(statusBar());
+  w.appendChild(h("div",{class:"seg imode"},
+    h("button",{class:IMODE==="hand"?"on":"",text:"✍️ 手入力",onclick:function(){ IMODE="hand"; try{localStorage.setItem("drug_imode",IMODE);}catch(e){} render(); }}),
+    h("button",{class:IMODE==="voice"?"on":"",text:"🎤 音声入力",onclick:function(){ IMODE="voice"; try{localStorage.setItem("drug_imode",IMODE);}catch(e){} render(); }})));
+  if(IMODE==="voice") w.appendChild(voiceCard());
   w.appendChild(h("div",{class:"card"},h("label",{class:"f",text:"剤形"}),
     segBtns([{v:"liq",l:"液剤"},{v:"pow",l:"散剤（粉薬）"}],S.prep,function(v){ S.prep=v;
       if(v==="pow") S.items=S.items.filter(function(it){ return drug(it.id).form!=="liq"; }); render(); },"prep")));
@@ -323,7 +426,7 @@ function viewCalc(){
   w.appendChild(h("div",{class:"card"},
     h("label",{class:"f",text:"動物種"}),
     segBtns(SPECIES.map(function(s){return{v:s.k,l:s.l};}),S.sp,function(v){
-      S.sp=v; S.items.forEach(function(it){ var dd=doseFor(drug(it.id).ing,v); if(it.mode==="calc"){ it.dose=dd?dd.d:""; it.unit=dd?dd.u:"mg/kg"; } }); render();
+      S.sp=v; S.items=S.items.filter(function(it){ return allowed(drug(it.id)); }); S.items.forEach(function(it){ var dd=doseFor(drug(it.id).ing,v); if(it.mode==="calc"){ it.dose=dd?dd.d:""; it.unit=dd?dd.u:"mg/kg"; } }); render();
     },"sp"),
     h("div",{class:"row2",style:"margin-top:4px"},
       h("div",null,h("label",{class:"f",text:"体重"}),wtBox),
@@ -338,7 +441,7 @@ function viewCalc(){
   // 薬
   w.appendChild(h("div",{id:"drugs"}));
   var sel=h("select",{class:"t"}); sel.appendChild(h("option",{value:"",text:"＋ 薬を追加"}));
-  DRUGS.forEach(function(d){ if(S.prep==="pow"&&d.form==="liq") return; sel.appendChild(h("option",{value:d.id,text:d.name+(d.note&&d.form!=="fixed"?"（"+d.note.split("。")[0]+"）":"")})); });
+  DRUGS.forEach(function(d){ if(S.prep==="pow"&&d.form==="liq") return; if(!allowed(d)) return; sel.appendChild(h("option",{value:d.id,text:d.name+(d.note&&d.form!=="fixed"?"（"+d.note.split("。")[0]+"）":"")})); });
   sel.addEventListener("change",function(){ if(!sel.value)return; addDrug(sel.value); sel.value=""; });
   w.appendChild(h("div",{class:"card"},h("div",{class:"add"},sel)));
 
@@ -349,6 +452,46 @@ function viewCalc(){
   }}));
   setTimeout(refreshDrugs,0);
   return w;
+}
+
+function voiceCard(){
+  var ta=h("textarea",{class:"vin",rows:"3",placeholder:"例）液剤 ハムスター 45グラム BID 0.05 5 半シロ エンロ 10 メロキ 0.5"}); ta.value=VOICE.text;
+  ta.addEventListener("input",function(){ VOICE.text=ta.value; });
+  var mic=null, SR=window.SpeechRecognition||window.webkitSpeechRecognition, rec=null;
+  var stat=h("div",{class:"hint",style:"margin:6px 2px"});
+  if(SR){
+    mic=h("button",{class:"vbtn alt",text:"🎤 話す",onclick:function(){
+      if(rec){ rec.stop(); return; }
+      try{ rec=new SR(); }catch(e){ stat.textContent="この画面ではマイクが使えません。キーボードのマイクで入力してください。"; return; }
+      rec.lang="ja-JP"; rec.interimResults=false; rec.continuous=false;
+      rec.onresult=function(ev){ var tx=""; for(var i=0;i<ev.results.length;i++) tx+=ev.results[i][0].transcript; ta.value=(ta.value?ta.value+" ":"")+tx; VOICE.text=ta.value; };
+      rec.onerror=function(){ stat.textContent="マイクが使えませんでした。キーボードのマイクで入力してください。"; };
+      rec.onend=function(){ rec=null; mic.textContent="🎤 話す"; };
+      rec.start(); mic.textContent="■ 停止"; stat.textContent="聞き取り中…";
+    }});
+  }
+  var res=h("div");
+  if(VOICE.result){
+    var o=VOICE.result, rows=[];
+    function line(k,v){ rows.push(h("div",{class:"vr"},h("span",{text:k}),h("b",{text:v}))); }
+    line("剤形", S.prep==="pow"?"散剤":"液剤"); line("動物種", spName(S.sp)||"—"); line("体重", S.wt?S.wt+"g":"—"); line("回数", S.freq);
+    if(S.prep==="pow"){ line("日数", S.days+"日"); line("1包", S.pack+"g"); } else { line("1回量", S.per+"mL"); line("総液量", S.total+"mL"); line("溶解液", S.veh==="water"?"水":"半シロ"); }
+    S.items.forEach(function(it){ var d=drug(it.id); line(d.name, it.mode==="fixed"? fmt(+it.fixed,2)+unitOf(d) : (num(it.dose)?it.dose+(it.unit||"mg/kg"):"用量未入力")); });
+    res.appendChild(h("div",{class:"vres"},h("div",{class:"vh",text:"読み取り結果（下の入力欄に反映済み。必ず確認してください）"}),rows,
+      (o.notes&&o.notes.length)?h("div",{class:"caut",text:o.notes.join("／")}):null,
+      (o.unknown&&o.unknown.length)?h("div",{class:"warn",text:"聞き取れなかった語："+o.unknown.join("、")}):null));
+  }
+  return h("div",{class:"card vcard"},
+    h("h2",{text:"音声でまとめて入力"}),
+    h("p",{class:"hint",style:"margin:-4px 0 8px",text:"話す順番：剤形 → 動物種 → 体重 → 回数 → 液剤なら「1回量 → 総液量 → 溶解液」／散剤なら「日数 → 1包の重さ」→ 薬と用量（薬の後に数字）"}),
+    ta,
+    h("div",{class:"vrow"}, mic,
+      h("button",{class:"vbtn",text:"読み取る",onclick:function(){
+        var o=parseVoice(ta.value); var notes=applyVoice(o); o.notes=notes; VOICE.result=o; render();
+      }}),
+      h("button",{class:"vbtn ghost",text:"消す",onclick:function(){ VOICE.text=""; VOICE.result=null; render(); }})),
+    SR?stat:h("p",{class:"hint",text:"キーボードのマイクボタンで話してから「読み取る」を押してください。"}),
+    res);
 }
 
 function addDrug(id){

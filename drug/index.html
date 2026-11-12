@@ -81,6 +81,14 @@ textarea.vin{width:100%;border:1px solid var(--line);border-radius:10px;padding:
 .vbtn.alt{background:var(--ink)}.vbtn.ghost{background:#fff;border:1px solid var(--line);color:var(--sub);flex:0 0 70px}
 .vres{margin-top:10px;background:var(--bg);border-radius:10px;padding:10px 12px}
 .vh{font-size:12px;font-weight:800;color:var(--mint-d);margin-bottom:6px}
+.sug{margin-top:8px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.sug .w{font-size:13px;font-weight:800;color:var(--warn);margin-bottom:6px}
+.sug .chips{display:flex;flex-wrap:wrap;gap:6px}
+.sug .chip{min-height:40px;padding:0 14px;border-radius:20px;border:1px solid var(--mint);background:#fff;color:var(--ink);font-weight:800;font-size:14px}
+.sug select{min-height:40px;border-radius:20px;border:1px solid var(--line);padding:0 10px;font-size:14px;background:#fff;max-width:100%}
+.learn{margin-top:8px;font-size:12px;color:var(--sub)}.learn summary{cursor:pointer;font-weight:700}
+.learn .li{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px dashed var(--line)}
+.learn .li button{border:0;background:none;color:var(--warn);font-size:15px;padding:4px 8px}
 .vr{display:flex;justify-content:space-between;gap:8px;font-size:14px;padding:3px 0;border-bottom:1px dashed var(--line)}
 .vr span{color:var(--sub)}
 .clear{width:100%;border:1px solid var(--line);background:#fff;border-radius:12px;min-height:46px;font-weight:800;color:var(--sub);margin-top:4px}
@@ -206,6 +214,8 @@ var SP_ALIAS={rabbit:["ウサギ","兎","ラビット"],hamster:["ハムスタ�
   lizard:["トカゲ","フトアゴ"],gecko:["ヤモリ","レオパ","ヒョウモン"],turtle:["カメ","亀","リクガメ"],snake:["ヘビ","蛇"],newt:["イモリ"]};
 var FREQ_ALIAS=[["SID",["SID","シッド","1日1回","一日一回","1日一回"]],["BID",["BID","ビッド","ビーアイディー","1日2回","一日二回","1日二回"]],
   ["TID",["TID","ティッド","1日3回","一日三回","1日三回"]],["EOD",["EOD","隔日","1日おき"]]];
+function loadFix(){ try{ return JSON.parse(localStorage.getItem("drug_vfix")||"{}")||{}; }catch(e){ return {}; } }
+function saveFix(o){ try{ localStorage.setItem("drug_vfix",JSON.stringify(o)); }catch(e){} }
 function kana(t){ return t.replace(/[ぁ-ゖ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)+0x60);}); }
 function normVoice(t){
   t=kana(String(t||"").normalize("NFKC"));
@@ -232,23 +242,34 @@ function parseVoice(text){
     if(d.ing && d.form!=="fixed") names.push(d.ing);
     names.forEach(function(n){ if(n) add(n,"drug",d.id); });
   });
+  var FIX=loadFix();
+  Object.keys(FIX).forEach(function(w){ var v=FIX[w];
+    if(/^sp:/.test(v)){ if(SP_ALIAS[v.slice(3)]) add(w,"sp",v.slice(3)); }
+    else if(drug(v)) add(w,"drug",v);
+    pats[pats.length-1].fix=true; });
   pats.sort(function(a,b){ return b.w.length-a.w.length; });
   var i=0, unk="";
   var FILLER=/^(ト|デ|ヲ|ニ|ノ|ハ|ガ|アト|ソレカラ|プラス|エート|エーット|エー|アノ|アノー|ンー|マズ|ツギ)$/;
-  function flush(){ var w=unk.trim(); unk=""; if(!w) return; if(FILLER.test(w)) return; used.push(w); toks.push({type:"unk",raw:w}); }
+  var glued=false; // 直前が薬名で、間に区切りがない
+  function flush(){ var w=unk.trim(); unk=""; if(!w) return; if(FILLER.test(w)||/^ー+$/.test(w)) return;
+    var last=toks[toks.length-1];
+    if(glued && last && last.type==="drug" && w.length<=4 && /^[ァ-ヶー]+$/.test(w)){ // 「メロキシ」「ベトメジン」など薬名の語尾ゆれは薬名に含める
+      used.push({glue:last.raw+w, val:last.val}); return; }
+    used.push(w); toks.push({type:"unk",raw:w}); }
   while(i<t.length){
     var c=t[i];
-    if(/[\s、。，,・]/.test(c)){ flush(); i++; continue; }
+    if(/[\s、。，,・]/.test(c)){ flush(); glued=false; i++; continue; }
     var hit=null;
     for(var k=0;k<pats.length;k++){ if(t.substr(i,pats[k].w.length)===pats[k].w){ hit=pats[k]; break; } }
-    if(hit){ flush(); toks.push({type:hit.type,val:hit.val,raw:hit.w}); i+=hit.w.length; continue; }
+    if(hit){ flush(); toks.push({type:hit.type,val:hit.val,raw:hit.w}); if(hit.fix) used.push({learn:hit.w,type:hit.type,val:hit.val}); i+=hit.w.length; glued=true; continue; }
     var m=/^(\d+(?:\.\d+)?)\s*(mg\/kg|mg\/頭\/日|mg\/頭|mg|kg|mL|g|日分|日|包|錠|カプセル|個)?/.exec(t.substr(i));
-    if(m){ flush(); toks.push({type:"num",val:+m[1],unit:m[2]||"",raw:m[0]}); i+=m[0].length; continue; }
+    if(m){ flush(); glued=false; toks.push({type:"num",val:+m[1],unit:m[2]||"",raw:m[0]}); i+=m[0].length; continue; }
     unk+=c; i++;
   }
   flush();
   // 状態機械（順番固定：剤形→動物種→体重→回数→[液剤:1回量→総液量→溶解液 / 散剤:日数→1包の重さ]→薬と用量）
-  var out={items:[],unknown:used.slice()}, stage="start", cur=null, nextTotal=false;
+  var out={items:[],unknown:used.filter(function(x){return typeof x==="string";}),
+    glued:used.filter(function(x){return x.glue;}), learned:used.filter(function(x){return x.learn;})}, stage="start", cur=null, nextTotal=false;
   toks.forEach(function(tk){
     if(tk.type==="unk"){ if(stage==="drug"){ cur=null; stage="lost"; } return; }
     if(tk.type==="prep"){ out.prep=tk.val; return; }
@@ -272,6 +293,37 @@ function parseVoice(text){
     }
   });
   return out;
+}
+/* ===== もしかして候補（文字の近さ。自動では入れない） ===== */
+function fz(w){ // 聞き間違いで揺れやすい部分をならす
+  return kana(String(w).normalize("NFKC")).replace(/[ーッ・\s]/g,"")
+    .replace(/[ァィゥェォャュョ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)+1);})
+    .replace(/[ガギグゲゴザジズゼゾダヂヅデドバビブベボ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-1);})
+    .replace(/[パピプペポ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-2);})
+    .replace(/ヲ/g,"オ").replace(/ヅ/g,"ズ").replace(/ヂ/g,"ジ");
+}
+function lev(a,b){ var m=a.length,n=b.length,p=[],i,j; for(j=0;j<=n;j++)p[j]=j;
+  for(i=1;i<=m;i++){ var prev=p[0]; p[0]=i; for(j=1;j<=n;j++){ var t=p[j]; p[j]=Math.min(p[j]+1,p[j-1]+1,prev+(a[i-1]===b[j-1]?0:1)); prev=t; } } return p[n]; }
+function suggest(word){
+  var w=fz(word); if(!w || /^[\d.]+$/.test(w)) return [];
+  if(!/[ァ-ヶA-Za-z]/.test(w)) return []; // 漢字だけの誤変換は文字の近さでは探せない
+  var cand={};
+  function test(name,key,label){ var n=fz(name); if(!n) return;
+    var sc=lev(w,n)/Math.max(w.length,n.length,2);
+    if(n.length>w.length && w.length>=3) sc=Math.min(sc,(lev(w,n.slice(0,w.length))+0.5)/w.length);
+    if(n.indexOf(w)===0 && w.length>=2) sc=Math.min(sc,0.2);
+    if(sc<=0.45 && (!cand[key]||cand[key].sc>sc)) cand[key]={key:key,label:label,sc:sc}; }
+  DRUGS.forEach(function(d){ if(!allowed(d)) return; [d.name].concat(d.ali||[]).concat(d.ing?[d.ing]:[]).forEach(function(n){ test(n,d.id,d.name); }); });
+  Object.keys(SP_ALIAS).forEach(function(k){ SP_ALIAS[k].forEach(function(n){ test(n,"sp:"+k,spName(k)); }); });
+  return Object.keys(cand).map(function(k){return cand[k];}).sort(function(a,b){return a.sc-b.sc;}).slice(0,3);
+}
+function fixWord(word,key){ // 入力文の該当語を置き換え、この端末で覚える
+  var name = /^sp:/.test(key) ? SP_ALIAS[key.slice(3)][0] : drug(key).name;
+  var t=normVoice(VOICE.text), i=t.indexOf(word);
+  if(i<0) return;
+  VOICE.text=t.slice(0,i)+" "+name+" "+t.slice(i+word.length);
+  var F=loadFix(); F[kana(word.normalize("NFKC"))]=key; saveFix(F);
+  var o=parseVoice(VOICE.text); o.notes=applyVoice(o); VOICE.result=o; render();
 }
 function applyVoice(o){
   var notes=[];
@@ -478,8 +530,21 @@ function voiceCard(){
     if(S.prep==="pow"){ line("日数", S.days+"日"); line("1包", S.pack+"g"); } else { line("1回量", S.per+"mL"); line("総液量", S.total+"mL"); line("溶解液", S.veh==="water"?"水":"半シロ"); }
     S.items.forEach(function(it){ var d=drug(it.id); line(d.name, it.mode==="fixed"? fmt(+it.fixed,2)+unitOf(d) : (num(it.dose)?it.dose+(it.unit||"mg/kg"):"用量未入力")); });
     res.appendChild(h("div",{class:"vres"},h("div",{class:"vh",text:"読み取り結果（下の入力欄に反映済み。必ず確認してください）"}),rows,
+      (o.glued&&o.glued.length)?h("div",{class:"caut",text:o.glued.map(function(g){ return "「"+g.glue+"」を "+(drug(g.val)?drug(g.val).name:"")+" と読みました"; }).join("／")}):null,
+      (o.learned&&o.learned.length)?h("div",{class:"caut",text:o.learned.map(function(g){ return "「"+g.learn+"」を "+(g.type==="sp"?spName(g.val):(drug(g.val)?drug(g.val).name:""))+" と読みました（覚えた聞き間違い）"; }).join("／")}):null,
       (o.notes&&o.notes.length)?h("div",{class:"caut",text:o.notes.join("／")}):null,
-      (o.unknown&&o.unknown.length)?h("div",{class:"warn",text:"聞き取れなかった語："+o.unknown.join("、")}):null));
+      (o.unknown&&o.unknown.length)?h("div",{class:"warn",text:"聞き取れなかった語："+o.unknown.join("、")}):null,
+      (o.unknown||[]).filter(function(w){ return !/^[\d.]+/.test(w); }).map(function(w){
+        var cs=suggest(w);
+        var sel=h("select",{onchange:function(){ if(this.value) fixWord(w,this.value); }},
+          h("option",{value:"",text:cs.length?"ほかの薬から選ぶ":"薬・動物種から選ぶ"}),
+          DRUGS.filter(allowed).map(function(d){ return h("option",{value:d.id,text:d.name}); }),
+          Object.keys(SP_ALIAS).map(function(k){ return h("option",{value:"sp:"+k,text:"動物種："+spName(k)}); }));
+        return h("div",{class:"sug"},
+          h("div",{class:"w",text:"「"+w+"」は、もしかして："}),
+          h("div",{class:"chips"}, cs.map(function(c){ return h("button",{class:"chip",text:c.label,onclick:function(){ fixWord(w,c.key); }}); }), sel),
+          h("div",{class:"hint",style:"margin-top:4px",text:"選ぶと入力文を直して読み直します。この端末では次回から自動で読み取ります。"}));
+      })));
   }
   return h("div",{class:"card vcard"},
     h("h2",{text:"音声でまとめて入力"}),
@@ -491,7 +556,14 @@ function voiceCard(){
       }}),
       h("button",{class:"vbtn ghost",text:"消す",onclick:function(){ VOICE.text=""; VOICE.result=null; render(); }})),
     SR?stat:h("p",{class:"hint",text:"キーボードのマイクボタンで話してから「読み取る」を押してください。"}),
-    res);
+    res, learnList());
+}
+function learnList(){
+  var F=loadFix(), ks=Object.keys(F); if(!ks.length) return null;
+  return h("details",{class:"learn"}, h("summary",{text:"この端末で覚えた聞き間違い（"+ks.length+"件）"}),
+    ks.map(function(w){ var v=F[w], nm=/^sp:/.test(v)?spName(v.slice(3)):(drug(v)?drug(v).name:v);
+      return h("div",{class:"li"}, h("span",{text:w+" → "+nm}),
+        h("button",{text:"✕","aria-label":"削除",onclick:function(){ var G=loadFix(); delete G[w]; saveFix(G); render(); }})); }));
 }
 
 function addDrug(id){

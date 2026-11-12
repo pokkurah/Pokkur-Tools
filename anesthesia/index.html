@@ -309,12 +309,12 @@ function ptLine(){ var o=sp(), w=kg(); return o.l+" "+(S.wu==="g"?fnum(tnum(S.wt
 /* カルテ転記用まとめ（緊急薬を除く、実際に投与する薬すべて） */
 function karteText(){
   var w=kg(), o=sp(); if(!o||w==null) return "";
-  var P=S.pt, an=[], ot=[], cri=[], fl=[], la=[], rev=[];
+  var P=S.pt, an=[], ind=[], ot=[], cri=[], fl=[], la=[], rev=[];
   function vt(v){ return v.blocked||v.tiny?"計算不可（要確認）":(v.f>1?fml(v.dml)+"mL（"+v.f+"倍液）":fml(v.ml)+"mL"); }
   S.pre.forEach(function(it){
     var r=rowById(it.id); if(!r) return; var p=product(r), d=tnum(it.ds); if(d==null) return;
     var mg=bolusMg(d,r.u,w), line="・"+dispName(p,r)+" "+fnum(d)+r.u+" → "+fmg(mg)+" = "+vt(vol(mg,p,it.f))+" "+r.route;
-    (r.cat==="その他"?ot:an).push(line);
+    (r.cat==="その他"?ot:r.cat==="導入"?ind:an).push(line);
   });
   S.criList.forEach(function(c){
     var r=rowById(c.key); if(!r) return; var p=product(r), d=tnum(c.dose); if(d==null) return;
@@ -337,7 +337,7 @@ function karteText(){
   var head="【麻酔】"+(P.date?P.date.replace(/-/g,"/")+" ":"")+ptLine()+(P.proc?" "+P.proc:"")+(P.asa?" ASA "+P.asa+(P.asaE?"E":""):"");
   var out=[head];
   function sec(t,a){ if(a.length){ out.push("■"+t); out.push.apply(out,a); } }
-  sec("麻酔薬・前投薬",an); sec("CRI",cri); sec("輸液",fl); sec("局所麻酔",la); sec("拮抗薬",rev);
+  sec("前投薬",an); sec("導入薬",ind); sec("CRI",cri); sec("輸液",fl); sec("局所麻酔",la); sec("拮抗薬",rev);
   if(out.length===1) out.push("（麻酔薬なし）");
   if(ot.length){ out.push("","――――――――――","【その他の薬】"); out.push.apply(out,ot); }
   return out.join("\n");
@@ -436,7 +436,7 @@ function renderPre(){
     if(r.note) card.appendChild(h("div",{class:"note",text:"メモ："+r.note}));
     out.push(card);
   });
-  out.push(copyBox(karteText(),"カルテ転記用（まとめ）","麻酔薬・CRI・輸液・局麻・拮抗と、その他の薬を区切って1回でコピーできます（緊急薬は除く）"));
+  out.push(copyBox(karteText(),"カルテ転記用（まとめ）","前投薬→導入薬→CRI→（輸液・局麻・拮抗）→その他の薬の順。1回でコピーできます（緊急薬は除く）"));
   return out;
 }
 

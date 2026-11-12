@@ -272,7 +272,7 @@ function volBox(mg,p,extra,force){
   box.appendChild(h("div",{class:"sub"},"薬の量 ",h("b",null,fmg(mg))," ／ 原液 ",fnum(p.conc)," mg/mL"));
   box.appendChild(h("span",{class:"syr",text:syr(v.dml)}));
   if(v.f>1) box.appendChild(dilSteps(v));
-  if(v.f===1 && v.ml<0.1) box.appendChild(h("div",{class:"alert amber",text:v.noDil?"0.1 mL未満です。この薬は薄めずに使うため、計量に十分注意してください":"0.1 mL未満です。0.01mL目盛のシリンジで慎重に測るか、上の「10倍」ボタンで薄めてください"}));
+  if(v.f===1 && v.ml<0.1) box.appendChild(h("div",{class:"alert amber",text:v.noDil?"0.1 mL未満です。この薬は薄めずに使うため、計量に十分注意してください":"0.1 mL未満です。0.01mL目盛のシリンジで慎重に測ってください"}));
   if(extra) box.appendChild(extra);
   return box;
 }
@@ -428,7 +428,8 @@ function renderPre(){
     var mg=d==null?null:bolusMg(d,r.u,w);
     if(mg!=null){
       var v0=vol(mg,p,it.f);
-      if(!v0.blocked&&!v0.noDil){
+      if(!v0.blocked&&v0.ml>=MIN_ML) it.f=null;   /* 原液0.01 mL以上なら希釈ボタンは出さない（院長指定 2026-11-13） */
+      if(!v0.blocked&&!v0.noDil&&v0.ml<MIN_ML){
         card.appendChild(h("label",{class:"f",text:"希釈"}));
         card.appendChild(h("div",{class:"seg"},[[null,"自動"],[1,"原液"],[10,"10倍"],[100,"100倍"]].map(function(o){
           return h("button",{class:(it.f||null)===o[0]?"on":"",text:o[1],onclick:function(){it.f=o[0];renderMain();}});})));

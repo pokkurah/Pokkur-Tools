@@ -295,15 +295,53 @@ function numInput(val,k,on){
     oninput:function(e){on(e.target.value); renderMain();}});
 }
 function toast(t){ var d=h("div",{class:"toast",text:t}); document.body.appendChild(d); setTimeout(function(){d.remove();},1600); }
-function copyBox(text){
-  return h("div",{class:"card"},h("h2",{text:"カルテ転記用"}),h("pre",{class:"copy",text:text}),
-    h("div",{style:"margin-top:8px"},h("button",{class:"btn",text:"コピー",onclick:function(){
+function copyBox(text,title,sub){
+  return h("div",{class:"card"},h("h2",{text:title||"カルテ転記用"}),sub?h("div",{class:"note",style:"margin-bottom:6px",text:sub}):null,h("pre",{class:"copy",text:text}),
+    h("div",{style:"margin-top:8px"},h("button",{class:"btn",text:"コピー",onclick:function(e){
+      var pre=e.target.closest(".card").querySelector("pre.copy"); if(pre) text=pre.textContent;
       var ok=function(){toast("コピーしました");};
       if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok,function(){fallback();}); else fallback();
       function fallback(){ var ta=h("textarea",null); ta.value=text; document.body.appendChild(ta); ta.select(); try{document.execCommand("copy");ok();}catch(e){} ta.remove(); }
     }})));
 }
 function ptLine(){ var o=sp(), w=kg(); return o.l+" "+(S.wu==="g"?fnum(tnum(S.wt))+"g":fnum(w)+"kg"); }
+
+/* カルテ転記用まとめ（緊急薬を除く、実際に投与する薬すべて） */
+function karteText(){
+  var w=kg(), o=sp(); if(!o||w==null) return "";
+  var P=S.pt, an=[], ot=[], cri=[], fl=[], la=[], rev=[];
+  function vt(v){ return v.blocked||v.tiny?"計算不可（要確認）":(v.f>1?fml(v.dml)+"mL（"+v.f+"倍液）":fml(v.ml)+"mL"); }
+  S.pre.forEach(function(it){
+    var r=rowById(it.id); if(!r) return; var p=product(r), d=tnum(it.ds); if(d==null) return;
+    var mg=bolusMg(d,r.u,w), line="・"+dispName(p,r)+" "+fnum(d)+r.u+" → "+fmg(mg)+" = "+vt(vol(mg,p,it.f))+" "+r.route;
+    (r.cat==="その他"?ot:an).push(line);
+  });
+  S.criList.forEach(function(c){
+    var r=rowById(c.key); if(!r) return; var p=product(r), d=tnum(c.dose); if(d==null) return;
+    var R=criR(c.Rk,w), V=c.V||autoV(R), x=criCalc(r,p,d,w,V,R);
+    cri.push("・"+dispName(p,r)+" "+fnum(d)+r.u+"（"+fmg(x.mgh)+"/h） "+(x.blocked?"濃度未登録":x.over?"原液 "+fml(x.undil)+"mL/h":(x.pre10?"10倍液"+fml(x.drugMl*10):"原液"+fml(x.drugMl))+"mL＋"+diluent(p)+"で"+fnum(V)+"mL → "+fnum(R)+"mL/h（"+c.Rk+"mL/kg/h）"));
+  });
+  var iv=rowsFor(function(r){return r.cat==="輸液"&&r.u==="mL/kg/h";})[0], sc=rowsFor(function(r){return r.cat==="輸液"&&r.u==="mL/kg";})[0];
+  var fr=tnum(S.fl.rate), fr0=S.fl.route==="iv"?iv:sc;
+  if(fr0&&fr!=null&&S.fl.rk===rid(fr0)) fl.push(S.fl.route==="iv"?"・"+S.fl.fluid+" 静脈内・骨髄内 "+fnum(fr)+"mL/kg/h = "+fnum(fr*w)+"mL/h":
+    "・"+S.fl.fluid+" 皮下 "+fnum(fr)+"mL/kg = "+fml(fr*w)+"mL"+(S.fl.sites>1?"（"+S.fl.sites+"か所×"+fml(fr*w/S.fl.sites)+"mL）":""));
+  rowsFor(function(r){return r.cat==="局所麻酔";}).forEach(function(r){
+    var p=product(r), st=S.la[r.ing==="リドカイン塩酸塩"?"lido":"bupi"], ml=tnum(st&&st.ml); if(ml==null) return;
+    var conc=p&&p.conc!=null?p.conc:(st.pct!=null?st.pct*10:null); if(conc==null) return;
+    la.push("・"+dispName(p,r)+" "+fnum(conc/10)+"% "+fml(ml)+"mL = "+fmg(ml*conc)+"（上限"+fnum(r.cap)+"mg/kg の"+Math.round(ml*conc/(r.cap*w)*100)+"%）");
+  });
+  var rr=rowsFor(function(r){return r.cat==="拮抗";})[0], dexP=MASTER.filter(function(m){return m.ing==="デクスメデトミジン塩酸塩"&&m.cat!=="局所麻酔";})[0], dexMg=null;
+  if(tnum(S.rev.dexMl)!=null&&dexP&&dexP.conc) dexMg=tnum(S.rev.dexMl)*dexP.conc;
+  else S.pre.forEach(function(it){ var r=rowById(it.id); if(r&&r.ing==="デクスメデトミジン塩酸塩"&&tnum(it.ds)!=null) dexMg=bolusMg(tnum(it.ds),r.u,w); });
+  if(rr&&dexMg!=null){ var rp=product(rr), rmg=rr.d*dexMg; rev.push("・"+dispName(rp,rr)+"（デクス"+fmg(dexMg)+"の"+fnum(rr.d)+"倍）"+fmg(rmg)+" = "+vt(vol(rmg,rp))+" "+rr.route); }
+  var head="【麻酔】"+(P.date?P.date.replace(/-/g,"/")+" ":"")+ptLine()+(P.proc?" "+P.proc:"")+(P.asa?" ASA "+P.asa+(P.asaE?"E":""):"");
+  var out=[head];
+  function sec(t,a){ if(a.length){ out.push("■"+t); out.push.apply(out,a); } }
+  sec("麻酔薬・前投薬",an); sec("CRI",cri); sec("輸液",fl); sec("局所麻酔",la); sec("拮抗薬",rev);
+  if(out.length===1) out.push("（麻酔薬なし）");
+  if(ot.length){ out.push("","――――――――――","【その他の薬】"); out.push.apply(out,ot); }
+  return out.join("\n");
+}
 
 /* ===== ヘッダー ===== */
 function renderHeader(){
@@ -398,7 +436,7 @@ function renderPre(){
     if(r.note) card.appendChild(h("div",{class:"note",text:"メモ："+r.note}));
     out.push(card);
   });
-  out.push(copyBox(lines.join("\n")));
+  out.push(copyBox(karteText(),"カルテ転記用（まとめ）","麻酔薬・CRI・輸液・局麻・拮抗と、その他の薬を区切って1回でコピーできます（緊急薬は除く）"));
   return out;
 }
 
@@ -935,6 +973,7 @@ function renderRec(){
   c1.appendChild(h("div",{class:"seg"},nums.map(function(n){return h("button",{class:P.bcs===n?"on":"",text:n,style:"min-width:42px",onclick:function(){P.bcs=P.bcs===n?"":n;renderMain();}});})));
   fld("注意事項（あれば）",txtInput(P,"memo","例：心雑音あり、てんかん既往","area"));
   out.push(c1);
+  var kt=karteText(); if(kt){ var kb=copyBox(kt,"カルテ転記用（まとめ）","緊急薬を除く投与薬すべて。その他の薬は区切り線の下に分けています"); kb.id="kt"; out.push(kb); }
   var c2=h("div",{class:"card"},h("h2",{text:"A5 印刷シート"}));
   c2.appendChild(h("div",{class:"note",text:"載せる内容：症例情報／投与する薬（前投与・導入タブ）／CRI（CRIタブで「印刷シートに追加」したもの）／緊急薬（自動）。下の項目は選べます。"}));
   c2.appendChild(h("div",{class:"seg",style:"margin-top:8px"},[["fl","輸液"],["la","局所麻酔の上限"],["rev","拮抗"]].map(function(k){
@@ -956,6 +995,7 @@ function renderRec(){
 function refreshPrint(){
   var P=S.pt, pw=document.getElementById("pwarn"), fn=document.getElementById("fname"), pv=document.getElementById("prev");
   if(!pv) return;
+  var kp=document.querySelector("#kt pre.copy"); if(kp) kp.textContent=karteText();
   var warn=[]; if(!P.no) warn.push("カルテNo"); if(!P.name) warn.push("動物名"); if(!P.asa) warn.push("ASA"); if(!S.pre.length) warn.push("投与する薬");
   pw.innerHTML=""; if(warn.length) pw.appendChild(h("div",{class:"alert amber",text:"未入力："+warn.join("・")}));
   var pages=renderSheet();

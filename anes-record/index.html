@@ -108,6 +108,7 @@ body.disp #D{display:grid;height:100vh;grid-template-rows:auto 1fr;grid-template
 <main id="M"></main>
 <div id="D"></div>
 <div class="dwarn" id="Dw"></div>
+<div id="Dsnd" style="display:none;position:fixed;right:16px;bottom:16px;background:#3a2e10;color:#ffcc4d;padding:10px 16px;border-radius:10px;font-size:18px;cursor:pointer">🔈 画面を1回クリックすると記録時刻の音が鳴るようになります</div>
 <script>
 (function(){
 "use strict";
@@ -334,7 +335,7 @@ function renderSetup(){
   fld("麻酔管理者",txt(P,"mgr","名前"));
   fld("ASA",h("div",{class:"seg"},ASA.map(function(a){ return h("button",{class:P.asa===a?"on":"",text:a,onclick:function(){P.asa=P.asa===a?"":a;saveLocal();render();}}); }).concat([h("button",{class:P.asaE?"on":"",text:"E",onclick:function(){P.asaE=!P.asaE;saveLocal();render();}})])));
   fld("吸入麻酔薬",h("div",{class:"seg"},AGENTS.map(function(a){ return h("button",{class:R.agent===a?"on":"",text:a,onclick:function(){R.agent=a;saveLocal();render();}}); })));
-  fld("記録間隔",h("div",{class:"seg"},[3,5,10].map(function(n){ return h("button",{class:R.interval===n?"on":"",text:n+"分",onclick:function(){R.interval=n;saveLocal();render();}}); })));
+  fld("記録間隔（時刻になると音が鳴ります。iPhoneは音量を上げておく）",h("div",{class:"seg"},[3,5,10].map(function(n){ return h("button",{class:R.interval===n?"on":"",text:n+"分",onclick:function(){R.interval=n;saveLocal();render();}}); })));
   M.appendChild(c);
   /* モニター項目 */
   var c2=h("div",{class:"card"},h("h2",{text:"モニターする項目"}),h("div",{class:"note",style:"margin-bottom:8px",text:"動物種ごとの初期値。変えた選択はこの端末が動物種のグループごとに覚えます。"}));
@@ -367,6 +368,46 @@ function planCard(){
   return c;
 }
 
+/* ====== 記録時刻のアラーム（院長指定 2026-11-15） ======
+   iPhoneは最初のタップで音を有効化（ブラウザの決まり）。消音スイッチでも鳴るよう playback を指定。
+   記録時刻に3回鳴らし、記録されるまで1分ごとに鳴らし直す（最大5回）。 */
+var SND={ctx:null,key:location.hash==="#display"?"anrec_sound_disp":"anrec_sound"};
+SND.on=lsGet(SND.key)!==false;
+function sndUnlock(){
+  try{ if(navigator.audioSession) navigator.audioSession.type="playback"; }catch(e){}
+  try{ if(!SND.ctx){ var AC=window.AudioContext||window.webkitAudioContext; if(AC) SND.ctx=new AC(); }
+    if(SND.ctx&&SND.ctx.state!=="running") SND.ctx.resume();
+    if(SND.ctx){ var b=SND.ctx.createBuffer(1,1,22050), s=SND.ctx.createBufferSource(); s.buffer=b; s.connect(SND.ctx.destination); s.start(0); } }catch(e){}
+}
+document.addEventListener("pointerdown",sndUnlock,true);
+document.addEventListener("keydown",sndUnlock,true);
+function chime(times){
+  if(!SND.on) return; sndUnlock(); var c=SND.ctx; if(!c) return;
+  var t=c.currentTime+0.05;
+  for(var i=0;i<(times||3);i++){
+    [[988,0],[784,0.22]].forEach(function(n){
+      var o=c.createOscillator(), g=c.createGain(); o.type="sine"; o.frequency.value=n[0];
+      g.gain.setValueAtTime(0.0001,t+n[1]); g.gain.exponentialRampToValueAtTime(0.9,t+n[1]+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t+n[1]+0.2);
+      o.connect(g); g.connect(c.destination); o.start(t+n[1]); o.stop(t+n[1]+0.22); });
+    t+=0.7;
+  }
+  try{ if(navigator.vibrate) navigator.vibrate([300,150,300,150,300]); }catch(e){}
+}
+/* 予定時刻 due を過ぎたら鳴らす。al は端末・画面ごとの状態 */
+function alarmCheck(al,due,live){
+  if(!live||!due){ al.due=null; return; }
+  if(al.due!==due){ al.due=due; al.n=0; al.last=0; }
+  var now=Date.now(); if(now<due) return;
+  if(now-due>15*60000) return;   /* 15分以上前の超過（再読込直後など）では鳴らさない */
+  if(al.n===0||(al.n<6&&now-al.last>=60000)){ chime(al.n===0?3:2); al.n++; al.last=now; }
+}
+function sndBtn(style){
+  return h("button",{id:"sndb",style:style,text:SND.on?"🔔":"🔕",title:"記録時刻の音",onclick:function(e){ SND.on=!SND.on; lsSet(SND.key,SND.on); e.currentTarget.textContent=SND.on?"🔔":"🔕"; if(SND.on){ sndUnlock(); chime(1); toast("記録時刻に音を鳴らします"); } else toast("音を消しました"); }});
+}
+var WL=null;
+function keepAwake(){ try{ if(navigator.wakeLock&&!WL) navigator.wakeLock.request("screen").then(function(l){ WL=l; l.addEventListener("release",function(){ WL=null; }); }).catch(function(){}); }catch(e){} }
+document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible"&&(V.scr==="live"||location.hash==="#display")) keepAwake(); });
+
 /* ---- 記録中 ---- */
 var tick=null;
 function t0(){ return R.t0||R.started||Date.now(); }
@@ -376,8 +417,10 @@ function renderLive(){
   var bar=h("div",{class:"bar"},
     h("div",null,h("div",{class:"el",id:"el",text:"0:00"}),h("div",{class:"note",text:R.t0?"導入から":"記録開始から"})),
     h("div",{class:"t"},h("b",null,(R.pt.name||"")+" "),R.sp+" "+R.wt,h("br"),R.pt.proc||"",h("span",{class:"sync",id:"sync",style:"margin-left:6px"})),
-    h("div",{class:"nx",id:"nx"}));
+    h("div",{class:"nx",id:"nx"}),
+    sndBtn("border:1px solid var(--line);background:#fff;border-radius:10px;font-size:20px;width:44px;height:44px;flex:0 0 auto"));
   M.appendChild(bar);
+  keepAwake();
   /* バイタル */
   M.appendChild(h("div",{style:"margin-top:10px"}));
   M.appendChild(h("button",{class:"btn big",text:"📝 バイタルを記録",onclick:openEntry}));
@@ -421,12 +464,14 @@ function renderLive(){
   requestAnimationFrame(function(){ drawPhone(); });
   startTick();
 }
+var AL_PH={};
 function startTick(){ clearInterval(tick); tick=setInterval(paintTick,1000); paintTick(); }
 function paintTick(){
   var el=document.getElementById("el"); if(!el||!R){ clearInterval(tick); return; }
   el.textContent=dur(Date.now()-t0());
   var nx=document.getElementById("nx"), d=nextDue();
   if(!d){ nx.className="nx due"; nx.innerHTML=""; nx.appendChild(h("div",null,"最初の記録")); nx.appendChild(h("b",null,"いま")); return; }
+  alarmCheck(AL_PH,d,R.status==="live");
   var left=d-Date.now(); nx.className="nx"+(left<=0?" due":""); nx.innerHTML="";
   nx.appendChild(h("div",null,left<=0?"記録時刻です":"次の記録まで")); nx.appendChild(h("b",null,left<=0?"+"+dur(-left):dur(left)));
 }
@@ -885,11 +930,14 @@ function dWarn(){
   else if(r&&r.status==="live"){ var l=r.vit.length?r.vit[r.vit.length-1].t:null; if(l&&Date.now()-l>(r.interval+3)*60000) msg="前回の記録から"+mins(Date.now()-l)+"分たっています"; }
   w.style.display=msg?"block":"none"; w.textContent=msg;
 }
+var AL_D={};
 function dClock(){
   var c=document.getElementById("dclk"); if(c) c.textContent=hm(Date.now())+":"+p2(new Date().getSeconds());
   var r=DS.r, e=document.getElementById("del"); if(r&&e){ var pr=periods(r); var st=pr.a0||r.started; e.innerHTML=""; e.appendChild(h("small",null,pr.a0?"麻酔":"開始から")); e.appendChild(document.createTextNode(dur((r.status==="done"&&r.ended?r.ended:Date.now())-st))); }
   var nx=document.getElementById("dnx"); if(r&&nx){ var l=r.vit.length?r.vit[r.vit.length-1].t:null, d=l?l+r.interval*60000-Date.now():0;
+    alarmCheck(AL_D,l?l+r.interval*60000:null,r.status==="live");
     nx.className="dnext"+(d<=0&&r.status==="live"?" due":""); nx.innerHTML=""; nx.appendChild(document.createTextNode(r.status==="done"?"記録終了":d<=0?"記録時刻です":"次の記録まで")); if(r.status!=="done") nx.appendChild(h("b",null,d<=0?"+"+dur(-d):dur(d))); }
+  var ds=document.getElementById("Dsnd"); if(ds) ds.style.display=SND.on&&(!SND.ctx||SND.ctx.state!=="running")?"block":"none";
   dWarn();
 }
 function dPaint(){
@@ -904,6 +952,7 @@ function dPaint(){
   var P=r.pt;
   D.appendChild(h("div",{class:"dh"},h("div",{class:"who"},(P.name||"")+" ",h("small",null,r.sp+"　"+r.wt+"　"+(P.proc||"")+(P.asa?"　ASA "+P.asa+(P.asaE?"E":""):"")+"　"+r.agent)),
     h("div",{class:"el",id:"del"}),h("div",{class:"clk",id:"dclk"}),
+    sndBtn("background:none;border:1px solid #26363c;border-radius:8px;font-size:22px;padding:2px 8px"),
     h("button",{style:"background:none;border:1px solid #26363c;color:#9fb3b9;border-radius:8px;font-size:13px;padding:4px 8px",text:"症例切替",onclick:function(){ DS.id=null; DS.r=null; lsDel("anrec_disp_id"); DS.auto=false; dPoll(); }})));
   var g=h("div",{id:"Dg"}), cv=h("canvas"); g.appendChild(cv); D.appendChild(g);
   var side=h("div",{class:"ds"});

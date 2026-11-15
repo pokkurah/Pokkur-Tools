@@ -196,7 +196,7 @@ var S={sp:"",wt:"",wu:"kg",tab:"rec",pre:[],
   la:{lido:{ml:"",pct:null},bupi:{ml:"",pct:null}},
   rev:{dexMl:null},
   pt:{date:(function(){var d=new Date();return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2);})(),no:"",name:"",proc:"",vet:"",mgr:"",asa:"",asaE:false,pain:"",bcs:"",bcsScale:9,memo:""},
-  criList:[], prt:{fl:true,la:true,rev:true}};
+  criList:[], prt:{fl:true,la:true,rev:true}, ref:null};
 var TABS=[["rec","症例・印刷"],["pre","前投与・導入"],["cri","CRI（麻酔）"],["ino","強心剤"],["fl","輸液"],["la","局所麻酔"],["em","緊急薬"],["rev","拮抗"],["tb","用量表"]];
 
 /* ===== helpers ===== */
@@ -299,7 +299,7 @@ function rangeText(r){ if(r.min==null&&r.max==null) return ""; return "範囲 "+
 function needPatient(){
   var o=sp(), w=kg();
   if(!o) return h("div",{class:"card empty"},h("b",null,"① 動物種を選んでください"),"画面上の「動物種」から選びます");
-  if(w===null) return h("div",{class:"card empty"},h("b",null,"② 体重を入れてください"),"小さい動物は「g」に切り替えると入力しやすいです");
+  if(w===null) return S.ref?h("div",{class:"card empty",style:"border-color:var(--warn)"},h("b",null,"② 当日の体重を入れてください"),"予約時の体重は "+fnum(S.ref.wtRef)+" kg。量は当日の体重で計算し直します"):h("div",{class:"card empty"},h("b",null,"② 体重を入れてください"),"小さい動物は「g」に切り替えると入力しやすいです");
   return null;
 }
 function numInput(val,k,on){
@@ -365,7 +365,7 @@ function renderHeader(){
   var label=SRC.loading?"用量表を読込中…":SRC.kind==="sheet"?"用量表：最新（"+SRC.at+"）":SRC.kind==="cache"?"用量表：前回分（"+SRC.at+"）":"用量表：内蔵の下書き";
   s.appendChild(h("div",{text:label})); s.appendChild(h("button",{text:"再読込",onclick:loadSheet}));
   var pt=document.getElementById("pt"); pt.innerHTML="";
-  var sel=h("select",{"aria-label":"動物種",onchange:function(e){S.sp=e.target.value; var o=sp(); S.wt=""; S.wu=o&&o.small?"g":"kg"; S.pre=[]; S.cri.key=""; S.mix={items:[],V:null,Rk:S.mix.Rk}; S.fl.rk=""; S.rev.dexMl=null; S.criList=[]; S.pt={date:S.pt.date,no:"",name:"",proc:"",vet:S.pt.vet,mgr:S.pt.mgr,asa:"",asaE:false,pain:"",bcs:"",bcsScale:S.pt.bcsScale,memo:""}; S.la={lido:{ml:"",pct:null},bupi:{ml:"",pct:null}}; render();}});
+  var sel=h("select",{"aria-label":"動物種",onchange:function(e){S.sp=e.target.value; var o=sp(); S.wt=""; S.wu=o&&o.small?"g":"kg"; S.pre=[]; S.cri.key=""; S.mix={items:[],V:null,Rk:S.mix.Rk}; S.fl.rk=""; S.rev.dexMl=null; S.criList=[]; S.pt={date:S.pt.date,no:"",name:"",proc:"",vet:S.pt.vet,mgr:S.pt.mgr,asa:"",asaE:false,pain:"",bcs:"",bcsScale:S.pt.bcsScale,memo:""}; S.la={lido:{ml:"",pct:null},bupi:{ml:"",pct:null}}; S.ref=null; render();}});
   sel.appendChild(h("option",{value:"",text:"動物種を選ぶ"}));
   var groups={}; SPECIES.forEach(function(x){ (groups[x.grp]=groups[x.grp]||[]).push(x); });
   Object.keys(groups).forEach(function(g){ var og=h("optgroup",{label:g}); groups[g].forEach(function(x){ og.appendChild(h("option",{value:x.l,text:x.l,selected:S.sp===x.l})); }); sel.appendChild(og); });
@@ -383,6 +383,8 @@ function renderNote(){
   var n=document.getElementById("ptnote"); if(!n) return; n.innerHTML="";
   var o=sp(), w=kg(); if(!o||w===null) return;
   n.appendChild(h("span",null,"計算に使う体重：",h("b",null,fnum(w)+" kg"),"（"+fnum(w*1000)+" g）"));
+  if(S.ref&&S.ref.wtRef){ var dv=(w-S.ref.wtRef)/S.ref.wtRef;
+    n.appendChild(h("div",{class:Math.abs(dv)>=0.1?"alert red":"note",text:(Math.abs(dv)>=0.1?"⚠ ":"")+"予約時の体重 "+fnum(S.ref.wtRef)+" kg から "+(dv>=0?"+":"")+Math.round(dv*100)+"%"+(Math.abs(dv)>=0.1?"。10%以上違います。指示の量でよいか獣医師に確認してください":"")})); }
   if(w>o.max*1.5) n.appendChild(h("div",{class:"alert red",text:"⚠ "+o.l+"にしては重すぎます。kg と g を確認してください"}));
   else if(w<o.max/400) n.appendChild(h("div",{class:"alert red",text:"⚠ "+o.l+"にしては軽すぎます。kg と g を確認してください"}));
 }
@@ -1095,6 +1097,120 @@ function refreshPrint(){
   pv.innerHTML=""; pages.forEach(function(cv){ pv.appendChild(h("img",{src:cv.toDataURL("image/jpeg",0.8),alt:"印刷プレビュー"})); });
 }
 
+/* ===== 手術前の指示予約（院長指定 2026-11-15）：保存→当日呼び出し。手術日から5日で自動削除 ===== */
+var ANES_API="";   /* Apps Script のウェブアプリURL。空のあいだは試験モード（この端末だけに保存） */
+var ORD={list:null,loading:false,err:"",open:false};
+function ordKey(){ try{ return localStorage.getItem("anes_key")||localStorage.getItem("rcb_key")||""; }catch(e){ return ""; } }
+function ymd(d){ return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
+function addDays(n){ var d=new Date(); d.setDate(d.getDate()+n); return ymd(d); }
+function mockDb(){ var d=lsGet("anes_mock_orders")||[]; var lim=addDays(-5); d=d.filter(function(r){return r.date>=lim;}); lsSet("anes_mock_orders",d); return d; }
+function ordApi(p){
+  if(!ANES_API){
+    var d=mockDb(), r;
+    if(p.action==="list") return Promise.resolve({ok:true,rows:d.map(function(x){var y={};for(var k in x)if(k!=="data")y[k]=x[k];return y;})});
+    if(p.action==="get"){ r=d.filter(function(x){return x.id===p.id;})[0]; return Promise.resolve(r?{ok:true,row:r}:{ok:false,err:"見つかりません（削除済みの可能性）"}); }
+    if(p.action==="save"){ var id=p.id||Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-5), now=Date.now();
+      r=d.filter(function(x){return x.id===id;})[0]; if(!r){ r={id:id,created:now,status:"予定"}; d.push(r); }
+      ["date","no","name","sp","proc","vet","data"].forEach(function(k){ r[k]=p[k]; }); r.updated=now; lsSet("anes_mock_orders",d); return Promise.resolve({ok:true,id:id}); }
+    if(p.action==="status"){ d.forEach(function(x){ if(x.id===p.id) x.status=p.status; }); lsSet("anes_mock_orders",d); return Promise.resolve({ok:true}); }
+    if(p.action==="del"){ lsSet("anes_mock_orders",d.filter(function(x){return x.id!==p.id;})); return Promise.resolve({ok:true}); }
+  }
+  p.k=ordKey();
+  var req=(p.action==="list"||p.action==="get")?fetch(ANES_API+"?"+new URLSearchParams(p).toString(),{cache:"no-store"})
+    :fetch(ANES_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(p)});
+  return req.then(function(r){return r.json();}).then(function(j){ if(!j.ok&&j.err==="auth") j.err="院内キーが違います（受付ボードと同じキーを入れてください）"; return j; });
+}
+function ordLoadList(){
+  ORD.loading=true; ORD.err=""; if(S.tab==="rec") renderMain();
+  ordApi({action:"list"}).then(function(j){ ORD.loading=false; if(j.ok){ ORD.list=j.rows||[]; } else ORD.err=j.err||"読み込めませんでした"; if(S.tab==="rec") renderMain(); })
+    .catch(function(){ ORD.loading=false; ORD.err="通信できませんでした。電波を確認して「更新」してください"; if(S.tab==="rec") renderMain(); });
+}
+function snapshot(){
+  return JSON.stringify({v:1,sp:S.sp,wu:S.wu,wtRef:kg(),pt:S.pt,pre:S.pre,criList:S.criList,fl:S.fl,la:S.la,rev:S.rev,prt:S.prt});
+}
+/* 保存後に用量表の区分・経路が変わっても、同じ成分の行に付け替える */
+function fixId(id,fixed){
+  if(rowById(id)) return id;
+  var a=id.split("|"), o=sp(); if(!o) return null;
+  var c=rowsFor(function(r){return r.ing===a[0]&&r.cat===a[2];})[0]||rowsFor(function(r){return r.ing===a[0];})[0];
+  fixed.push(a[0]+(c?"（"+c.cat+"・"+c.route+"に付け替え）":"（見つからないため外しました）"));
+  return c?rid(c):null;
+}
+function restore(row){
+  var x; try{ x=JSON.parse(row.data); }catch(e){ toast("データが壊れています"); return; }
+  S.sp=x.sp; S.wu=x.wu||"kg"; S.wt=""; S.pt=x.pt; S.prt=x.prt||S.prt; S.la=x.la||S.la; S.rev=x.rev||{dexMl:null};
+  S.fl=x.fl||S.fl; S.cri.key=""; S.mix={items:[],V:null,Rk:S.mix.Rk};
+  var fixed=[];
+  S.pre=(x.pre||[]).map(function(it){ var id=fixId(it.id,fixed); if(!id) return null; it.id=id; return it; }).filter(Boolean);
+  S.criList=(x.criList||[]).map(function(c){
+    if(c.mix){ c.mix=c.mix.map(function(it){ var id=fixId(it.key,fixed); if(!id) return null; it.key=id; return it; }).filter(Boolean); return c.mix.length?c:null; }
+    var id=fixId(c.key,fixed); if(!id) return null; c.key=id; return c; }).filter(Boolean);
+  if(S.fl.rk){ var fr=fixId(S.fl.rk,[]); S.fl.rk=fr||""; }
+  S.ref={id:row.id,date:row.date,wtRef:x.wtRef,status:row.status,fixed:fixed};
+  S.tab="rec"; render(); window.scrollTo(0,0);
+  toast("呼び出しました。当日の体重を入れてください");
+  setTimeout(function(){ var w=document.querySelector('[data-k="wt"]'); if(w) w.focus(); },50);
+}
+function ordOpen(id){ ordApi({action:"get",id:id}).then(function(j){ if(j.ok) restore(j.row); else toast(j.err||"呼び出せませんでした"); }).catch(function(){ toast("通信できませんでした"); }); }
+function ordSave(asNew){
+  var P=S.pt, miss=[];
+  if(!sp()) miss.push("動物種"); if(kg()==null) miss.push("体重"); if(!P.date) miss.push("日付（手術日）");
+  if(!P.no&&!P.name) miss.push("カルテNoか動物名"); if(!P.vet) miss.push("担当医"); if(!S.pre.length&&!S.criList.length) miss.push("薬");
+  if(miss.length){ toast("未入力："+miss.join("・")); return; }
+  if(P.date<addDays(0)&&!confirm("手術日が過去の日付です。このまま保存しますか？")) return;
+  var id=asNew?null:(S.ref&&S.ref.id);
+  ordApi({action:"save",id:id||"",date:P.date,no:P.no,name:P.name,sp:S.sp,proc:P.proc,vet:P.vet,data:snapshot()}).then(function(j){
+    if(!j.ok){ toast(j.err||"保存できませんでした"); return; }
+    S.ref={id:j.id,date:P.date,wtRef:kg(),status:"予定",fixed:[]}; toast("保存しました（"+P.date.slice(5).replace("-","/")+" の手術）"); ordLoadList();
+  }).catch(function(){ toast("通信できませんでした。保存されていません"); });
+}
+function ordStatus(id,st){ ordApi({action:"status",id:id,status:st}).then(function(j){ if(j.ok){ if(S.ref&&S.ref.id===id) S.ref.status=st; toast(st==="使用済"?"使用済にしました":"予定に戻しました"); ordLoadList(); } else toast(j.err||"変更できませんでした"); }); }
+function ordDel(id){ if(!confirm("この予約指示を削除しますか？")) return; ordApi({action:"del",id:id}).then(function(j){ if(j.ok){ if(S.ref&&S.ref.id===id) S.ref=null; toast("削除しました"); ordLoadList(); } else toast(j.err||"削除できませんでした"); }); }
+function wd(ds){ var d=new Date(ds+"T00:00:00"); return (d.getMonth()+1)+"/"+d.getDate()+"（"+"日月火水木金土"[d.getDay()]+"）"; }
+function ordersCard(){
+  var c=h("div",{class:"card",style:"border-color:var(--mint)"});
+  c.appendChild(h("div",{class:"row"},h("h2",{class:"grow",text:"手術の予約指示"}),h("button",{class:"btn ghost",style:"padding:6px 12px",text:ORD.loading?"読込中…":"更新",onclick:ordLoadList})));
+  if(!ANES_API) c.appendChild(h("div",{class:"alert amber",text:"試験モード：この端末だけに保存されます（サーバー設置後に全端末で共有）"}));
+  else if(!ordKey()){
+    var ki=h("input",{type:"password",class:"tin",placeholder:"院内キー（受付ボードと同じ）"});
+    c.appendChild(h("div",{class:"note",text:"最初の1回だけ、院内キーを入れてください。"}));
+    c.appendChild(h("div",{class:"row"},ki,h("button",{class:"btn",text:"登録",onclick:function(){ lsSet("anes_key",ki.value.trim()); try{localStorage.setItem("anes_key",ki.value.trim());}catch(e){} ordLoadList(); }})));
+    return c;
+  }
+  if(ORD.err) c.appendChild(h("div",{class:"alert red",text:ORD.err}));
+  if(ORD.list==null&&!ORD.loading&&!ORD.err){ setTimeout(ordLoadList,0); }
+  var L=(ORD.list||[]).slice().sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:(a.created||0)-(b.created||0);});
+  var t=addDays(0), today=L.filter(function(r){return r.date===t;}), fut=L.filter(function(r){return r.date>t;}), past=L.filter(function(r){return r.date<t;});
+  function item(r){
+    var cur=S.ref&&S.ref.id===r.id, used=r.status==="使用済";
+    return h("div",{class:"row",style:"padding:8px 0;border-top:1px solid var(--line);"+(used?"opacity:.55":"")},
+      h("div",{class:"grow"},h("b",null,wd(r.date)+"　"+(r.name||"（名前なし）")+"　"),h("span",null,r.sp+(r.proc?"・"+r.proc:"")),
+        h("div",{class:"note",text:"カルテNo "+(r.no||"—")+"／担当 "+(r.vet||"—")+(used?"／使用済":"")+(cur?"／表示中":"")})),
+      h("button",{class:"btn"+(cur?" ghost":""),style:"padding:6px 12px",text:cur?"表示中":"呼び出す",onclick:function(){ ordOpen(r.id); }}));
+  }
+  function sec(label,a,open){ if(!a.length) return; c.appendChild(h("div",{class:"f",style:"margin-top:8px;font-weight:700",text:label+"（"+a.length+"件）"})); a.forEach(function(r){ c.appendChild(item(r)); }); }
+  if(ORD.list){ if(!L.length) c.appendChild(h("div",{class:"note",text:"予約されている指示はありません。下で指示を作って「予約保存」すると、ここに出ます。"}));
+    sec("今日の手術",today); sec("これからの手術",fut);
+    if(past.length){ c.appendChild(h("button",{class:"btn ghost",style:"margin-top:8px;padding:6px 12px",text:(ORD.open?"▲ ":"▼ ")+"過去5日分（"+past.length+"件）",onclick:function(){ORD.open=!ORD.open;renderMain();}})); if(ORD.open) past.reverse().forEach(function(r){ c.appendChild(item(r)); }); }
+  }
+  /* 保存ボタン */
+  var b=h("div",{style:"margin-top:12px;padding-top:10px;border-top:2px solid var(--line)"});
+  if(S.ref){
+    b.appendChild(h("div",{class:"note",style:"margin-bottom:6px",text:"表示中：予約指示（"+wd(S.ref.date)+" の手術・"+(S.ref.status||"予定")+"）"}));
+    if(S.ref.fixed&&S.ref.fixed.length) b.appendChild(h("div",{class:"alert amber",text:"用量表が保存後に変わったため確認してください："+S.ref.fixed.join("、")}));
+    b.appendChild(h("div",{style:"display:flex;gap:8px;flex-wrap:wrap"},
+      h("button",{class:"btn",text:"上書き保存",onclick:function(){ordSave(false);}}),
+      h("button",{class:"btn ghost",text:"別の予約として保存",onclick:function(){ordSave(true);}}),
+      S.ref.status==="使用済"?h("button",{class:"btn ghost",text:"予定に戻す",onclick:function(){ordStatus(S.ref.id,"予定");}}):h("button",{class:"btn ghost",text:"使用済にする",onclick:function(){ordStatus(S.ref.id,"使用済");}}),
+      h("button",{class:"btn ghost",style:"color:var(--warn)",text:"削除",onclick:function(){ordDel(S.ref.id);}})));
+  } else {
+    b.appendChild(h("button",{class:"btn",text:"💾 この指示を予約保存",onclick:function(){ordSave(false);}}));
+    b.appendChild(h("div",{class:"note",text:"症例情報の「日付」を手術日にして保存します。当日は上の一覧から「呼び出す」→ 当日の体重を入れると、量を計算し直して印刷できます。手術日から5日で自動的に消えます。"}));
+  }
+  c.appendChild(b);
+  return c;
+}
+
 /* ===== 描画 ===== */
 function renderMain(){
   var ae=document.activeElement, fk=ae&&ae.getAttribute&&ae.getAttribute("data-k"), pos=null;
@@ -1102,6 +1218,7 @@ function renderMain(){
   var app=document.getElementById("app"); app.innerHTML="";
   var parts;
   if(S.tab==="tb") parts=renderTb();
+  else if(S.tab==="rec"){ var np0=needPatient(); parts=[ordersCard()].concat(np0?[np0]:renderRec()); }
   else{ var np=needPatient(); if(np) parts=[np];
     else parts=({pre:renderPre,cri:renderCri,ino:function(){return renderIno(kg());},fl:renderFl,la:renderLa,em:renderEm,rev:renderRev,rec:renderRec})[S.tab](); }
   parts.forEach(function(x){ if(x) app.appendChild(x); });

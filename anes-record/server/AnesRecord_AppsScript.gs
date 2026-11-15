@@ -32,6 +32,7 @@ function handle_(p) {
     if (p.action === 'put') return out_(put_(p));
     if (p.action === 'del') return out_(del_(p.id));
     if (p.action === 'archive') return out_(archive_(p));
+    if (p.action === 'archived') return out_({ ok: true, rows: archived_(Number(p.days) || 90) });
     return out_({ ok: false, err: 'action' });
   } catch (err) {
     return out_({ ok: false, err: String(err && err.message || err) });
@@ -180,4 +181,19 @@ function setup() {
   Logger.log('フォルダ：' + folder_().getUrl());
   Logger.log('麻酔記録DB：' + db_().getUrl());
   Logger.log('STAFF_KEY：' + (PropertiesService.getScriptProperties().getProperty('STAFF_KEY') ? '設定済み' : '未設定（プロジェクトの設定 → スクリプト プロパティで追加）'));
+}
+
+/* 保存済みの記録一覧（麻酔記録DBの「症例」タブから。新しい順） */
+function archived_(days) {
+  var props = PropertiesService.getScriptProperties(); if (!props.getProperty('DB_ID')) return [];
+  var sh = db_().getSheetByName('症例'); if (!sh || sh.getLastRow() < 2) return [];
+  var v = sh.getDataRange().getValues(), head = v[0].map(String);
+  function col(n) { return head.indexOf(n); }
+  var c = { id: col('記録ID'), date: col('日付'), no: col('カルテNo'), owner: col('飼い主名'), name: col('動物名'), sp: col('動物種'), proc: col('術式・処置'), vet: col('担当医'), karte: col('カルテ転記文'), pdf: col('PDF'), saved: col('保存日時') };
+  var lim = new Date(Date.now() - days * 864e5), tz = 'Asia/Tokyo';
+  function ds(x) { return x instanceof Date ? Utilities.formatDate(x, tz, 'yyyy-MM-dd') : String(x || ''); }
+  return v.slice(1).filter(function (r) { return r[c.id]; }).map(function (r) {
+    var o = {}; Object.keys(c).forEach(function (k) { o[k] = c[k] >= 0 ? (k === 'date' ? ds(r[c[k]]) : String(r[c[k]] == null ? '' : r[c[k]])) : ''; }); return o;
+  }).filter(function (o) { var d = new Date(o.date); return isNaN(d) || d >= lim; })
+    .sort(function (a, b) { return (b.date + b.saved) < (a.date + a.saved) ? -1 : 1; });
 }

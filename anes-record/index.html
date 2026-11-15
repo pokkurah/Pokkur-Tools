@@ -327,11 +327,39 @@ function renderHome(){
     }).catch(function(){ lst.textContent="通信できません"; });
   }
   M.appendChild(sc);
+  if(REC_API&&apiKey()) M.appendChild(archivedCard());
   M.appendChild(h("div",{class:"card"},h("h2",{text:"大画面（プロジェクター・ディスプレイ）"}),
     h("div",{class:"note",text:"麻酔室の大画面につないだPC・スティック端末のブラウザで、このURLを開いて全画面にします。記録中の症例を自動で表示します。"}),
     h("pre",{class:"copy",style:"margin-top:6px",text:location.origin+location.pathname+"#display"}),
     h("div",{style:"margin-top:8px"},h("a",{href:"#display",class:"btn sm ghost",style:"text-decoration:none;display:inline-block",text:"この端末で大画面表示を開く"}))));
   M.appendChild(h("div",{class:"note",style:"text-align:center;margin-top:16px"},h("a",{href:"../anesthesia/"},"麻酔薬計算へ"),"　｜　",h("a",{href:"../"},"院内ツール一覧")));
+}
+/* 保存済みの記録（ドライブの麻酔記録DB）：PCからPDFを開いて印刷・カルテ文をコピー */
+function archivedCard(){
+  var c=h("div",{class:"card"},h("h2",{text:"保存済みの記録（ドライブ）"}),
+    h("div",{class:"note",style:"margin-bottom:8px",text:"直近90日。PDFを開いて印刷（動物病院アカウントでログインしたPC）、カルテ文のコピーができます。"}));
+  var q=h("input",{type:"text",placeholder:"カルテNo・動物名・飼い主名・術式で絞り込み"}), lst=h("div",{class:"note",style:"margin-top:8px",text:"読み込み中…"}), rows=[];
+  function draw(){
+    lst.innerHTML=""; var w=q.value.trim().toLowerCase();
+    var f=rows.filter(function(x){ return !w||[x.no,x.name,x.owner,x.proc,x.sp].join(" ").toLowerCase().indexOf(w)>=0; });
+    if(!f.length){ lst.textContent=rows.length?"該当なし":"保存済みの記録はまだありません"; return; }
+    f.slice(0,40).forEach(function(x){
+      var kt=h("pre",{class:"copy",style:"display:none;margin-top:6px",text:x.karte||"（カルテ文の保存なし）"});
+      lst.appendChild(h("div",{style:"padding:8px 0;border-top:1px solid var(--line);color:var(--ink)"},
+        h("div",{style:"font-size:14px"},h("b",null,(x.name||"名前なし")+" "),x.sp+"　"+(x.proc||"")),
+        h("div",{class:"note",text:String(x.date).replace(/-/g,"/")+"　カルテNo "+(x.no||"—")+(x.owner?"　"+x.owner+" 様":"")+(x.vet?"　担当 "+x.vet:"")}),
+        h("div",{style:"display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"},
+          x.pdf?h("a",{href:x.pdf,target:"_blank",rel:"noopener",class:"btn sm",style:"text-decoration:none",text:"PDFを開く・印刷"}):h("span",{class:"note",text:"PDFなし"}),
+          x.karte?h("button",{class:"btn sm ghost",text:"カルテ文をコピー",onclick:function(){ copy(x.karte); }}):null,
+          x.karte?h("button",{class:"btn sm ghost",text:"カルテ文を表示",onclick:function(){ kt.style.display=kt.style.display==="none"?"":"none"; }}):null),
+        kt));
+    });
+  }
+  q.addEventListener("input",draw);
+  c.appendChild(q); c.appendChild(lst);
+  api({action:"archived",days:90}).then(function(j){ if(!j.ok){ lst.textContent=j.err||"読み込めません"; return; } rows=j.rows||[]; draw(); })
+    .catch(function(){ lst.textContent="通信できません"; });
+  return c;
 }
 function keyBox(msg){
   var ki=h("input",{type:"text",placeholder:"院内キー（受付ボードと同じ）",value:""});
@@ -775,7 +803,7 @@ function dbSheets(){
   var P=R.pt, pr=periods(), d=P.date;
   var st=statCols();
   var head=["記録ID","日付","カルテNo","飼い主名","動物名","動物種","体重(kg)","術式・処置","ASA","担当医","麻酔管理者","吸入麻酔薬","麻酔開始","麻酔終了","麻酔時間(分)","手術開始","手術終了","手術時間(分)","吸入開始","吸入終了","吸入時間(分)","吸入時間は推定","投与","経過・イベント","合併症・メモ","注意事項","記録数"]
-    .concat(st.map(function(c){ return shortL(c[0])+c[1]+(IT[c[0]].u?"("+IT[c[0]].u+")":""); })).concat(["PDF","保存日時"]);
+    .concat(st.map(function(c){ return shortL(c[0])+c[1]+(IT[c[0]].u?"("+IT[c[0]].u+")":""); })).concat(["カルテ転記文","PDF","保存日時"]);
   var row=[R.id,d,P.no,P.owner||"",P.name,R.sp,R.kg!=null?Math.round(R.kg*1000)/1000:"",P.proc,P.asa?P.asa+(P.asaE?"E":""):"",P.vet,P.mgr,R.agent,
     pr.a0?hm(pr.a0):"",pr.a1?hm(pr.a1):"",pr.a0&&pr.a1?mins(pr.a1-pr.a0):"",pr.s0?hm(pr.s0):"",pr.s1?hm(pr.s1):"",pr.s0&&pr.s1?mins(pr.s1-pr.s0):"",pr.i0?hm(pr.i0):"",pr.i1?hm(pr.i1):"",pr.i0&&pr.i1?mins(pr.i1-pr.i0):"",pr.iest?"推定":"",
     R.dr.slice().sort(function(a,b){return a.t-b.t;}).map(function(x){return hm(x.t)+" "+x.name+" "+(x.amt||"")+" "+(x.route||"");}).join("\n"),
@@ -783,7 +811,7 @@ function dbSheets(){
     R.memo||"",P.memo||"",R.vit.length]
     .concat(st.map(function(c){ var s=series(R,c[0]).map(function(p){return p.v;}); if(!s.length) return "";
       return c[1]==="開始"?s[0]:c[1]==="終了"?s[s.length-1]:c[1]==="最低"||c[1]==="最小"?Math.min.apply(null,s):Math.max.apply(null,s); }))
-    .concat(["",""]);
+    .concat([karte(),"",""]);
   var t0v=pr.a0||R.t0||R.started;
   var vh=["記録ID","日付","カルテNo","動物名","動物種","時刻","導入からの分"].concat(ITEMS.map(function(x){ return x.l+(x.u?"("+x.u+")":""); }));
   var vr=R.vit.map(function(x){ return [R.id,d,P.no,P.name,R.sp,hm(x.t),t0v?mins(x.t-t0v):""].concat(ITEMS.map(function(i){ return x.v[i.k]!=null?x.v[i.k]:""; })); });

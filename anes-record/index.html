@@ -990,7 +990,7 @@ function dPaint(){
         h("button",{style:cbs,text:document.body.classList.contains("bigt")?"タイマー：特大":"タイマー：大",onclick:function(e){ var on=document.body.classList.toggle("bigt"); lsSet("anrec_disp_big",on); dPaint(); }}),
         h("button",{style:cbs,text:"症例切替",onclick:function(){ DS.id=null; DS.r=null; lsDel("anrec_disp_id"); DS.auto=false; dPoll(); }}))),
     h("div",{class:"tmr"},
-      h("div",{class:"tb an",id:"tA"},h("div",{class:"lb"},h("span",null,"麻酔"),h("small",{id:"tAs"})),h("div",{class:"tv",id:"tAv",text:"--:--"})),
+      h("div",{class:"tb an",id:"tA"},h("div",{class:"lb"},h("span",null,"麻酔開始から"),h("small",{id:"tAs"})),h("div",{class:"tv",id:"tAv",text:"--:--"})),
       h("div",{class:"tb cut",id:"tC"},h("div",{class:"lb"},h("span",null,"手術開始から"),h("small",{id:"tCs"})),h("div",{class:"tv",id:"tCv",text:"--:--"})))));
   var g=h("div",{id:"Dg"}), cv=h("canvas"); g.appendChild(cv); D.appendChild(g);
   var side=h("div",{class:"ds"});

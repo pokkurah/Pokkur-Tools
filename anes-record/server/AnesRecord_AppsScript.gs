@@ -24,7 +24,8 @@ function out_(o) { return ContentService.createTextOutput(JSON.stringify(o)).set
 
 function handle_(p) {
   var key = PropertiesService.getScriptProperties().getProperty('STAFF_KEY');
-  if (!key || p.k !== key) return out_({ ok: false, err: 'auth' });
+  if (!key) return out_({ ok: false, err: 'nokey' });
+  if (p.k !== key) return out_({ ok: false, err: 'auth' });
   try {
     if (p.action === 'list') return out_({ ok: true, rows: list_() });
     if (p.action === 'get') return out_(get_(p.id, p.rev));

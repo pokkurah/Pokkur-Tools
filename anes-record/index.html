@@ -218,7 +218,7 @@ function api(p){
   p.k=apiKey();
   var req=(p.action==="list"||p.action==="get")?fetch(REC_API+"?"+new URLSearchParams(p).toString(),{cache:"no-store"})
     :fetch(REC_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(p)});
-  return req.then(function(r){return r.json();}).then(function(j){ if(!j.ok&&j.err==="auth") j.err="院内キーが違います（受付ボードと同じキー）"; return j; });
+  return req.then(function(r){return r.json();}).then(function(j){ if(!j.ok&&(j.err==="auth"||j.err==="nokey")){ j.auth=true; j.err=j.err==="nokey"?"サーバーに院内キーがまだ設定されていません（Apps Script のスクリプト プロパティ STAFF_KEY）":"院内キーが違います（受付ボードと同じキー）"; } return j; });
 }
 function meta(r){ return {id:r.id,rev:r.rev,status:r.status,date:r.pt.date,no:r.pt.no,name:r.pt.name,sp:r.sp,proc:r.pt.proc,vet:r.pt.vet,updated:r.updated}; }
 function queuePush(){
@@ -306,7 +306,7 @@ function renderHome(){
   else {
     if(!apiKey()) sc.appendChild(keyBox());
     var lst=h("div",{class:"note",text:"読み込み中…"}); sc.appendChild(lst);
-    api({action:"list"}).then(function(j){ lst.innerHTML=""; if(!j.ok){ lst.textContent=j.err||"読み込めません"; return; }
+    api({action:"list"}).then(function(j){ lst.innerHTML=""; if(!j.ok){ lst.textContent=j.err||"読み込めません"; if(j.auth) lst.parentNode.insertBefore(keyBox(j.err),lst); return; }
       var rows=(j.rows||[]).filter(function(x){return localIds().indexOf(x.id)<0;});
       if(!rows.length){ lst.textContent="ほかの端末の記録はありません"; return; }
       rows.forEach(function(x){ lst.appendChild(h("div",{style:"display:flex;gap:8px;align-items:center;padding:6px 0"},
@@ -321,9 +321,10 @@ function renderHome(){
     h("div",{style:"margin-top:8px"},h("a",{href:"#display",class:"btn sm ghost",style:"text-decoration:none;display:inline-block",text:"この端末で大画面表示を開く"}))));
   M.appendChild(h("div",{class:"note",style:"text-align:center;margin-top:16px"},h("a",{href:"../anesthesia/"},"麻酔薬計算へ"),"　｜　",h("a",{href:"../"},"院内ツール一覧")));
 }
-function keyBox(){
-  var ki=h("input",{type:"text",placeholder:"院内キー（受付ボードと同じ）"});
-  return h("div",{style:"margin-bottom:8px"},h("div",{class:"alert amber",text:"この端末に院内キーが登録されていません"}),h("div",{style:"display:flex;gap:6px"},ki,h("button",{class:"btn sm",text:"登録",onclick:function(){ try{localStorage.setItem("anes_key",ki.value.trim());}catch(e){} render(); }})));
+function keyBox(msg){
+  var ki=h("input",{type:"text",placeholder:"院内キー（受付ボードと同じ）",value:""});
+  return h("div",{style:"margin-bottom:8px"},h("div",{class:"alert amber",text:msg||"この端末に院内キーが登録されていません"}),
+    h("div",{style:"display:flex;gap:6px"},ki,h("button",{class:"btn sm",text:"登録",onclick:function(){ var v=ki.value.trim(); if(!v){ toast("キーを入れてください"); return; } try{localStorage.setItem("anes_key",v);}catch(e){} toast("登録しました"); render(); }})));
 }
 
 /* ---- 準備 ---- */
@@ -911,20 +912,21 @@ function startDisplay(){
 }
 function dFetchList(){
   if(!REC_API) return Promise.resolve(localIds().map(function(id){return lsGet("anrec_r_"+id);}).filter(Boolean).map(meta));
-  return api({action:"list"}).then(function(j){ if(!j.ok) throw new Error(j.err||"err"); return j.rows||[]; });
+  return api({action:"list"}).then(function(j){ DS.authErr=!!j.auth; if(!j.ok) throw new Error(j.err||"err"); return j.rows||[]; });
 }
 function dFetch(id,rev){
   if(!REC_API){ var r=lsGet("anrec_r_"+id); return Promise.resolve(r?(r.rev===rev?{same:true}:{r:r}):{gone:true}); }
-  return api({action:"get",id:id,rev:rev}).then(function(j){ if(!j.ok) return j.err==="notfound"?{gone:true}:Promise.reject(new Error(j.err)); return j.same?{same:true}:{r:JSON.parse(j.data)}; });
+  return api({action:"get",id:id,rev:rev}).then(function(j){ if(j.auth){ DS.authErr=true; DS.id=null; DS.r=null; } if(!j.ok) return j.err==="notfound"?{gone:true}:Promise.reject(new Error(j.err)); return j.same?{same:true}:{r:JSON.parse(j.data)}; });
 }
 function dPoll(){
+  if(DS.keyMode) return;
   if(REC_API&&!apiKey()){ dKey(); return; }
   if(!DS.id){
     dFetchList().then(function(rows){ DS.lastOk=Date.now(); DS.err="";
       var live=rows.filter(function(x){return x.status==="live"&&Date.now()-x.updated<12*3600e3;}).sort(function(a,b){return b.updated-a.updated;});
       DS.list=rows.filter(function(x){return Date.now()-x.updated<24*3600e3;});
       if(live.length===1){ DS.id=live[0].id; DS.auto=true; dPoll(); return; }
-      dPaint(); }).catch(function(e){ DS.err=String(e.message||e); dPaint(); });
+      dPaint(); }).catch(function(e){ DS.err=String(e.message||e); if(DS.authErr){ dKey(DS.err); return; } dPaint(); });
     return;
   }
   dFetch(DS.id,DS.r?DS.r.rev:-1).then(function(x){ DS.lastOk=Date.now(); DS.err="";
@@ -934,10 +936,19 @@ function dPoll(){
     if(DS.r&&DS.r.status==="done"&&DS.auto&&Date.now()-DS.r.updated>10*60000){ DS.id=null; DS.r=null; dPaint(); }
   }).catch(function(e){ DS.err=String(e.message||e); dWarn(); });
 }
-function dKey(){
+function dKey(msg){
+  DS.keyMode=true;
   var D=document.getElementById("D"); D.innerHTML="";
   var ki=h("input",{type:"text",placeholder:"院内キー"});
-  D.appendChild(h("div",{class:"dmsg"},"この画面に院内キーを登録してください（受付ボードと同じキー）",ki,h("button",{style:"min-width:0;text-align:center",text:"登録",onclick:function(){ try{localStorage.setItem("anes_key",ki.value.trim());}catch(e){} dPoll(); }})));
+  function save(){ var v=ki.value.trim(); if(!v) return; try{localStorage.setItem("anes_key",v);}catch(e){} DS.keyMode=false; DS.authErr=false; DS.err=""; dPaint(); dPoll(); }
+  ki.addEventListener("keydown",function(e){ if(e.key==="Enter") save(); });
+  D.appendChild(h("div",{class:"dmsg"},
+    msg?h("div",{style:"color:#ff7466",text:msg}):null,
+    "院内キーを入力してください（受付ボードと同じキー）",ki,
+    h("div",{style:"display:flex;gap:12px"},
+      h("button",{style:"min-width:0;text-align:center",text:"登録",onclick:save}),
+      apiKey()?h("button",{style:"min-width:0;text-align:center",text:"入れ直さずに再接続",onclick:function(){ DS.keyMode=false; DS.authErr=false; DS.err=""; dPaint(); dPoll(); }}):null)));
+  setTimeout(function(){ ki.focus(); },50);
 }
 function dWarn(){
   var w=document.getElementById("Dw"), r=DS.r, msg="";
@@ -979,6 +990,7 @@ function dPaint(){
     var box=h("div",{class:"dmsg"},h("div",{style:"font-size:30px;color:#e8eef0",text:"麻酔記録 大画面"}),h("div",{text:REC_API?"記録中の症例を待っています…":"試験モード：この端末で記録中の症例を表示します"}),h("div",{id:"dclk",style:"font-size:40px;font-variant-numeric:tabular-nums"}));
     (DS.list||[]).forEach(function(x){ box.appendChild(h("button",{onclick:function(){ DS.id=x.id; DS.auto=false; lsSet("anrec_disp_id",x.id); DS.r=null; dPoll(); }},(x.status==="live"?"● ":"○ ")+(x.name||"名前なし")+"　"+x.sp+"　"+(x.proc||"")+"　"+(x.status==="live"?"記録中":x.status==="done"?"終了":"準備中"))); });
     if(DS.err) box.appendChild(h("div",{style:"color:#ff7466",text:DS.err}));
+    if(REC_API) box.appendChild(h("button",{style:"min-width:0;text-align:center;font-size:15px;padding:8px 14px",text:"院内キーを入れ直す",onclick:function(){ dKey(); }}));
     D.appendChild(box); dClock(); return;
   }
   var P=r.pt;

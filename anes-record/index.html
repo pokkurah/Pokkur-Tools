@@ -181,8 +181,8 @@ Object.defineProperty(IT.etag,"l",{get:function(){ return isSevo()?"EtSEV":"EtIS
 var DEF_ITEMS={
  dc:["hr","rr","spo2","etco2","sys","map","dia","temp","agent","etag","o2","air","fio2","fluid","ecg","reflex","jaw","mm"],   /* 院長指定の基準項目 2026-11-16 */
  rb:["hr","rr","spo2","etco2","sys","map","dia","temp","agent","etag","o2","air","fio2","fluid","ecg","reflex","jaw","mm"],   /* 犬猫と同じ（院長指定 2026-11-16） */
- sm:["hr","rr","spo2","temp","agent","o2","reflex"],
- bd:["hr","rr","etco2","dop","temp","agent","o2","reflex","vent"],
+ sm:["hr","rr","spo2","temp","agent","o2","reflex","jaw","mm"],   /* 院長指定 2026-11-16 */
+ bd:["hr","rr","spo2","temp","agent","o2","reflex","jaw","mm"],   /* 院長指定 2026-11-16 */
  rp:["hr","rr","temp","agent","o2","reflex","vent"],
  am:["hr","rr","temp","reflex"]
 };

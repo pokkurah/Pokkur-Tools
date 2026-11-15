@@ -1098,7 +1098,7 @@ function refreshPrint(){
 }
 
 /* ===== 手術前の指示予約（院長指定 2026-11-15）：保存→当日呼び出し。手術日から5日で自動削除 ===== */
-var ANES_API="";   /* Apps Script のウェブアプリURL。空のあいだは試験モード（この端末だけに保存） */
+var ANES_API="https://script.google.com/macros/s/AKfycbzg3Wvwdg94BAONiDz62eSc04Alla6DAByOoZGdq3BTDuTnoSkU1kz_qwnHrY6M3bMu_g/exec";   /* Apps Script のウェブアプリURL。空のあいだは試験モード（この端末だけに保存） */
 var ORD={list:null,loading:false,err:"",open:false};
 function ordKey(){ try{ return localStorage.getItem("anes_key")||localStorage.getItem("rcb_key")||""; }catch(e){ return ""; } }
 function ymd(d){ return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }

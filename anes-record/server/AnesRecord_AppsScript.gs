@@ -206,6 +206,7 @@ function migrate_(sh, head) {
   if (!old[0]) return;
   for (var i = 0; i < head.length; i++) {
     if (old[i] === head[i]) continue;
+    if (i >= old.length || !old[i]) break;   /* 末尾に増えた列は差し込み不要 */
     if (old.indexOf(head[i]) < 0) { sh.insertColumnBefore(i + 1); old.splice(i, 0, head[i]); }
   }
 }

@@ -720,10 +720,10 @@ function statCols(){ var a=[]; ITEMS.forEach(function(x){ if(x.t!=="num") return
 function dbSheets(){
   var P=R.pt, pr=periods(), d=P.date;
   var st=statCols();
-  var head=["記録ID","日付","カルテNo","飼い主名","動物名","動物種","体重(kg)","術式・処置","ASA","担当医","麻酔管理者","吸入麻酔薬","麻酔開始","麻酔終了","麻酔時間(分)","手術開始","手術終了","手術時間(分)","投与","経過・イベント","合併症・メモ","注意事項","記録数"]
+  var head=["記録ID","日付","カルテNo","飼い主名","動物名","動物種","体重(kg)","術式・処置","ASA","担当医","麻酔管理者","吸入麻酔薬","麻酔開始","麻酔終了","麻酔時間(分)","手術開始","手術終了","手術時間(分)","吸入開始","吸入終了","吸入時間(分)","吸入時間は推定","投与","経過・イベント","合併症・メモ","注意事項","記録数"]
     .concat(st.map(function(c){ return shortL(c[0])+c[1]+(IT[c[0]].u?"("+IT[c[0]].u+")":""); })).concat(["PDF","保存日時"]);
   var row=[R.id,d,P.no,P.owner||"",P.name,R.sp,R.kg!=null?Math.round(R.kg*1000)/1000:"",P.proc,P.asa?P.asa+(P.asaE?"E":""):"",P.vet,P.mgr,R.agent,
-    pr.a0?hm(pr.a0):"",pr.a1?hm(pr.a1):"",pr.a0&&pr.a1?mins(pr.a1-pr.a0):"",pr.s0?hm(pr.s0):"",pr.s1?hm(pr.s1):"",pr.s0&&pr.s1?mins(pr.s1-pr.s0):"",
+    pr.a0?hm(pr.a0):"",pr.a1?hm(pr.a1):"",pr.a0&&pr.a1?mins(pr.a1-pr.a0):"",pr.s0?hm(pr.s0):"",pr.s1?hm(pr.s1):"",pr.s0&&pr.s1?mins(pr.s1-pr.s0):"",pr.i0?hm(pr.i0):"",pr.i1?hm(pr.i1):"",pr.i0&&pr.i1?mins(pr.i1-pr.i0):"",pr.iest?"推定":"",
     R.dr.slice().sort(function(a,b){return a.t-b.t;}).map(function(x){return hm(x.t)+" "+x.name+" "+(x.amt||"")+" "+(x.route||"");}).join("\n"),
     R.ev.slice().sort(function(a,b){return a.t-b.t;}).map(function(x){return hm(x.t)+" "+x.k+(x.txt?"："+x.txt:"");}).join("\n"),
     R.memo||"",P.memo||"",R.vit.length]
@@ -757,16 +757,24 @@ function evTL(k){ var e=R.ev.filter(function(x){return x.k===k;}); return e.leng
 function periods(r){
   r=r||R; var save=R; R=r;
   var a0=evT("麻酔導入")||r.t0, a1=evTL("抜管")||evTL("吸入終了")||evTL("覚醒（伏臥位）"), s0=evT("手術開始"), s1=evTL("手術終了");
-  R=save; return {a0:a0,a1:a1,s0:s0,s1:s1};
+  /* 吸入麻酔の使用時間（院長指定 2026-11-15）：吸入開始→吸入終了。ボタンがなければ吸入濃度>0の記録から推定 */
+  var i0=evT("吸入開始"), i1=evTL("吸入終了"), est=false;
+  var ag=r.vit.filter(function(x){ return x.v.agent!=null&&+x.v.agent>0; }).map(function(x){return x.t;}).sort(function(a,b){return a-b;});
+  if(!i0&&ag.length){ i0=ag[0]; est=true; }
+  if(i0&&(!i1||i1<i0)){ i1=null; var lastAg=ag.length?ag[ag.length-1]:null; if(lastAg&&lastAg>i0&&r.status==="done"){ i1=lastAg; est=true; } }
+  if(r.agent&&r.agent.indexOf("なし")>=0){ i0=null; i1=null; }
+  R=save; return {a0:a0,a1:a1,s0:s0,s1:s1,i0:i0,i1:i1,iest:est};
 }
+function inhText(pr){ if(!pr.i0) return ""; return hm(pr.i0)+"–"+(pr.i1?hm(pr.i1)+"（"+mins(pr.i1-pr.i0)+"分）":"（終了未記録）")+(pr.iest?"※記録値から推定":""); }
 function karte(){
   var P=R.pt, pr=periods(), out=[];
   out.push("【麻酔記録】"+P.date.replace(/-/g,"/")+" "+R.sp+" "+R.wt+(P.proc?" "+P.proc:"")+(P.asa?" ASA "+P.asa+(P.asaE?"E":""):""));
   out.push("担当医 "+(P.vet||"—")+"／麻酔管理 "+(P.mgr||"—"));
   if(pr.a0) out.push("麻酔時間 "+hm(pr.a0)+"–"+(pr.a1?hm(pr.a1)+"（"+mins(pr.a1-pr.a0)+"分）":"—"));
   if(pr.s0) out.push("手術時間 "+hm(pr.s0)+"–"+(pr.s1?hm(pr.s1)+"（"+mins(pr.s1-pr.s0)+"分）":"—"));
-  var ag=series(R,"agent").map(function(p){return p.v;});
-  if(R.agent.indexOf("なし")<0) out.push("吸入 "+R.agent+(ag.length?" "+fv("agent",Math.min.apply(null,ag))+"–"+fv("agent",Math.max.apply(null,ag))+"%":""));
+  var ag=series(R,"agent").map(function(p){return p.v;}).filter(function(v){return v>0;});
+  if(R.agent.indexOf("なし")<0){ out.push("吸入 "+R.agent+(ag.length?" "+fv("agent",Math.min.apply(null,ag))+"–"+fv("agent",Math.max.apply(null,ag))+"%":""));
+    out.push("吸入時間 "+(inhText(pr)||"—（吸入開始が未記録）")); }
   if(R.dr.length){ out.push("■投与"); R.dr.slice().sort(function(a,b){return a.t-b.t;}).forEach(function(d){ out.push("・"+hm(d.t)+" "+d.name+" "+(d.amt||"")+" "+(d.route||"")); }); }
   var ev=R.ev.filter(function(e){return true;}).sort(function(a,b){return a.t-b.t;});
   if(ev.length){ out.push("■経過"); out.push(ev.map(function(e){return hm(e.t)+" "+e.k+(e.txt?"（"+e.txt+"）":"");}).join("／")); }
@@ -791,7 +799,7 @@ function pages(){
   y+=70; ctx.fillStyle="#1f8670"; ctx.fillRect(PM,y,PW-PM*2,3); y+=18;
   var info=[["日付",P.date.replace(/-/g,"/")],["カルテNo",P.no||"—"],["飼い主名",P.owner||"—"],["動物名",P.name||"—"],["動物種",R.sp],["体重",R.wt||"—"],["ASA",P.asa?P.asa+(P.asaE?"E":""):"—"],
     ["術式・処置",P.proc||"—"],["担当医",P.vet||"—"],["麻酔管理者",P.mgr||"—"],["吸入麻酔薬",R.agent],
-    ["麻酔時間",pr.a0?hm(pr.a0)+"–"+(pr.a1?hm(pr.a1)+"（"+mins(pr.a1-pr.a0)+"分）":""):"—"],["手術時間",pr.s0?hm(pr.s0)+"–"+(pr.s1?hm(pr.s1)+"（"+mins(pr.s1-pr.s0)+"分）":""):"—"]];
+    ["麻酔時間",pr.a0?hm(pr.a0)+"–"+(pr.a1?hm(pr.a1)+"（"+mins(pr.a1-pr.a0)+"分）":""):"—"],["手術時間",pr.s0?hm(pr.s0)+"–"+(pr.s1?hm(pr.s1)+"（"+mins(pr.s1-pr.s0)+"分）":""):"—"],["吸入時間",inhText(pr)||"—"]];
   var cw=(PW-PM*2)/3;
   info.forEach(function(it,i){ var cx=PM+(i%3)*cw, cy=y+Math.floor(i/3)*52; ctx.font=pf(22,500); ctx.fillStyle="#6b7a80"; ctx.fillText(it[0],cx,cy+4); ctx.font=pf(28,600); ctx.fillStyle="#1f2a2e"; fit(ctx,it[1],cx+150,cy,cw-160); });
   y+=Math.ceil(info.length/3)*52+14;

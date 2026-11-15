@@ -183,7 +183,7 @@ var DEF_ITEMS={
  rb:["hr","rr","spo2","etco2","sys","map","dia","temp","agent","etag","o2","air","fio2","fluid","ecg","reflex","jaw","mm"],   /* 犬猫と同じ（院長指定 2026-11-16） */
  sm:["hr","rr","spo2","temp","agent","o2","reflex","jaw","mm"],   /* 院長指定 2026-11-16 */
  bd:["hr","rr","spo2","temp","agent","o2","reflex","jaw","mm"],   /* 院長指定 2026-11-16 */
- rp:["hr","rr","temp","agent","o2","reflex","vent"],
+ rp:["hr","rr","spo2","etco2","temp","agent","etag","o2","air","fio2","fluid","reflex","jaw","mm"],   /* 犬猫から血圧・心電図を除く（院長指定 2026-11-16） */
  am:["hr","rr","temp","reflex"]
 };
 var EVENTS=["麻酔導入","挿管","吸入開始","手術開始","手術終了","吸入終了","抜管","覚醒（伏臥位）","体位変換","低血圧対応","不整脈","嘔吐・逆流","呼吸停止","その他"];

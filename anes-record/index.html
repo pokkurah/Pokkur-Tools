@@ -232,12 +232,12 @@ function paintSync(){
 /* ====== 記録の作成 ====== */
 function newRecord(from){
   var r={id:uid(),v:1,created:Date.now(),updated:Date.now(),rev:0,status:"setup",sp:"",kg:null,wt:"",wu:"kg",
-    pt:{date:ymd(),no:"",name:"",proc:"",vet:"",mgr:"",asa:"",asaE:false,memo:""},
+    pt:{date:ymd(),no:"",owner:"",name:"",proc:"",vet:"",mgr:"",asa:"",asaE:false,memo:""},
     agent:"イソフルラン",interval:5,items:[],plan:[],em:[],cri:[],fl:"",karte:"",
     t0:null,vit:[],ev:[],dr:[],memo:"",lastVit:null};
   if(from){
     r.sp=from.sp||""; r.kg=from.kg; r.wt=from.wt||""; r.wu=/g$/.test(r.wt)&&!/kg$/.test(r.wt)?"g":"kg";
-    var P=from.pt||{}; ["date","no","name","proc","vet","mgr","asa","memo"].forEach(function(k){ if(P[k]!=null) r.pt[k]=P[k]; }); r.pt.asaE=!!P.asaE;
+    var P=from.pt||{}; ["date","no","owner","name","proc","vet","mgr","asa","memo"].forEach(function(k){ if(P[k]!=null) r.pt[k]=P[k]; }); r.pt.asaE=!!P.asaE;
     r.plan=from.plan||[]; r.em=from.em||[]; r.cri=from.cri||[]; r.fl=from.fl||""; r.karte=from.karte||""; r.from="calc";
     if(from.flRate!=null) r.flRate=from.flRate;
   }
@@ -317,16 +317,17 @@ function renderSetup(){
   M.appendChild(h("div",{style:"display:flex;align-items:center;gap:8px"},h("button",{class:"btn sm ghost",text:"← 戻る",onclick:function(){V.scr="home";render();}}),h("h1",{text:"記録の準備",style:"margin:0"})));
   var P=R.pt, c=h("div",{class:"card",style:"margin-top:10px"});
   function fld(l,el){ c.appendChild(h("label",{class:"f",text:l})); c.appendChild(el); }
-  function txt(obj,k,ph,type){ return h("input",{type:type||"text",value:obj[k]||"",placeholder:ph||"",oninput:function(e){obj[k]=e.target.value; saveLocal();}}); }
+  function txt(obj,k,ph,type){ return h("input",{type:type||"text",value:obj[k]||"",placeholder:ph||"",oninput:function(e){obj[k]=e.target.value; saveLocal(); setupCheck();}}); }
   var sel=h("select",{onchange:function(e){ R.sp=e.target.value; var o=spObj(R.sp); R.items=defaultItems(R.sp); R.wu=o&&o.small?"g":"kg"; saveLocal(); render(); }});
   sel.appendChild(h("option",{value:"",text:"動物種を選ぶ"}));
   Object.keys(GROUP_NAME).forEach(function(g){ var og=h("optgroup",{label:GROUP_NAME[g]}); SPECIES.filter(function(x){return x.g===g;}).forEach(function(x){ og.appendChild(h("option",{value:x.l,text:x.l,selected:R.sp===x.l})); }); sel.appendChild(og); });
   fld("動物種",sel);
   var wi=h("input",{type:"text",inputmode:"decimal",placeholder:"体重",value:R.kg==null?"":(R.wu==="g"?String(Math.round(R.kg*10000)/10):String(R.kg)),
-    oninput:function(e){ var v=tnum(e.target.value); R.kg=v==null?null:(R.wu==="g"?v/1000:v); R.wt=v==null?"":e.target.value+R.wu; saveLocal(); }});
+    oninput:function(e){ var v=tnum(e.target.value); R.kg=v==null?null:(R.wu==="g"?v/1000:v); R.wt=v==null?"":e.target.value+R.wu; saveLocal(); setupCheck(); }});
   fld("体重",h("div",{style:"display:flex;gap:6px"},wi,h("div",{class:"seg",style:"flex:0 0 auto"},["kg","g"].map(function(u){ return h("button",{class:R.wu===u?"on":"",text:u,onclick:function(){ R.wu=u; if(R.kg!=null) R.wt=(u==="g"?Math.round(R.kg*10000)/10:R.kg)+u; saveLocal(); render(); }}); }))));
   fld("日付",txt(P,"date","","date"));
   fld("カルテNo",txt(P,"no","例：12345"));
+  fld("飼い主名",txt(P,"owner","例：山田"));
   fld("動物名",txt(P,"name","例：モカ"));
   fld("術式・処置",txt(P,"proc","例：避妊手術"));
   fld("担当医",h("div",{class:"seg"},VETS.map(function(v){ return h("button",{class:P.vet===v?"on":"",text:v,onclick:function(){P.vet=P.vet===v?"":v;saveLocal();render();}}); })));
@@ -346,10 +347,17 @@ function renderSetup(){
   if(R.sp) c2.appendChild(h("div",{style:"margin-top:8px"},h("button",{class:"btn sm ghost",text:"初期値に戻す",onclick:function(){ var g=spObj(R.sp).g; lsDel("anrec_items_"+g); R.items=DEF_ITEMS[g].slice(); saveLocal(); render(); }})));
   M.appendChild(c2);
   if(R.plan.length||R.cri.length) M.appendChild(planCard());
-  var miss=[]; if(!R.sp) miss.push("動物種"); if(R.kg==null) miss.push("体重"); if(!P.no&&!P.name) miss.push("カルテNoか動物名"); if(!R.items.length) miss.push("モニター項目");
-  if(miss.length) M.appendChild(h("div",{class:"alert amber",text:"未入力："+miss.join("・")}));
-  M.appendChild(h("div",{class:"floatbtn"},h("button",{class:"btn big",text:"記録を開始する",disabled:miss.length?true:null,style:miss.length?"opacity:.4":"",onclick:function(){
+  M.appendChild(h("div",{id:"smiss"}));
+  M.appendChild(h("div",{class:"floatbtn"},h("button",{class:"btn big",id:"sgo",text:"記録を開始する",onclick:function(){
+    if(setupMiss().length) return;
     R.status="live"; if(!R.started) R.started=Date.now(); touch(); V.scr="live"; render(); window.scrollTo(0,0); }})));
+  setupCheck();
+}
+function setupMiss(){ var P=R.pt, m=[]; if(!R.sp) m.push("動物種"); if(R.kg==null) m.push("体重"); if(!P.no&&!P.name) m.push("カルテNoか動物名"); if(!R.items.length) m.push("モニター項目"); return m; }
+function setupCheck(){
+  var b=document.getElementById("sgo"), a=document.getElementById("smiss"); if(!b) return;
+  var m=setupMiss(); b.disabled=!!m.length; b.style.opacity=m.length?".4":"";
+  a.innerHTML=""; if(m.length) a.appendChild(h("div",{class:"alert amber",text:"未入力："+m.join("・")}));
 }
 function planCard(){
   var c=h("div",{class:"card"},h("h2",{text:"麻酔薬計算からの指示"}));
@@ -501,6 +509,7 @@ function openEntry(){
 }
 function sanity(v){
   var w=[];
+  Object.keys(v).forEach(function(k){ if(IT[k]&&IT[k].t==="num"&&v[k]<0) w.push(IT[k].l+"がマイナスです"); });
   if(v.spo2!=null&&v.spo2>100) w.push("SpO₂が100%を超えています");
   if(v.temp!=null&&(v.temp<10||v.temp>45)) w.push("体温 "+v.temp+"℃ は範囲外です");
   if(v.sys!=null&&v.dia!=null&&v.dia>v.sys) w.push("拡張期が収縮期より高くなっています");
@@ -618,8 +627,8 @@ function alertOf(r,k,v){
 /* ---- 終了・出力 ---- */
 function renderDone(){
   M.appendChild(h("div",{style:"display:flex;align-items:center;gap:8px"},h("button",{class:"btn sm ghost",text:"← 一覧",onclick:function(){R=null;V.scr="home";render();}}),h("h1",{text:"麻酔記録の出力",style:"margin:0"}),h("span",{class:"sync",id:"sync"})));
-  M.appendChild(h("div",{class:"alert mint",style:"margin-top:10px",text:"PDFを Googleドライブ に保存 → 院内PCで アーミックス に添付。カルテ文はコピーして貼り付けます。"}));
-  var c=h("div",{class:"card"},h("h2",{text:"① PDF（A4縦）"}));
+  M.appendChild(h("div",{class:"alert mint",style:"margin-top:10px",text:"③「ドライブとDBに保存」でPDFは院内共有フォルダに自動保存されます → 院内PCで アーミックス に添付。カルテ文はコピーして貼り付けます。"}));
+  var c=h("div",{class:"card"},h("h2",{text:"① PDF（A4縦）・手動で保存する場合"}));
   var msg=h("div",{class:"alert grey",style:"display:none"});
   c.appendChild(h("div",{style:"display:flex;gap:8px;flex-wrap:wrap"},
     h("button",{class:"btn",text:"PDFを保存・共有",onclick:function(){ msg.style.display=""; msg.textContent="作成中…"; setTimeout(function(){ savePdf(msg); },30); }}),
@@ -635,10 +644,49 @@ function renderDone(){
   M.appendChild(h("div",{class:"card"},h("h2",{text:"修正"}),
     h("div",{class:"note",style:"margin-bottom:8px",text:"記録の追加・削除は記録画面に戻って行います。"}),
     h("button",{class:"btn ghost",text:"記録画面に戻る",onclick:function(){ R.status="live"; touch(); V.scr="live"; render(); }})));
-  M.appendChild(h("div",{class:"card"},h("h2",{text:"③ 完了"}),
-    h("div",{class:"note",style:"margin-bottom:8px",text:"PDFとカルテ文をアーミックスに入れたら、この端末から消去します。"+(REC_API?"サーバーの記録も消去します（消さなくても"+KEEP_DAYS+"日で自動削除）。":"")}),
-    h("button",{class:"btn red",text:"完了（この端末から消去）",onclick:function(){ if(!confirm("PDFとカルテ文をアーミックスに入れましたか？　この記録を消去します。")) return;
+  M.appendChild(h("div",{class:"card"},h("h2",{text:"③ 保存して完了"}),
+    h("div",{class:"note",style:"margin-bottom:8px",text:"院内共有ドライブの「ポックル 麻酔記録」フォルダにPDFを保存し、全症例の集計シート「麻酔記録DB」に追加します。そのあと、この端末と一時保存（大画面用）から消去します。"}),
+    R.archived?h("div",{class:"alert mint",text:"保存済み（"+R.archived+"）。修正して保存し直すと上書きされます"}):null,
+    h("button",{class:"btn",text:R.archived?"保存し直す":"ドライブとDBに保存",onclick:function(e){ archive(e.target); }}),
+    h("button",{class:"btn red",style:"margin-left:8px",text:"完了（端末から消去）",onclick:function(){
+      if(!R.archived&&!confirm("まだドライブとDBに保存されていません。消去すると記録は残りません。消去しますか？")) return;
+      if(R.archived&&!confirm("カルテ文をアーミックスに入れましたか？　この端末から消去します。")) return;
       var id=R.id; dropLocal(id); if(REC_API) api({action:"del",id:id}).catch(function(){}); R=null; V.scr="home"; render(); toast("消去しました"); }})));
+}
+/* ===== 永久保存：PDF＋集計シート（院長決定 2026-11-15：飼い主名も保存、院内で共有） ===== */
+function blobB64(blob){ return new Promise(function(ok,ng){ var r=new FileReader(); r.onload=function(){ ok(String(r.result).split(",")[1]); }; r.onerror=ng; r.readAsDataURL(blob); }); }
+function statCols(){ var a=[]; ITEMS.forEach(function(x){ if(x.t!=="num") return; if(x.k==="temp") a.push([x.k,"開始"],[x.k,"終了"],[x.k,"最低"]); else a.push([x.k,"最小"],[x.k,"最大"]); }); return a; }
+function dbSheets(){
+  var P=R.pt, pr=periods(), d=P.date;
+  var st=statCols();
+  var head=["記録ID","日付","カルテNo","飼い主名","動物名","動物種","体重(kg)","術式・処置","ASA","担当医","麻酔管理者","吸入麻酔薬","麻酔開始","麻酔終了","麻酔時間(分)","手術開始","手術終了","手術時間(分)","投与","経過・イベント","合併症・メモ","注意事項","記録数"]
+    .concat(st.map(function(c){ return shortL(c[0])+c[1]+(IT[c[0]].u?"("+IT[c[0]].u+")":""); })).concat(["PDF","保存日時"]);
+  var row=[R.id,d,P.no,P.owner||"",P.name,R.sp,R.kg!=null?Math.round(R.kg*1000)/1000:"",P.proc,P.asa?P.asa+(P.asaE?"E":""):"",P.vet,P.mgr,R.agent,
+    pr.a0?hm(pr.a0):"",pr.a1?hm(pr.a1):"",pr.a0&&pr.a1?mins(pr.a1-pr.a0):"",pr.s0?hm(pr.s0):"",pr.s1?hm(pr.s1):"",pr.s0&&pr.s1?mins(pr.s1-pr.s0):"",
+    R.dr.slice().sort(function(a,b){return a.t-b.t;}).map(function(x){return hm(x.t)+" "+x.name+" "+(x.amt||"")+" "+(x.route||"");}).join("\n"),
+    R.ev.slice().sort(function(a,b){return a.t-b.t;}).map(function(x){return hm(x.t)+" "+x.k+(x.txt?"："+x.txt:"");}).join("\n"),
+    R.memo||"",P.memo||"",R.vit.length]
+    .concat(st.map(function(c){ var s=series(R,c[0]).map(function(p){return p.v;}); if(!s.length) return "";
+      return c[1]==="開始"?s[0]:c[1]==="終了"?s[s.length-1]:c[1]==="最低"||c[1]==="最小"?Math.min.apply(null,s):Math.max.apply(null,s); }))
+    .concat(["",""]);
+  var t0v=pr.a0||R.t0||R.started;
+  var vh=["記録ID","日付","カルテNo","動物名","動物種","時刻","導入からの分"].concat(ITEMS.map(function(x){ return x.l+(x.u?"("+x.u+")":""); }));
+  var vr=R.vit.map(function(x){ return [R.id,d,P.no,P.name,R.sp,hm(x.t),t0v?mins(x.t-t0v):""].concat(ITEMS.map(function(i){ return x.v[i.k]!=null?x.v[i.k]:""; })); });
+  var eh=["記録ID","日付","カルテNo","動物名","動物種","時刻","導入からの分","区分","内容","量・速度","経路"];
+  var er=R.ev.map(function(x){ return [R.id,d,P.no,P.name,R.sp,hm(x.t),t0v?mins(x.t-t0v):"","イベント",x.k+(x.txt?"："+x.txt:""),"",""]; })
+    .concat(R.dr.map(function(x){ return [R.id,d,P.no,P.name,R.sp,hm(x.t),t0v?mins(x.t-t0v):"","投与",x.name,x.amt||"",x.route||""]; }))
+    .sort(function(a,b){ return a[5]<b[5]?-1:1; });
+  return {"症例":{head:head,rows:[row]},"バイタル":{head:vh,rows:vr},"投与・イベント":{head:eh,rows:er}};
+}
+function archive(btn){
+  if(!REC_API){ alert("サーバー設置前のため保存できません（試験モード）。PDFを手動で保存してください。"); return; }
+  btn.disabled=true; var old=btn.textContent; btn.textContent="保存中…";
+  blobB64(buildPdf(pages())).then(function(b64){
+    return api({action:"archive",id:R.id,date:R.pt.date,pdfName:pdfName(),pdf:b64,sheets:JSON.stringify(dbSheets())});
+  }).then(function(j){ btn.disabled=false; btn.textContent=old;
+    if(!j.ok){ toast(j.err||"保存できませんでした"); return; }
+    R.archived=ymd()+" "+hm(Date.now()); R.pdfUrl=j.pdfUrl||""; touch(); render(); toast("ドライブとDBに保存しました"); })
+  .catch(function(){ btn.disabled=false; btn.textContent=old; toast("通信できませんでした。保存されていません"); });
 }
 function copy(text){ var ok=function(){toast("コピーしました");};
   if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(ok,fb); else fb();
@@ -680,7 +728,7 @@ function pages(){
   var ctx=page(), y=PM;
   ctx.fillStyle="#1f8670"; ctx.font=pf(44,700); ctx.fillText("麻酔記録",PM,y); ctx.font=pf(26,500); ctx.fillStyle="#6b7a80"; ctx.textAlign="right"; ctx.fillText("ポックル動物病院",PW-PM,y+12); ctx.textAlign="left";
   y+=70; ctx.fillStyle="#1f8670"; ctx.fillRect(PM,y,PW-PM*2,3); y+=18;
-  var info=[["日付",P.date.replace(/-/g,"/")],["カルテNo",P.no||"—"],["動物名",P.name||"—"],["動物種",R.sp],["体重",R.wt||"—"],["ASA",P.asa?P.asa+(P.asaE?"E":""):"—"],
+  var info=[["日付",P.date.replace(/-/g,"/")],["カルテNo",P.no||"—"],["飼い主名",P.owner||"—"],["動物名",P.name||"—"],["動物種",R.sp],["体重",R.wt||"—"],["ASA",P.asa?P.asa+(P.asaE?"E":""):"—"],
     ["術式・処置",P.proc||"—"],["担当医",P.vet||"—"],["麻酔管理者",P.mgr||"—"],["吸入麻酔薬",R.agent],
     ["麻酔時間",pr.a0?hm(pr.a0)+"–"+(pr.a1?hm(pr.a1)+"（"+mins(pr.a1-pr.a0)+"分）":""):"—"],["手術時間",pr.s0?hm(pr.s0)+"–"+(pr.s1?hm(pr.s1)+"（"+mins(pr.s1-pr.s0)+"分）":""):"—"]];
   var cw=(PW-PM*2)/3;

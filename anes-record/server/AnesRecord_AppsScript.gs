@@ -10,7 +10,7 @@
  *   2. プロジェクトの設定 → スクリプト プロパティに STAFF_KEY（受付ボードと同じ院内キー）を追加
  *   3. デプロイ → 新しいデプロイ → 種類「ウェブアプリ」、実行＝自分、アクセス＝全員 → URL をコピー
  *   4. Pokkur-Tools の anes-record/index.html の REC_API にその URL を入れる
- *   5. トリガー：関数 cleanup を「時間主導・日付ベース（毎日 深夜）」で追加（なくても書き込み時に掃除する）
+ *   5. 関数 setup を1回実行（権限を承認）→ フォルダ・DB・毎日の掃除トリガーができる
  *   コードを直したら「デプロイを管理」→ 編集 → 新バージョン（URLは変わらない）
  */
 var KEEP_DAYS = 5;
@@ -169,4 +169,14 @@ function archive_(p) {
     });
     return { ok: true, pdfUrl: pdfUrl, dbUrl: ss.getUrl() };
   } finally { lock.releaseLock(); }
+}
+
+/* 初回に1回だけ実行：保存先フォルダ・DB・一時シートの作成と、毎日の掃除トリガー（権限の承認もここで行う） */
+function setup() {
+  sheet_(); db_();
+  ScriptApp.getProjectTriggers().forEach(function (t) { if (t.getHandlerFunction() === 'cleanup') ScriptApp.deleteTrigger(t); });
+  ScriptApp.newTrigger('cleanup').timeBased().everyDays(1).atHour(3).create();
+  Logger.log('フォルダ：' + folder_().getUrl());
+  Logger.log('麻酔記録DB：' + db_().getUrl());
+  Logger.log('STAFF_KEY：' + (PropertiesService.getScriptProperties().getProperty('STAFF_KEY') ? '設定済み' : '未設定（プロジェクトの設定 → スクリプト プロパティで追加）'));
 }

@@ -45,6 +45,11 @@ textarea{min-height:60px}
 .vrow .pm{width:46px;height:46px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:22px;color:var(--mint-d)}
 .vrow input.val{flex:1;min-width:0;text-align:center;font-size:24px;font-weight:700;height:46px;padding:0}
 .vrow input.val.empty{color:#b9c3c7}
+.vrow input.val.act{outline:3px solid var(--mint);background:var(--mint-l)}
+.kp{position:sticky;bottom:-14px;background:#fff;border-top:1px solid var(--line);margin:8px -14px -14px;padding:8px 10px calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:6px;z-index:2}
+.kp button{height:48px;border-radius:10px;border:1px solid var(--line);background:#f7f9fa;font-size:22px;font-weight:600;color:var(--ink)}
+.kp button.ent{grid-column:1/5;background:var(--mint-d);color:#fff;font-size:17px;border-color:var(--mint-d)}
+.kp .kl{grid-column:1/5;font-size:12px;color:var(--sub);text-align:center}
 .vrow .same{font-size:11px;padding:4px 6px;border-radius:8px;border:1px dashed var(--mint);background:#fff;color:var(--mint-d);white-space:nowrap}
 .vrow .seg{flex:1} .vrow .seg button{padding:7px 8px;font-size:13px;min-height:40px}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
@@ -155,7 +160,10 @@ var ITEMS=[
  {k:"dop",l:"ドップラー血圧",u:"mmHg",t:"num",st:5,dp:0,c:"#ec4899"},
  {k:"temp",l:"体温",u:"℃",t:"num",st:0.1,dp:1,c:"#ef7d2d"},
  {k:"agent",l:"吸入濃度",u:"%",t:"num",st:0.25,dp:2,c:"#64748b"},
+ {k:"etag",l:"EtISO",u:"%",t:"num",st:0.1,dp:1,c:"#0f766e"},
  {k:"o2",l:"酸素流量",u:"L/分",t:"num",st:0.1,dp:1,c:"#94a3b8"},
+ {k:"air",l:"空気流量",u:"L/分",t:"num",st:0.1,dp:1,c:"#b45309"},
+ {k:"fio2",l:"酸素濃度 FiO₂",u:"%",t:"num",st:1,dp:0,c:"#16a34a",mx:100},
  {k:"fluid",l:"輸液速度",u:"mL/h",t:"num",st:1,dp:1,c:"#0ea5e9"},
  {k:"ecg",l:"心電図",t:"sel",o:["洞調律","洞性頻脈","洞性徐脈","VPC","AVブロック","その他"]},
  {k:"reflex",l:"反射",sub:"眼瞼・趾間・立ち直り",t:"sel",o:["＋","±","−"]},
@@ -165,6 +173,10 @@ var ITEMS=[
  {k:"vent",l:"換気",t:"sel",o:["自発","補助","調節(IPPV)"]}
 ];
 var IT={}; ITEMS.forEach(function(x){ IT[x.k]=x; });
+/* EtISO はセボフルランのとき EtSEV と表示 */
+function curRec(){ return (typeof R!=="undefined"&&R)||(typeof DS!=="undefined"&&DS.r)||null; }
+function isSevo(){ var r=curRec(); return !!(r&&r.agent==="セボフルラン"); }
+Object.defineProperty(IT.etag,"l",{get:function(){ return isSevo()?"EtSEV":"EtISO"; }});
 /* 動物種ごとの初期項目（端末に前回の選択を覚える） */
 var DEF_ITEMS={
  dc:["hr","rr","spo2","etco2","sys","map","dia","temp","agent","o2","ecg","reflex","mm"],
@@ -529,49 +541,90 @@ function openDrug(d){
 /* バイタル入力 */
 function lastVal(k){ for(var i=R.vit.length-1;i>=0;i--){ var v=R.vit[i].v[k]; if(v!=null&&v!=="") return v; } return null; }
 function openEntry(){
-  var t=Date.now(), vals={};
+  var t=Date.now(), vals={}, cur=null, fresh=false, fields={};
   var md=h("div",{class:"modal"}), sh=h("div",{class:"sh"});
   var tb=h("b",{text:hm(t)});
+  function lvOf(k){ var lv=lastVal(k); if(k==="fluid"&&lv==null&&R.flRate!=null) lv=R.flRate; return lv; }
+  function numKeys(){ return R.items.filter(function(k){ return IT[k]&&IT[k].t==="num"; }); }
   sh.appendChild(h("div",{style:"display:flex;align-items:center;gap:8px"},h("h2",{text:"バイタル",style:"margin:0;flex:1"}),
-    h("button",{class:"btn sm ghost",text:"全部 前回と同じ",onclick:function(){ R.items.forEach(function(k){ var lv=lastVal(k); if(lv!=null&&vals[k]==null){ vals[k]=lv; } }); if(R.items.indexOf("fluid")>=0&&vals.fluid==null&&R.flRate!=null) vals.fluid=R.flRate; paint(); }})));
+    h("button",{class:"btn sm ghost",text:"全部 前回と同じ",onclick:function(){ R.items.forEach(function(k){ var lv=lvOf(k); if(lv!=null&&vals[k]==null) vals[k]=lv; }); paint(); }})));
   sh.appendChild(h("div",{class:"trow"},h("button",{class:"btn sm ghost",text:"−1分",onclick:function(){t-=60000;tb.textContent=hm(t);}}),tb,h("button",{class:"btn sm ghost",text:"＋1分",onclick:function(){t+=60000;tb.textContent=hm(t);}})));
   var box=h("div"); sh.appendChild(box);
+  function show(k){ var el=fields[k]; if(!el) return; delete el.dataset.raw; el.value=vals[k]!=null?fv(k,vals[k]):""; el.classList.toggle("empty",vals[k]==null); }
+  function setRaw(k,str){ var el=fields[k]; el.dataset.raw=str; el.value=str; var n=tnum(str); if(n==null) delete vals[k]; else vals[k]=n; el.classList.toggle("empty",n==null); paintSameBtns(); }
+  function mark(){ Object.keys(fields).forEach(function(k){ fields[k].classList.toggle("act",k===cur); }); var e=document.getElementById("kpent"), l=document.getElementById("kplb");
+    if(e) e.textContent=cur?"⏎ 次へ（空欄なら前回と同じ）":"⏎ 保存する"; if(l) l.textContent=cur?"入力中："+IT[cur].l+(lvOf(cur)!=null?"　前回 "+fv(cur,lvOf(cur)):""):"すべて入力しました"; }
+  function focusKey(k){ cur=k; fresh=true; if(k&&fields[k]){ delete fields[k].dataset.raw; fields[k].scrollIntoView({block:"center",behavior:"smooth"}); } mark(); }
+  function next(){
+    var ks=numKeys(); if(!cur){ save(); return; }
+    if(vals[cur]==null){ var lv=lvOf(cur); if(lv!=null){ vals[cur]=+lv; show(cur); } }
+    var i=ks.indexOf(cur); focusKey(i>=0&&i<ks.length-1?ks[i+1]:null); paintSameBtns();
+  }
+  function press(key){
+    if(!cur){ if(key==="⏎"){ next(); return; } focusKey(numKeys()[0]||null); if(!cur) return; }
+    if(key==="⏎"){ next(); return; }
+    var el=fields[cur], str=fresh?"":(el.dataset.raw!=null?el.dataset.raw:el.value); fresh=false;
+    if(key==="⌫") str=str.slice(0,-1); else if(key==="."){ if(str.indexOf(".")<0) str=(str||"0")+"."; } else str+=key;
+    setRaw(cur,str);
+  }
+  var sameBtns={};
+  function paintSameBtns(){ Object.keys(sameBtns).forEach(function(k){ sameBtns[k].style.visibility=vals[k]==null?"visible":"hidden"; }); }
   function paint(){
-    box.innerHTML="";
+    box.innerHTML=""; fields={}; sameBtns={};
     R.items.forEach(function(k){
-      var x=IT[k], lv=lastVal(k); if(k==="fluid"&&lv==null&&R.flRate!=null) lv=R.flRate;
-      if(k==="agent"&&R.agent==="セボフルラン") x=Object.assign({},x,{st:0.5,dp:1});
+      var x=IT[k], lv=lvOf(k);
+      var st=x.st, dp=x.dp; if(k==="agent"&&isSevo()){ st=0.5; dp=1; }
       var row=h("div",{class:"vrow"},h("div",{class:"lb"},x.l,h("small",null,x.u?x.u:(x.sub||""))));
       if(x.t==="num"){
-        var inp=h("input",{class:"val"+(vals[k]==null?" empty":""),type:"text",inputmode:"decimal",value:vals[k]!=null?fv(k,vals[k]):"",placeholder:lv!=null?fv(k,lv):"—",
-          oninput:function(e){ var n=tnum(e.target.value); if(n==null) delete vals[k]; else vals[k]=n; e.target.classList.toggle("empty",n==null); }});
-        function step(s){ var cur=vals[k]!=null?vals[k]:(lv!=null?+lv:null); if(cur==null){ inp.focus(); return; } var n=Math.round((cur+(vals[k]!=null?s:0))/x.st)*x.st; n=+n.toFixed(x.dp); if(n<0) n=0; if(x.mx&&n>x.mx) n=x.mx; vals[k]=n; inp.value=fv(k,n); inp.classList.remove("empty"); }
-        row.appendChild(h("button",{class:"pm",text:"−",onclick:function(){step(-x.st);}}));
+        var inp=h("input",{class:"val",type:"text",inputmode:"none",enterkeyhint:"next",autocomplete:"off",placeholder:lv!=null?fv(k,lv):"—",
+          onfocus:function(){ if(cur!==k) focusKey(k); },
+          onclick:function(){ if(cur!==k) focusKey(k); },
+          oninput:function(e){ fresh=false; setRaw(k,e.target.value); },
+          onkeydown:function(e){ if(e.key==="Enter"){ e.preventDefault(); next(); } }});
+        fields[k]=inp; show(k);
+        function step(sg){ focusKey(k); var c=vals[k]!=null?vals[k]:(lv!=null?+lv:null); if(c==null) return; var n=Math.round((c+(vals[k]!=null?sg:0))/st)*st; n=+n.toFixed(dp); if(n<0) n=0; if(x.mx&&n>x.mx) n=x.mx; vals[k]=n; show(k); paintSameBtns(); }
+        row.appendChild(h("button",{class:"pm",text:"−",onclick:function(){step(-st);}}));
         row.appendChild(inp);
-        row.appendChild(h("button",{class:"pm",text:"＋",onclick:function(){step(x.st);}}));
+        row.appendChild(h("button",{class:"pm",text:"＋",onclick:function(){step(st);}}));
       } else {
         row.appendChild(h("div",{class:"seg"},x.o.map(function(o){ return h("button",{class:vals[k]===o?"on":"",text:o,onclick:function(){ if(vals[k]===o) delete vals[k]; else vals[k]=o; paint(); }}); })));
       }
-      if(lv!=null&&vals[k]==null) row.appendChild(h("button",{class:"same",text:"同じ",onclick:function(){ vals[k]=lv; paint(); }}));
+      if(lv!=null){ var sb=h("button",{class:"same",text:"同じ",onclick:function(){ vals[k]=x.t==="num"?+lv:lv; if(x.t==="num"){ show(k); paintSameBtns(); } else paint(); }}); sameBtns[k]=sb; row.appendChild(sb); }
       box.appendChild(row);
     });
+    paintSameBtns(); mark();
   }
+  function save(){
+    if(!Object.keys(vals).length){ toast("値が入っていません"); return; }
+    var warn=sanity(vals); if(warn&&!confirm(warn+"\nこのまま保存しますか？")) return;
+    R.vit.push({id:uid(),t:t,v:vals}); R.vit.sort(function(a,b){return a.t-b.t;});
+    if(vals.fluid!=null) R.flRate=vals.fluid;
+    document.removeEventListener("keydown",hk,true);
+    touch(); md.remove(); toast("保存しました　"+hm(t)); render();
+  }
+  function hk(e){ /* パソコン・外付けキーボード：入力欄の外でも数字とEnterを受ける */
+    if(!document.body.contains(md)){ document.removeEventListener("keydown",hk,true); return; }
+    if(e.target&&e.target.tagName==="INPUT") return;
+    if(/^[0-9.]$/.test(e.key)){ e.preventDefault(); press(e.key); } else if(e.key==="Backspace"){ e.preventDefault(); press("⌫"); } else if(e.key==="Enter"){ e.preventDefault(); press("⏎"); }
+  }
+  document.addEventListener("keydown",hk,true);
   paint();
-  sh.appendChild(h("div",{class:"note",style:"margin-top:6px",text:"−／＋は前回値から動かします。数字をタップすると直接入力できます。空欄の項目は記録しません。"}));
+  sh.appendChild(h("div",{class:"note",style:"margin-top:6px",text:"下のキーで入力 →「⏎ 次へ」で次の項目へ。空欄のまま ⏎ を押すと前回と同じ値が入ります。最後の項目のあとに ⏎ で保存。"}));
   sh.appendChild(h("div",{style:"display:flex;gap:8px;margin-top:10px"},
-    h("button",{class:"btn ghost",style:"flex:1",text:"やめる",onclick:function(){ if(Object.keys(vals).length&&!confirm("入力を破棄しますか？")) return; md.remove(); }}),
-    h("button",{class:"btn",style:"flex:2",text:"保存",onclick:function(){
-      if(!Object.keys(vals).length){ toast("値が入っていません"); return; }
-      var warn=sanity(vals); if(warn&&!confirm(warn+"\nこのまま保存しますか？")) return;
-      R.vit.push({id:uid(),t:t,v:vals}); R.vit.sort(function(a,b){return a.t-b.t;});
-      if(vals.fluid!=null) R.flRate=vals.fluid;
-      touch(); md.remove(); toast("保存しました　"+hm(t)); render(); }})));
+    h("button",{class:"btn ghost",style:"flex:1",text:"やめる",onclick:function(){ if(Object.keys(vals).length&&!confirm("入力を破棄しますか？")) return; document.removeEventListener("keydown",hk,true); md.remove(); }}),
+    h("button",{class:"btn",style:"flex:2",text:"保存",onclick:save})));
+  var kp=h("div",{class:"kp"},h("div",{class:"kl",id:"kplb"}));
+  ["7","8","9","⌫","4","5","6",".","1","2","3","0"].forEach(function(c){ kp.appendChild(h("button",{text:c,onclick:function(){ press(c); }})); });
+  kp.appendChild(h("button",{class:"ent",id:"kpent",text:"⏎ 次へ",onclick:function(){ press("⏎"); }}));
+  sh.appendChild(kp);
   md.appendChild(sh); document.body.appendChild(md);
+  focusKey(numKeys()[0]||null);
 }
 function sanity(v){
   var w=[];
   Object.keys(v).forEach(function(k){ if(IT[k]&&IT[k].t==="num"&&v[k]<0) w.push(IT[k].l+"がマイナスです"); });
   if(v.spo2!=null&&v.spo2>100) w.push("SpO₂が100%を超えています");
+  if(v.fio2!=null&&v.fio2>100) w.push("FiO₂が100%を超えています");
   if(v.temp!=null&&(v.temp<10||v.temp>45)) w.push("体温 "+v.temp+"℃ は範囲外です");
   if(v.sys!=null&&v.dia!=null&&v.dia>v.sys) w.push("拡張期が収縮期より高くなっています");
   if(v.hr!=null&&v.hr>700) w.push("心拍数が大きすぎます");
@@ -586,7 +639,7 @@ function entries(){
   R.dr.forEach(function(x){ a.push({t:x.t,kind:"dr",id:x.id,txt:x.name+" "+(x.amt||"")+" "+(x.route||"")}); });
   return a.sort(function(p,q){return p.t-q.t;});
 }
-function shortL(k){ return {hr:"HR",rr:"RR",spo2:"SpO₂",etco2:"EtCO₂",sys:"SYS",map:"MAP",dia:"DIA",dop:"Dop",temp:"体温",agent:"吸入",o2:"O₂",fluid:"輸液",ecg:"ECG",reflex:"反射",jaw:"顎",mm:"粘膜",crt:"CRT",vent:"換気"}[k]||k; }
+function shortL(k){ return {hr:"HR",rr:"RR",spo2:"SpO₂",etco2:"EtCO₂",sys:"SYS",map:"MAP",dia:"DIA",dop:"Dop",temp:"体温",agent:"吸入",o2:"O₂",air:"Air",fio2:"FiO₂",etag:isSevo()?"EtSEV":"EtISO",fluid:"輸液",ecg:"ECG",reflex:"反射",jaw:"顎",mm:"粘膜",crt:"CRT",vent:"換気"}[k]||k; }
 function timeline(edit){
   var d=h("div",{class:"tl"}), a=entries().reverse();
   if(!a.length) d.appendChild(h("div",{class:"note",text:"まだ記録がありません"}));
@@ -605,7 +658,8 @@ var PANELS=[
  {l:"心拍数・呼吸数",ks:["hr","rr"]},
  {l:"SpO₂・EtCO₂",ks:["spo2","etco2"]},
  {l:"血圧",ks:["sys","map","dia","dop"],bp:1},
- {l:"体温・吸入濃度",ks:["temp","agent"],dual:1}
+ {l:"体温",ks:["temp"]},
+ {l:"吸入濃度・Et",ks:["agent","etag"]}
 ];
 function activePanels(r){ return PANELS.filter(function(p){ return p.ks.some(function(k){ return r.items.indexOf(k)>=0||r.vit.some(function(x){return x.v[k]!=null;}); }); }); }
 function series(r,k){ return r.vit.filter(function(x){return x.v[k]!=null&&x.v[k]!=="";}).map(function(x){return {t:x.t,v:+x.v[k]};}); }

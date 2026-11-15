@@ -153,6 +153,7 @@ function archive_(p) {
       var t = data[name]; if (!t) return;
       var sh = ss.getSheetByName(name);
       if (!sh) { sh = si === 0 && ss.getSheets().length === 1 && ss.getSheets()[0].getLastRow() === 0 ? ss.getSheets()[0].setName(name) : ss.insertSheet(name); }
+      migrate_(sh, t.head);
       sh.getRange(1, 1, 1, t.head.length).setValues([t.head]).setFontWeight('bold');
       sh.setFrozenRows(1);
       /* 同じ記録IDの行を消してから追加（保存し直しは上書き） */
@@ -196,4 +197,15 @@ function archived_(days) {
     var o = {}; Object.keys(c).forEach(function (k) { o[k] = c[k] >= 0 ? (k === 'date' ? ds(r[c[k]]) : String(r[c[k]] == null ? '' : r[c[k]])) : ''; }); return o;
   }).filter(function (o) { var d = new Date(o.date); return isNaN(d) || d >= lim; })
     .sort(function (a, b) { return (b.date + b.saved) < (a.date + a.saved) ? -1 : 1; });
+}
+
+/* 列が増えたとき、既存の行がずれないよう同じ位置に空の列を差し込む */
+function migrate_(sh, head) {
+  if (sh.getLastRow() < 2) return;
+  var old = sh.getRange(1, 1, 1, Math.max(1, sh.getLastColumn())).getValues()[0].map(String);
+  if (!old[0]) return;
+  for (var i = 0; i < head.length; i++) {
+    if (old[i] === head[i]) continue;
+    if (old.indexOf(head[i]) < 0) { sh.insertColumnBefore(i + 1); old.splice(i, 0, head[i]); }
+  }
 }

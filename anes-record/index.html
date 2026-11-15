@@ -76,8 +76,21 @@ body.disp{background:#0d1417;color:#e8eef0;overflow:hidden}
 body.disp main{display:none}
 #D{display:none}
 body.disp #D{display:grid;height:100vh;grid-template-rows:auto 1fr;grid-template-columns:1fr 340px;gap:10px;padding:12px 16px}
-.dh{grid-column:1/3;display:flex;align-items:baseline;gap:22px;border-bottom:1px solid #26363c;padding-bottom:8px}
-.dh .who{font-size:30px;font-weight:700}
+.dh{grid-column:1/3;display:flex;align-items:center;gap:18px;border-bottom:1px solid #26363c;padding-bottom:10px}
+.dh .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+.dh .ctl{display:flex;align-items:center;gap:10px}
+body.disp{--tz:8.5vh}
+body.disp.bigt{--tz:15vh}
+.tmr{display:flex;gap:14px;flex:0 0 auto}
+.tb{border-radius:16px;padding:6px 20px 10px;text-align:right;line-height:1}
+.tb .lb{font-size:calc(var(--tz)*0.3);font-weight:700;display:flex;justify-content:space-between;gap:14px;margin-bottom:4px}
+.tb .lb small{font-weight:600;opacity:.85}
+.tb .tv{font-size:var(--tz);font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.02em}
+.tb.an{background:#0c3a31;border:3px solid #2fd3a8;color:#5ff0c6}
+.tb.cut{background:#432808;border:3px solid #ff9f2e;color:#ffb547}
+.tb.off{opacity:.4}
+.tb.stop .tv{opacity:.75}
+.dh .who{font-size:30px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dh .who small{font-size:20px;color:#9fb3b9;font-weight:500;margin-left:12px}
 .dh .el{margin-left:auto;font-size:44px;font-weight:700;font-variant-numeric:tabular-nums;color:#7fe0c4}
 .dh .el small{font-size:16px;color:#9fb3b9;margin-right:6px;font-weight:500}
@@ -101,7 +114,7 @@ body.disp #D{display:grid;height:100vh;grid-template-rows:auto 1fr;grid-template
 .dmsg{grid-column:1/3;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;font-size:22px;color:#9fb3b9}
 .dmsg button{font-size:20px;padding:14px 22px;border-radius:12px;border:1px solid #2fa88e;background:#152126;color:#e8eef0;min-width:420px;text-align:left}
 .dmsg input{font-size:22px;padding:10px;border-radius:10px;border:1px solid #2fa88e;background:#152126;color:#fff;text-align:center}
-.dwarn{position:fixed;left:50%;top:70px;transform:translateX(-50%);background:#4a1714;color:#ffb3aa;padding:8px 18px;border-radius:10px;font-size:18px;display:none}
+.dwarn{position:fixed;left:16px;bottom:16px;background:#4a1714;color:#ffb3aa;padding:8px 18px;border-radius:10px;font-size:18px;display:none}
 </style>
 </head>
 <body>
@@ -410,12 +423,12 @@ document.addEventListener("visibilitychange",function(){ if(document.visibilityS
 
 /* ---- 記録中 ---- */
 var tick=null;
-function t0(){ return R.t0||R.started||Date.now(); }
+function t0(){ return evFirst(R,"麻酔導入")||R.t0||R.started||Date.now(); }
 function lastVitT(){ return R.vit.length?R.vit[R.vit.length-1].t:null; }
 function nextDue(){ var l=lastVitT(); return l?l+R.interval*60000:null; }
 function renderLive(){
   var bar=h("div",{class:"bar"},
-    h("div",null,h("div",{class:"el",id:"el",text:"0:00"}),h("div",{class:"note",text:R.t0?"導入から":"記録開始から"})),
+    h("div",null,h("div",{class:"el",id:"el",text:"0:00"}),h("div",{class:"note",id:"elc",style:"color:#c96f00;font-weight:600"})),
     h("div",{class:"t"},h("b",null,(R.pt.name||"")+" "),R.sp+" "+R.wt,h("br"),R.pt.proc||"",h("span",{class:"sync",id:"sync",style:"margin-left:6px"})),
     h("div",{class:"nx",id:"nx"}),
     sndBtn("border:1px solid var(--line);background:#fff;border-radius:10px;font-size:20px;width:44px;height:44px;flex:0 0 auto"));
@@ -428,7 +441,7 @@ function renderLive(){
   var ce=h("div",{class:"card",style:"margin-top:10px"},h("h2",{text:"イベント（タップで今の時刻）"}));
   var g=h("div",{class:"grid"});
   EVENTS.forEach(function(e){ var d=R.ev.filter(function(x){return x.k===e;}).pop();
-    g.appendChild(h("button",{class:d&&EV_ONCE.indexOf(e)>=0?"done":"",onclick:function(){ addEvent(e); }},e,d&&EV_ONCE.indexOf(e)>=0?h("small",null,hm(d.t)):null)); });
+    g.appendChild(h("button",{class:d&&EV_ONCE.indexOf(e)>=0?"done":"",onclick:function(){ addEvent(e); }},e==="手術開始"?"切皮・手術開始":e,d&&EV_ONCE.indexOf(e)>=0?h("small",null,hm(d.t)):null)); });
   ce.appendChild(g); M.appendChild(ce);
   /* 投与 */
   var cd=h("div",{class:"card"},h("h2",{text:"投与（タップで記録）"}));
@@ -468,7 +481,9 @@ var AL_PH={};
 function startTick(){ clearInterval(tick); tick=setInterval(paintTick,1000); paintTick(); }
 function paintTick(){
   var el=document.getElementById("el"); if(!el||!R){ clearInterval(tick); return; }
-  el.textContent=dur(Date.now()-t0());
+  var a1=evLast(R,"抜管"); el.textContent=hms((a1&&a1>t0()?a1:Date.now())-t0()); el.style.color="#1f8670";
+  var c0=evFirst(R,"手術開始"), c1=evLast(R,"手術終了"), ec=document.getElementById("elc");
+  if(ec) ec.textContent=c0?"切皮 "+hms((c1&&c1>c0?c1:Date.now())-c0):(evFirst(R,"麻酔導入")?"麻酔（導入から）":"記録開始から");
   var nx=document.getElementById("nx"), d=nextDue();
   if(!d){ nx.className="nx due"; nx.innerHTML=""; nx.appendChild(h("div",null,"最初の記録")); nx.appendChild(h("b",null,"いま")); return; }
   alarmCheck(AL_PH,d,R.status==="live");
@@ -617,7 +632,7 @@ function drawTrend(ctx,r,opt){
   /* イベント線 */
   var evs=r.ev.slice().sort(function(a,b){return a.t-b.t;}), lastX=-1e9, row=0;
   evs.forEach(function(e){ var x=X(e.t); ctx.strokeStyle=C.ev; ctx.setLineDash([4,4]); ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(x,top-(opt.labels?fs*0.2:0)); ctx.lineTo(x,H-bot); ctx.stroke(); ctx.setLineDash([]);
-    if(opt.labels){ row=x-lastX<fs*7?(row+1)%3:0; lastX=x; ctx.fillStyle=C.ev; ctx.textAlign="left"; ctx.textBaseline="top"; ctx.font="bold "+fs*0.95+"px sans-serif"; ctx.fillText(e.k==="その他"?(e.txt||"").slice(0,8):e.k.replace("（伏臥位）",""),x+3,row*fs*1.25); } });
+    if(opt.labels){ row=x-lastX<fs*7?(row+1)%3:0; lastX=x; ctx.fillStyle=C.ev; ctx.textAlign="left"; ctx.textBaseline="top"; ctx.font="bold "+fs*0.95+"px sans-serif"; ctx.fillText(e.k==="その他"?(e.txt||"").slice(0,8):(e.k==="手術開始"?"切皮":e.k.replace("（伏臥位）","")),x+3,row*fs*1.25); } });
   r.dr.forEach(function(d){ var x=X(d.t); ctx.fillStyle=C.dr; ctx.beginPath(); ctx.moveTo(x,top-2); ctx.lineTo(x-fs*0.4,top-fs*0.75); ctx.lineTo(x+fs*0.4,top-fs*0.75); ctx.fill(); });
   ps.forEach(function(p,i){
     var y0=top+i*ph+fs*0.4, y1=top+(i+1)*ph-fs*0.4;
@@ -885,7 +900,7 @@ function printPages(){
 /* ====== 大画面表示 ====== */
 var DS={id:lsGet("anrec_disp_id"),r:null,rev:-1,lastOk:0,err:"",list:null,timer:null,lock:null};
 function startDisplay(){
-  document.body.classList.add("disp");
+  document.body.classList.add("disp"); if(lsGet("anrec_disp_big")) document.body.classList.add("bigt");
   document.title="麻酔記録 大画面";
   try{ if(navigator.wakeLock) navigator.wakeLock.request("screen").then(function(l){DS.lock=l;}).catch(function(){}); }catch(e){}
   document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible"&&navigator.wakeLock) navigator.wakeLock.request("screen").catch(function(){}); });
@@ -931,9 +946,26 @@ function dWarn(){
   w.style.display=msg?"block":"none"; w.textContent=msg;
 }
 var AL_D={};
+/* 右上タイマー：麻酔（導入→抜管）・切皮（手術開始→手術終了）。院長指定 2026-11-15 */
+function hms(ms){ if(ms<0) ms=0; var s=Math.floor(ms/1000); return Math.floor(s/3600)+":"+p2(Math.floor(s/60)%60)+":"+p2(s%60); }
+function evFirst(r,k){ var e=r.ev.filter(function(x){return x.k===k;}).sort(function(a,b){return a.t-b.t;}); return e.length?e[0].t:null; }
+function evLast(r,k){ var e=r.ev.filter(function(x){return x.k===k;}).sort(function(a,b){return a.t-b.t;}); return e.length?e[e.length-1].t:null; }
+function dTimers(r){
+  var now=Date.now(), A=document.getElementById("tA"); if(!A) return;
+  var a0=evFirst(r,"麻酔導入"), a1=evLast(r,"抜管"), end=r.status==="done"&&r.ended?r.ended:null;
+  var aS=a0||r.started, aE=a1&&a1>aS?a1:end;
+  document.getElementById("tAv").textContent=aS?hms((aE||now)-aS):"--:--";
+  document.getElementById("tAs").textContent=a1&&a1>aS?"抜管 "+hm(a1):a0?"導入 "+hm(a0):"記録開始から";
+  A.className="tb an"+(aE?" stop":"")+(a0?"":" off");
+  var C=document.getElementById("tC"), c0=evFirst(r,"手術開始"), c1=evLast(r,"手術終了");
+  var cE=c1&&c0&&c1>c0?c1:(c0?end:null);
+  document.getElementById("tCv").textContent=c0?hms((cE||now)-c0):"--:--";
+  document.getElementById("tCs").textContent=c1&&c0&&c1>c0?"終了 "+hm(c1):c0?"開始 "+hm(c0):"未開始";
+  C.className="tb cut"+(cE?" stop":"")+(c0?"":" off");
+}
 function dClock(){
   var c=document.getElementById("dclk"); if(c) c.textContent=hm(Date.now())+":"+p2(new Date().getSeconds());
-  var r=DS.r, e=document.getElementById("del"); if(r&&e){ var pr=periods(r); var st=pr.a0||r.started; e.innerHTML=""; e.appendChild(h("small",null,pr.a0?"麻酔":"開始から")); e.appendChild(document.createTextNode(dur((r.status==="done"&&r.ended?r.ended:Date.now())-st))); }
+  var r=DS.r; if(r) dTimers(r);
   var nx=document.getElementById("dnx"); if(r&&nx){ var l=r.vit.length?r.vit[r.vit.length-1].t:null, d=l?l+r.interval*60000-Date.now():0;
     alarmCheck(AL_D,l?l+r.interval*60000:null,r.status==="live");
     nx.className="dnext"+(d<=0&&r.status==="live"?" due":""); nx.innerHTML=""; nx.appendChild(document.createTextNode(r.status==="done"?"記録終了":d<=0?"記録時刻です":"次の記録まで")); if(r.status!=="done") nx.appendChild(h("b",null,d<=0?"+"+dur(-d):dur(d))); }
@@ -950,10 +982,16 @@ function dPaint(){
     D.appendChild(box); dClock(); return;
   }
   var P=r.pt;
-  D.appendChild(h("div",{class:"dh"},h("div",{class:"who"},(P.name||"")+" ",h("small",null,r.sp+"　"+r.wt+"　"+(P.proc||"")+(P.asa?"　ASA "+P.asa+(P.asaE?"E":""):"")+"　"+r.agent)),
-    h("div",{class:"el",id:"del"}),h("div",{class:"clk",id:"dclk"}),
-    sndBtn("background:none;border:1px solid #26363c;border-radius:8px;font-size:22px;padding:2px 8px"),
-    h("button",{style:"background:none;border:1px solid #26363c;color:#9fb3b9;border-radius:8px;font-size:13px;padding:4px 8px",text:"症例切替",onclick:function(){ DS.id=null; DS.r=null; lsDel("anrec_disp_id"); DS.auto=false; dPoll(); }})));
+  var cbs="background:none;border:1px solid #26363c;color:#9fb3b9;border-radius:8px;font-size:14px;padding:4px 10px";
+  D.appendChild(h("div",{class:"dh"},
+    h("div",{class:"info"},h("div",{class:"who"},(P.name||"")+" ",h("small",null,r.sp+"　"+r.wt+"　"+(P.proc||"")+(P.asa?"　ASA "+P.asa+(P.asaE?"E":""):"")+"　"+r.agent)),
+      h("div",{class:"ctl"},h("div",{class:"clk",id:"dclk"}),
+        sndBtn("background:none;border:1px solid #26363c;border-radius:8px;font-size:20px;padding:0 8px"),
+        h("button",{style:cbs,text:document.body.classList.contains("bigt")?"タイマー：特大":"タイマー：大",onclick:function(e){ var on=document.body.classList.toggle("bigt"); lsSet("anrec_disp_big",on); dPaint(); }}),
+        h("button",{style:cbs,text:"症例切替",onclick:function(){ DS.id=null; DS.r=null; lsDel("anrec_disp_id"); DS.auto=false; dPoll(); }}))),
+    h("div",{class:"tmr"},
+      h("div",{class:"tb an",id:"tA"},h("div",{class:"lb"},h("span",null,"麻酔"),h("small",{id:"tAs"})),h("div",{class:"tv",id:"tAv",text:"--:--"})),
+      h("div",{class:"tb cut",id:"tC"},h("div",{class:"lb"},h("span",null,"切皮"),h("small",{id:"tCs"})),h("div",{class:"tv",id:"tCv",text:"--:--"})))));
   var g=h("div",{id:"Dg"}), cv=h("canvas"); g.appendChild(cv); D.appendChild(g);
   var side=h("div",{class:"ds"});
   var last={}; r.vit.forEach(function(x){ for(var k in x.v) last[k]=x.v[k]; });

@@ -359,6 +359,23 @@ function karteText(){
   return out.join("\n");
 }
 
+/* ===== 麻酔記録アプリへの引き渡し（同じ端末の localStorage 経由。6時間で無効） ===== */
+function recHandoff(){
+  var w=kg(), o=sp(); if(!o||w==null){ toast("動物種と体重を入れてください"); return; }
+  function vt(v){ return v.blocked||v.tiny?"":(v.f>1?fml(v.dml)+"mL（"+v.f+"倍液）":fml(v.ml)+"mL"); }
+  var plan=[], em=[], cri=[];
+  S.pre.forEach(function(it){ var r=rowById(it.id); if(!r) return; var p=product(r), d=tnum(it.ds); if(d==null) return;
+    var mg=bolusMg(d,r.u,w); plan.push({sec:r.cat==="その他"?"その他":r.cat==="導入"?"導入":"前投薬",name:dispName(p,r),dose:fnum(d)+r.u,mg:mg==null?"":fmg(mg),ml:mg==null?"":vt(vol(mg,p,it.f)),route:r.route}); });
+  rowsFor(function(r){return r.cat==="緊急"&&!isIno(r);}).forEach(function(r){ var p=product(r), mg=r.d!=null?bolusMg(r.d,r.u,w):null;
+    em.push({name:dispName(p,r),dose:r.d!=null?fnum(r.d)+r.u:"",mg:mg==null?"":fmg(mg),ml:mg==null?"":vt(vol(mg,p,null,EM_DIL)),route:r.route}); });
+  var kt=karteText().split("\n"), on=false;
+  kt.forEach(function(l){ if(/^■CRI/.test(l)){ on=true; return; } if(/^■|^$|^―/.test(l)){ on=false; return; } if(on) cri.push(l.replace(/^・/,"")); });
+  var fr=tnum(S.fl.rate), flt=fr==null?"":(S.fl.route==="iv"?S.fl.fluid+" "+fnum(fr)+"mL/kg/h = "+fnum(fr*w)+"mL/h":"");
+  var d={v:1,at:Date.now(),sp:S.sp,kg:w,wt:S.wu==="g"?fnum(tnum(S.wt))+"g":fnum(w)+"kg",pt:S.pt,plan:plan,em:em,cri:cri,fl:flt,flRate:S.fl.route==="iv"&&fr!=null?Math.round(fr*w*10)/10:null,karte:karteText()};
+  lsSet("anrec_handoff",d);
+  location.href="../anes-record/?from=calc";
+}
+
 /* ===== ヘッダー ===== */
 function renderHeader(){
   var s=document.getElementById("src"); s.innerHTML="";
@@ -1067,6 +1084,8 @@ function renderRec(){
   fld("注意事項（あれば）",txtInput(P,"memo","例：心雑音あり、てんかん既往","area"));
   out.push(c1);
   var kt=karteText(); if(kt){ var kb=copyBox(kt,"カルテ転記用（まとめ）","緊急薬を除く投与薬すべて。その他の薬は区切り線の下に分けています"); kb.id="kt"; out.push(kb); }
+  if(sp()&&kg()!=null) out.push(h("div",{class:"card"},h("h2",{text:"麻酔記録"}),h("div",{class:"note",style:"margin-bottom:8px",text:"この症例情報と薬（前投与・導入・CRI・輸液・緊急薬）を麻酔記録アプリに取り込みます。"}),
+    h("button",{class:"btn",text:"📈 麻酔記録を始める",onclick:recHandoff})));
   var c2=h("div",{class:"card"},h("h2",{text:"A5 印刷シート"}));
   c2.appendChild(h("div",{class:"note",text:"載せる内容：症例情報／投与する薬（前投与・導入タブ）／CRI（CRIタブで「印刷シートに追加」したもの）／緊急薬（自動）。下の項目は選べます。"}));
   c2.appendChild(h("div",{class:"seg",style:"margin-top:8px"},[["fl","輸液"],["la","局所麻酔の上限"],["rev","拮抗"]].map(function(k){

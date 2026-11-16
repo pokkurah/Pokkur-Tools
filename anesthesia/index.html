@@ -916,6 +916,7 @@ function drawSheet(k){
       var lh=row.map(function(cell){ return z((cell.s||30)+8); });
       var hgt=Math.max.apply(null,lines.map(function(l,i){return l.length*lh[i];}))+z(14);
       if(col.y+hgt>BOTTOM) over=true;
+      if(row.bg){ ctx.fillStyle=row.bg; ctx.fillRect(col.x,col.y,col.w,hgt); if(row.bar){ ctx.fillStyle=row.bar; ctx.fillRect(col.x,col.y,z(10),hgt); } }
       var x=col.x;
       row.forEach(function(cell,i){ ctx.font=pf(z(cell.s||30),cell.b?800:400); ctx.fillStyle=cell.c||INK;
         var yy=col.y+z(7); lines[i].forEach(function(l){ ctx.fillText(l,x+pad,yy); yy+=lh[i]; }); x+=widths[i]; });
@@ -931,7 +932,10 @@ function drawSheet(k){
   section(L,"投与する薬");
   if(D.pre.length){
     table(L,[{t:"薬",w:.27},{t:"用量",w:.15},{t:"薬の量",w:.12},{t:"吸う量",w:.22},{t:"経路",w:.1},{t:"時刻",w:.14}],
-      D.pre.map(function(r){ return [{t:r.name+(r.nv?"※":""),b:true,s:28},{t:r.dose,s:26},{t:r.mg,s:26},{t:volText(r.v),b:true,s:34,c:r.v.f>1?AMB:MINT},{t:r.route,s:26},{t:""}]; }));
+      D.pre.map(function(r){ var sed=r.cat!=="その他";   /* 鎮静・麻酔薬は色付きで目立たせる（院長指定 2026-11-16） */
+        var row=[{t:(sed?"◆":"")+r.name+(r.nv?"※":""),b:true,s:28},{t:r.dose,s:26},{t:r.mg,s:26},{t:volText(r.v),b:true,s:34,c:r.v.f>1?AMB:MINT},{t:r.route,s:26},{t:""}];
+        if(sed){ row.bg="#ffe2b8"; row.bar="#d9822b"; } return row; }));
+    if(D.pre.some(function(r){return r.cat!=="その他";})) note(L,"◆ 色付き＝鎮静・麻酔薬",{s:22});
   }else note(L,"（前投与・導入タブで薬を選ぶと、ここに載ります）");
   if(D.cri.length){ section(L,"CRI（持続投与）");
     table(L,[{t:"薬",w:.27},{t:"速度",w:.18},{t:"シリンジの作り方",w:.37},{t:"流速",w:.18}],

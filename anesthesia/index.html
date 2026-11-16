@@ -359,23 +359,6 @@ function karteText(){
   return out.join("\n");
 }
 
-/* ===== 麻酔記録アプリへの引き渡し（同じ端末の localStorage 経由。6時間で無効） ===== */
-function recHandoff(){
-  var w=kg(), o=sp(); if(!o||w==null){ toast("動物種と体重を入れてください"); return; }
-  function vt(v){ return v.blocked||v.tiny?"":(v.f>1?fml(v.dml)+"mL（"+v.f+"倍液）":fml(v.ml)+"mL"); }
-  var plan=[], em=[], cri=[];
-  S.pre.forEach(function(it){ var r=rowById(it.id); if(!r) return; var p=product(r), d=tnum(it.ds); if(d==null) return;
-    var mg=bolusMg(d,r.u,w); plan.push({sec:r.cat==="その他"?"その他":r.cat==="導入"?"導入":"前投薬",name:dispName(p,r),dose:fnum(d)+r.u,mg:mg==null?"":fmg(mg),ml:mg==null?"":vt(vol(mg,p,it.f)),route:r.route}); });
-  rowsFor(function(r){return r.cat==="緊急"&&!isIno(r);}).forEach(function(r){ var p=product(r), mg=r.d!=null?bolusMg(r.d,r.u,w):null;
-    em.push({name:dispName(p,r),dose:r.d!=null?fnum(r.d)+r.u:"",mg:mg==null?"":fmg(mg),ml:mg==null?"":vt(vol(mg,p,null,EM_DIL)),route:r.route}); });
-  var kt=karteText().split("\n"), on=false;
-  kt.forEach(function(l){ if(/^■CRI/.test(l)){ on=true; return; } if(/^■|^$|^―/.test(l)){ on=false; return; } if(on) cri.push(l.replace(/^・/,"")); });
-  var fr=tnum(S.fl.rate), flt=fr==null?"":(S.fl.route==="iv"?S.fl.fluid+" "+fnum(fr)+"mL/kg/h = "+fnum(fr*w)+"mL/h":"");
-  var d={v:1,at:Date.now(),sp:S.sp,kg:w,wt:S.wu==="g"?fnum(tnum(S.wt))+"g":fnum(w)+"kg",pt:S.pt,plan:plan,em:em,cri:cri,fl:flt,flRate:S.fl.route==="iv"&&fr!=null?Math.round(fr*w*10)/10:null,karte:karteText()};
-  lsSet("anrec_handoff",d);
-  location.href="../anes-record/?from=calc";
-}
-
 /* ===== ヘッダー ===== */
 function renderHeader(){
   var s=document.getElementById("src"); s.innerHTML="";
@@ -1084,8 +1067,6 @@ function renderRec(){
   fld("注意事項（あれば）",txtInput(P,"memo","例：心雑音あり、てんかん既往","area"));
   out.push(c1);
   var kt=karteText(); if(kt){ var kb=copyBox(kt,"カルテ転記用（まとめ）","緊急薬を除く投与薬すべて。その他の薬は区切り線の下に分けています"); kb.id="kt"; out.push(kb); }
-  if(sp()&&kg()!=null) out.push(h("div",{class:"card"},h("h2",{text:"麻酔記録"}),h("div",{class:"note",style:"margin-bottom:8px",text:"この症例情報と薬（前投与・導入・CRI・輸液・緊急薬）を麻酔記録アプリに取り込みます。"}),
-    h("button",{class:"btn",text:"📈 麻酔記録を始める",onclick:recHandoff})));
   var c2=h("div",{class:"card"},h("h2",{text:"A5 印刷シート"}));
   c2.appendChild(h("div",{class:"note",text:"載せる内容：症例情報／投与する薬（前投与・導入タブ）／CRI（CRIタブで「印刷シートに追加」したもの）／緊急薬（自動）。下の項目は選べます。"}));
   c2.appendChild(h("div",{class:"seg",style:"margin-top:8px"},[["fl","輸液"],["la","局所麻酔の上限"],["rev","拮抗"]].map(function(k){
@@ -1119,7 +1100,8 @@ function refreshPrint(){
 /* ===== 手術前の指示予約（院長指定 2026-11-15）：保存→当日呼び出し。手術日から5日で自動削除 ===== */
 var ANES_API="https://script.google.com/macros/s/AKfycbzg3Wvwdg94BAONiDz62eSc04Alla6DAByOoZGdq3BTDuTnoSkU1kz_qwnHrY6M3bMu_g/exec";   /* Apps Script のウェブアプリURL。空のあいだは試験モード（この端末だけに保存） */
 var ORD={list:null,loading:false,err:"",open:false};
-function ordKey(){ try{ return localStorage.getItem("anes_key")||localStorage.getItem("rcb_key")||""; }catch(e){ return ""; } }
+function ordKey(){ try{ return (localStorage.getItem("anes_key")||localStorage.getItem("rcb_key")||"").trim(); }catch(e){ return ""; } }
+function setKey(v){ try{ v=String(v||"").trim(); if(v) localStorage.setItem("anes_key",v); else localStorage.removeItem("anes_key"); }catch(e){} }
 function ymd(d){ return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2); }
 function addDays(n){ var d=new Date(); d.setDate(d.getDate()+n); return ymd(d); }
 function mockDb(){ var d=lsGet("anes_mock_orders")||[]; var lim=addDays(-5); d=d.filter(function(r){return r.date>=lim;}); lsSet("anes_mock_orders",d); return d; }
@@ -1134,10 +1116,16 @@ function ordApi(p){
     if(p.action==="status"){ d.forEach(function(x){ if(x.id===p.id) x.status=p.status; }); lsSet("anes_mock_orders",d); return Promise.resolve({ok:true}); }
     if(p.action==="del"){ lsSet("anes_mock_orders",d.filter(function(x){return x.id!==p.id;})); return Promise.resolve({ok:true}); }
   }
-  p.k=ordKey();
+  if(!p._retry) p.k=ordKey(); else p.k=ordKey();
   var req=(p.action==="list"||p.action==="get")?fetch(ANES_API+"?"+new URLSearchParams(p).toString(),{cache:"no-store"})
     :fetch(ANES_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(p)});
-  return req.then(function(r){return r.json();}).then(function(j){ if(!j.ok&&j.err==="auth") j.err="院内キーが違います（受付ボードと同じキーを入れてください）"; return j; });
+  return req.then(function(r){return r.json();}).then(function(j){
+    if(!j.ok&&j.err==="auth"){
+      var rk=""; try{ rk=(localStorage.getItem("rcb_key")||"").trim(); }catch(e){}
+      if(!p._retry&&rk&&rk!==p.k){ setKey(""); p._retry=1; return ordApi(p); }   /* 端末に残った古いキーを捨てて受付ボードのキーで再試行 */
+      ORD.auth=true; j.err="院内キーが違います。下に受付ボードと同じキーを入れ直してください";
+    } else if(j.ok) ORD.auth=false;
+    return j; });
 }
 function ordLoadList(){
   ORD.loading=true; ORD.err=""; if(S.tab==="rec") renderMain();
@@ -1190,10 +1178,14 @@ function ordersCard(){
   var c=h("div",{class:"card",style:"border-color:var(--mint)"});
   c.appendChild(h("div",{class:"row"},h("h2",{class:"grow",text:"手術の予約指示"}),h("button",{class:"btn ghost",style:"padding:6px 12px",text:ORD.loading?"読込中…":"更新",onclick:ordLoadList})));
   if(!ANES_API) c.appendChild(h("div",{class:"alert amber",text:"試験モード：この端末だけに保存されます（サーバー設置後に全端末で共有）"}));
-  else if(!ordKey()){
-    var ki=h("input",{type:"password",class:"tin",placeholder:"院内キー（受付ボードと同じ）"});
-    c.appendChild(h("div",{class:"note",text:"最初の1回だけ、院内キーを入れてください。"}));
-    c.appendChild(h("div",{class:"row"},ki,h("button",{class:"btn",text:"登録",onclick:function(){ lsSet("anes_key",ki.value.trim()); try{localStorage.setItem("anes_key",ki.value.trim());}catch(e){} ordLoadList(); }})));
+  else if(!ordKey()||ORD.auth||ORD.keyEdit){
+    var ki=h("input",{type:"text",autocomplete:"off",autocapitalize:"off",spellcheck:"false",class:"tin",placeholder:"院内キー（受付ボードと同じ20文字）"});
+    if(ORD.auth) c.appendChild(h("div",{class:"alert red",text:"院内キーが違います。受付ボードのURLの「#k=」の後ろと同じキーを入れ直してください"}));
+    else c.appendChild(h("div",{class:"note",text:"院内キーを入れてください（受付ボードと同じ。1回入れればこの端末に残ります）"}));
+    c.appendChild(h("div",{class:"row"},ki,h("button",{class:"btn",text:"登録",onclick:function(){
+      var v=ki.value.trim(); if(!v){ toast("キーを入れてください"); return; }
+      setKey(v); ORD.auth=false; ORD.keyEdit=false; ORD.err=""; ORD.list=null; ordLoadList(); }}),
+      ORD.keyEdit?h("button",{class:"btn ghost",text:"やめる",onclick:function(){ORD.keyEdit=false;renderMain();}}):null));
     return c;
   }
   if(ORD.err) c.appendChild(h("div",{class:"alert red",text:ORD.err}));
@@ -1227,6 +1219,7 @@ function ordersCard(){
     b.appendChild(h("div",{class:"note",text:"症例情報の「日付」を手術日にして保存します。当日は上の一覧から「呼び出す」→ 当日の体重を入れると、量を計算し直して印刷できます。手術日から5日で自動的に消えます。"}));
   }
   c.appendChild(b);
+  if(ANES_API) c.appendChild(h("div",{style:"text-align:right;margin-top:6px"},h("button",{class:"btn ghost",style:"padding:4px 10px;font-size:12px",text:"院内キーを入れ直す",onclick:function(){ORD.keyEdit=true;renderMain();}})));
   return c;
 }
 

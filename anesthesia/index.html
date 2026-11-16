@@ -373,19 +373,9 @@ function buildHandoff(){
   var fr=tnum(S.fl.rate), flt=fr==null?"":(S.fl.route==="iv"?S.fl.fluid+" "+fnum(fr)+"mL/kg/h = "+fnum(fr*w)+"mL/h":"");
   return {v:1,at:Date.now(),sp:S.sp,kg:w,wt:S.wu==="g"?fnum(tnum(S.wt))+"g":fnum(w)+"kg",pt:S.pt,plan:plan,em:em,cri:cri,fl:flt,flRate:S.fl.route==="iv"&&fr!=null?Math.round(fr*w*10)/10:null,karte:karteText()};
 }
-/* 麻酔準備用紙の画像（麻酔記録PDFの1枚目に付ける。院長指定 2026-11-16） */
-var REC_API="https://script.google.com/macros/s/AKfycbwjFCXqUR0_LI4iJ4ZBV0z70TJRcNe6XUvcyE2qK_cRMYlnwQ-ECfo-i0LThozrQgSfYA/exec";
-function prepImage(){ try{ var src=renderSheet()[0], w=1654, c=document.createElement("canvas"); c.width=w; c.height=Math.round(src.height*w/src.width);
-  var x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height); x.drawImage(src,0,0,c.width,c.height); return c.toDataURL("image/jpeg",0.8); }catch(e){ return null; } }
-function uploadPrep(img){ if(!REC_API||!img) return Promise.resolve(null);
-  var id="p"+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-5);
-  return fetch(REC_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"prep",id:id,img:img.split(",")[1],k:ordKey()})})
-    .then(function(r){return r.json();}).then(function(j){ return j.ok?id:null; }).catch(function(){ return null; }); }
 function recHandoff(){
   var d=buildHandoff(); if(!d){ toast("動物種と体重を入れてください"); return; }
   if(S.ref&&S.ref.id) d.ordId=S.ref.id;
-  if(S.ref&&S.ref.prepId) d.prepId=S.ref.prepId;
-  try{ var im=prepImage(); if(im) localStorage.setItem("anrec_prep_handoff",im); }catch(e){}
   lsSet("anrec_handoff",d);
   location.href="../anes-record/?from=calc";
 }
@@ -396,15 +386,14 @@ function ordConfirm(go){
   if(miss.length){ toast("未入力："+miss.join("・")); return; }
   var today=addDays(0); if(P.date!==today){ if(!confirm("日付が今日（"+today+"）ではありません。今日の日付にして確定しますか？")) return; P.date=today; }
   var hd=buildHandoff();
-  uploadPrep(prepImage()).then(function(pid){ if(pid) hd.prepId=pid; return ordApi({action:"save",id:(S.ref&&S.ref.id)||"",date:P.date,no:P.no,name:P.name,sp:S.sp,proc:P.proc,vet:P.vet,data:snapshot(hd)}).then(function(j){
+  ordApi({action:"save",id:(S.ref&&S.ref.id)||"",date:P.date,no:P.no,name:P.name,sp:S.sp,proc:P.proc,vet:P.vet,data:snapshot(hd)}).then(function(j){
     if(!j.ok){ toast(j.err||"確定できませんでした"); if(go) recHandoff(); return; }
     return ordApi({action:"status",id:j.id,status:"確定"}).then(function(k){
       S.ref={id:j.id,date:P.date,wtRef:kg(),status:"確定",fixed:[]};
       toast(k.ok?"確定しました。麻酔記録から呼び出せます":"保存しましたが確定にできませんでした"); ORD.list=null;
-      if(pid) S.ref.prepId=pid;
       if(go) recHandoff(); else { ordLoadList(); renderMain(); }
     });
-  }); }).catch(function(){ toast("通信できませんでした"+(go?"。この端末だけで記録を始めます":"")); if(go) recHandoff(); });
+  }).catch(function(){ toast("通信できませんでした"+(go?"。この端末だけで記録を始めます":"")); if(go) recHandoff(); });
 }
 
 /* ===== ヘッダー ===== */
@@ -866,11 +855,13 @@ function sheetData(){
       {route:"静脈内・骨髄内",fluid:S.fl.fluid,dose:fnum(fr)+" mL/kg/h",out:fnum(fr*w)+" mL/h"}:
       {route:"皮下",fluid:S.fl.fluid,dose:fnum(fr)+" mL/kg",out:fml(fr*w)+" mL"+(S.fl.sites>1?"（"+S.fl.sites+"か所×"+fml(fr*w/S.fl.sites)+" mL）":"")};
   }
+  /* 局所麻酔：使う量を入れた薬だけ載せる。指示量を大きく、上限は小さく（院長指定 2026-11-16） */
   if(S.prt.la) rowsFor(function(r){return r.cat==="局所麻酔";}).forEach(function(r){
-    var p=product(r), maxMg=r.cap*w, txt;
-    if(p&&p.conc!=null) txt=fml(maxMg/p.conc)+" mL（"+fnum(p.conc/10)+"%）";
-    else txt=(LA_PCT[r.ing]||[]).map(function(pc){return pc+"%なら "+fml(maxMg/(pc*10))+" mL";}).join("\n");
-    D.la.push({name:dispName(p,r),cap:fnum(r.cap)+" mg/kg",mg:fmg(maxMg),ml:txt});
+    var p=product(r), st=S.la[r.ing==="リドカイン塩酸塩"?"lido":"bupi"], ml=tnum(st&&st.ml); if(ml==null) return;
+    var conc=p&&p.conc!=null?p.conc:(st.pct!=null?st.pct*10:null); if(conc==null) return;
+    var maxMg=r.cap*w;
+    D.la.push({name:dispName(p,r),pct:fnum(conc/10)+"%",ml:fml(ml)+" mL",mg:fmg(ml*conc),use:Math.round(ml*conc/maxMg*100),
+      cap:"上限 "+fnum(r.cap)+" mg/kg＝"+fmg(maxMg)+"（"+fml(maxMg/conc)+" mL）"});
   });
   if(S.prt.rev){
     var rr=rowsFor(function(r){return r.cat==="拮抗";})[0];
@@ -994,10 +985,11 @@ function drawSheet(k){
   if(D.rev){ section(L,"拮抗（覚醒時）");
     table(L,[{t:"薬",w:.27},{t:"計算",w:.33},{t:"吸う量",w:.25},{t:"経路",w:.15}],
       [[{t:D.rev.name+(D.rev.nv?"※":""),b:true,s:28},{t:D.rev.dose+"＝"+D.rev.mg,s:26},{t:volText(D.rev.v),b:true,s:34,c:MINT},{t:D.rev.route,s:26}]]); }
-  if(D.la.length){ section(L,"局所麻酔の上限（合計）");
-    table(L,[{t:"薬",w:.27},{t:"上限",w:.2},{t:"液量の上限",w:.53}],
-      D.la.map(function(r){ return [{t:r.name,b:true,s:28},{t:r.cap+"\n＝"+r.mg,s:26},{t:r.ml,s:26}]; }));
-    if(D.la.length>1) note(L,"併用時は、それぞれの「上限の何%」を足して100%以内。"); }
+  if(D.la.length){ section(L,"局所麻酔");
+    table(L,[{t:"薬",w:.3},{t:"使う量（指示）",w:.32},{t:"上限",w:.38}],
+      D.la.map(function(r){ var tot=D.la.reduce(function(a,x){return a+x.use;},0);
+        return [{t:r.name+"（"+r.pct+"）",b:true,s:28},{t:r.ml+"\n＝"+r.mg,b:true,s:34,c:r.use>=100?RED:MINT},{t:r.cap+"\n上限の"+r.use+"%",s:20,c:SUB}]; }));
+    if(D.la.length>1){ var tot=D.la.reduce(function(a,x){return a+x.use;},0); note(L,"2剤合計で上限の"+tot+"%（100%以内）",{s:22,c:tot>=100?RED:SUB}); } }
   if(D.pre.some(function(r){return r.v.f>1;})||(D.rev&&D.rev.v.f>1)) note(L,"10倍液＝原液0.1mL＋生食0.9mL（合計1.0mL）。100倍液＝10倍液をさらに同じ手順で10倍。");
 
   // ===== 右：緊急薬 =====
@@ -1127,7 +1119,7 @@ function renderRec(){
         h("button",{class:"btn ghost",text:"📈 確定して、この端末で麻酔記録を始める",onclick:function(){ordConfirm(true);}})))); }
   var c2=h("div",{class:"card"},h("h2",{text:"A5 印刷シート"}));
   c2.appendChild(h("div",{class:"note",text:"載せる内容：症例情報／投与する薬（前投与・導入タブ）／CRI（CRIタブで「印刷シートに追加」したもの）／緊急薬（自動）。下の項目は選べます。"}));
-  c2.appendChild(h("div",{class:"seg",style:"margin-top:8px"},[["fl","輸液"],["la","局所麻酔の上限"],["rev","拮抗"]].map(function(k){
+  c2.appendChild(h("div",{class:"seg",style:"margin-top:8px"},[["fl","輸液"],["la","局所麻酔（使う量を入れた時）"],["rev","拮抗"]].map(function(k){
     return h("button",{class:S.prt[k[0]]?"on":"",text:(S.prt[k[0]]?"✓ ":"")+k[1],onclick:function(){S.prt[k[0]]=!S.prt[k[0]];renderMain();}});})));
   c2.appendChild(h("div",{id:"pwarn"}));
   var msg=h("div",{class:"alert grey",style:"display:none"});

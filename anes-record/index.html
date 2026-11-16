@@ -303,6 +303,7 @@ function newRecord(from){
   }
   if(!r.pt.date) r.pt.date=ymd();
   r.items=defaultItems(r.sp);
+  if(from&&from.prepId) r.prepId=from.prepId;
   return r;
 }
 function defaultItems(spl){ var o=spObj(spl), g=o?o.g:"dc"; return (lsGet("anrec_items2_"+g)||DEF_ITEMS[g]).slice(); }
@@ -333,7 +334,7 @@ function renderHome(){
       h("h2",{text:"麻酔薬計算から取り込み"}),
       h("div",{style:"font-size:15px;margin-bottom:4px"},h("b",null,hd.sp+" "+hd.wt),"　"+(P.name||"")+(P.no?"（"+P.no+"）":"")+"　"+(P.proc||"")),
       h("div",{class:"note",style:"margin-bottom:8px",text:"薬 "+(hd.plan||[]).length+"件・CRI "+(hd.cri||[]).length+"件・緊急薬 "+(hd.em||[]).length+"件"}),
-      h("button",{class:"btn big",text:"取り込んで記録を準備",onclick:function(){ R=newRecord(hd); lsDel("anrec_handoff"); saveLocal(); V.scr="setup"; render(); }})));
+      h("button",{class:"btn big",text:"取り込んで記録を準備",onclick:function(){ R=newRecord(hd); lsDel("anrec_handoff"); saveLocal(); adoptHandoffPrep(); V.scr="setup"; render(); }})));
   }
   if(apiKey()) M.appendChild(confirmedCard());
   var ids=localIds().map(function(id){return lsGet("anrec_r_"+id);}).filter(Boolean).sort(function(a,b){return b.updated-a.updated;});
@@ -457,6 +458,24 @@ function planCard(){
   if(R.fl) c.appendChild(h("div",{style:"font-size:13px;padding:3px 0"},h("span",{class:"tag dr",text:"輸液"}),R.fl));
   return c;
 }
+
+/* ====== 麻酔準備用紙（麻酔薬計算の印刷シート）を麻酔記録PDFの1枚目に（院長指定 2026-11-16） ====== */
+var PREP={id:null,img:null,loading:false};
+function adoptHandoffPrep(){ /* 同じ端末で麻酔薬計算から来たとき：画像を記録に紐づけ、サーバーにも預ける（別端末で印刷するため） */
+  var im=null; try{ im=localStorage.getItem("anrec_prep_handoff"); }catch(e){} if(!im||!R) return;
+  try{ localStorage.removeItem("anrec_prep_handoff"); localStorage.setItem("anrec_prep_"+R.id,im); }catch(e){}
+  if(!R.prepId&&REC_API){ var pid="r"+R.id; api({action:"prep",id:pid,img:im.split(",")[1]}).then(function(j){ if(j.ok&&R){ R.prepId=pid; touch(); } }).catch(function(){}); }
+}
+function loadPrep(){ /* Promise<Image|null> */
+  if(!R) return Promise.resolve(null);
+  if(PREP.id===R.id&&PREP.img) return Promise.resolve(PREP.img);
+  var local=null; try{ local=localStorage.getItem("anrec_prep_"+R.id); }catch(e){}
+  var src=local?Promise.resolve(local):(R.prepId&&REC_API?api({action:"prepget",id:R.prepId}).then(function(j){ if(!j.ok||!j.img) return null; var u="data:image/jpeg;base64,"+j.img; try{ localStorage.setItem("anrec_prep_"+R.id,u); }catch(e){} return u; }).catch(function(){return null;}):Promise.resolve(null));
+  var rid=R.id;
+  return src.then(function(u){ if(!u) return null; return new Promise(function(ok){ var im=new Image(); im.onload=function(){ PREP.id=rid; PREP.img=im; ok(im); }; im.onerror=function(){ ok(null); }; im.src=u; }); });
+}
+function prepCanvas(){ if(!R||PREP.id!==R.id||!PREP.img||R.noPrep) return null; var im=PREP.img, c=document.createElement("canvas"); c.width=im.naturalWidth; c.height=im.naturalHeight; var x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height); x.drawImage(im,0,0); return c; }
+function allPages(){ var p=pages(), pc=prepCanvas(); return pc?[pc].concat(p):p; }
 
 /* ====== 人工呼吸（院長指定 2026-11-16）：開始〜終了の間だけ 気道内圧・PEEP を入力・表示 ====== */
 function ventOn(r){ var a=null,b=null; r.ev.forEach(function(e){ if(e.k==="人工呼吸開始"&&(a==null||e.t>a)) a=e.t; if(e.k==="人工呼吸終了"&&(b==null||e.t>b)) b=e.t; }); return a!=null&&(b==null||b<a); }
@@ -847,7 +866,16 @@ function renderDone(){
   c.appendChild(h("div",{class:"note",style:"margin-top:6px",text:"ファイル名："+pdfName()}));
   var pv=h("div",{class:"preview"}); c.appendChild(pv);
   M.appendChild(c);
-  setTimeout(function(){ pages().forEach(function(cv){ pv.appendChild(h("img",{src:cv.toDataURL("image/jpeg",0.7)})); }); },20);
+  var pchk=h("div",{class:"note",style:"margin-top:6px"});
+  c.insertBefore(pchk,pv);
+  function preview(){ pv.innerHTML=""; allPages().forEach(function(cv){ pv.appendChild(h("img",{src:cv.toDataURL("image/jpeg",0.7)})); }); }
+  setTimeout(preview,20);
+  pchk.textContent="麻酔準備用紙：確認中…";
+  loadPrep().then(function(im){ pchk.innerHTML="";
+    if(!im){ pchk.textContent="麻酔準備用紙：なし（麻酔薬計算から始めた記録だけ1枚目に付きます）"; return; }
+    var cb=h("input",{type:"checkbox"}); cb.checked=!R.noPrep; cb.onchange=function(){ R.noPrep=!cb.checked; touch(); preview(); };
+    pchk.appendChild(h("label",{style:"display:flex;gap:6px;align-items:center;font-size:14px;color:var(--ink)"},cb,"麻酔準備用紙を1枚目に付ける（A5横）"));
+    preview(); });
   var kt=karte();
   M.appendChild(h("div",{class:"card"},h("h2",{text:"② カルテ転記用"}),h("pre",{class:"copy",id:"kt",text:kt}),
     h("div",{style:"margin-top:8px"},h("button",{class:"btn",text:"コピー",onclick:function(){ copy(kt); }}))));
@@ -891,7 +919,7 @@ function dbSheets(){
 function archive(btn){
   if(!REC_API){ alert("サーバー設置前のため保存できません（試験モード）。PDFを手動で保存してください。"); return; }
   btn.disabled=true; var old=btn.textContent; btn.textContent="保存中…";
-  blobB64(buildPdf(pages())).then(function(b64){
+  blobB64(buildPdf(allPages())).then(function(b64){
     return api({action:"archive",id:R.id,date:R.pt.date,pdfName:pdfName(),pdf:b64,sheets:JSON.stringify(dbSheets())});
   }).then(function(j){ btn.disabled=false; btn.textContent=old;
     if(!j.ok){ toast(j.err||"保存できませんでした"); return; }
@@ -1028,6 +1056,7 @@ function buildPdf(canvases){
   offsets[2]=offset; pushS("2 0 obj\n<< /Type /Pages /Kids ["+pageIds.map(function(x){return x+" 0 R";}).join(" ")+"] /Count "+n+" >>\nendobj\n");
   canvases.forEach(function(cv,i){
     var pid=3+i*3, cid=pid+1, iid=pid+2, jpg=b64ToBytes(cv.toDataURL("image/jpeg",0.9).split(",")[1]);
+    var W=595.28, H=cv.width>cv.height?419.53:841.89;   /* 横長＝A5横（麻酔準備用紙）、縦長＝A4縦 */
     offsets[pid]=offset; pushS(pid+" 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 "+W+" "+H+"] /Resources << /XObject << /Im0 "+iid+" 0 R >> >> /Contents "+cid+" 0 R >>\nendobj\n");
     var cs="q "+W+" 0 0 "+H+" 0 0 cm /Im0 Do Q";
     offsets[cid]=offset; pushS(cid+" 0 obj\n<< /Length "+cs.length+" >>\nstream\n"+cs+"\nendstream\nendobj\n");
@@ -1041,7 +1070,7 @@ function buildPdf(canvases){
 }
 function pdfName(){ var P=R.pt; return [(P.date||ymd()).replace(/-/g,""),P.no||"番号なし",P.name||"名前なし","麻酔記録"].join("_").replace(/[\\\/:*?"<>|\s]/g,"")+".pdf"; }
 function savePdf(msgEl){
-  var blob=buildPdf(pages()), name=pdfName();
+  var blob=buildPdf(allPages()), name=pdfName();
   function ok(t){ msgEl.className="alert grey"; msgEl.textContent=t; } function ng(t){ msgEl.className="alert red"; msgEl.textContent=t; }
   try{ var file=new File([blob],name,{type:"application/pdf"});
     if(navigator.canShare&&navigator.canShare({files:[file]})){
@@ -1052,11 +1081,11 @@ function savePdf(msgEl){
     setTimeout(function(){URL.revokeObjectURL(url);},30000); ok("ダウンロードしました："+name); }catch(e){ ng("この環境では保存できませんでした。"); } }
 }
 function printPages(){
-  var ps=pages(); var old=document.getElementById("pf"); if(old) old.remove();
+  var ps=allPages(); var old=document.getElementById("pf"); if(old) old.remove();
   var f=h("iframe",{id:"pf",style:"position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden"}); document.body.appendChild(f);
   var d=f.contentWindow.document; d.open();
   d.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+pdfName().replace(/\.pdf$/,"")+'</title><style>@page{size:A4 portrait;margin:0}html,body{margin:0}img{display:block;width:210mm;height:297mm}</style></head><body></body></html>'); d.close();
-  var left=ps.length; ps.forEach(function(cv){ var im=d.createElement("img"); im.onload=function(){ if(--left===0) setTimeout(function(){ f.contentWindow.focus(); f.contentWindow.print(); },50); }; im.src=cv.toDataURL("image/png"); d.body.appendChild(im); });
+  var left=ps.length; ps.forEach(function(cv){ var im=d.createElement("img"); im.onload=function(){ if(--left===0) setTimeout(function(){ f.contentWindow.focus(); f.contentWindow.print(); },50); }; if(cv.width>cv.height){ im.style.width="210mm"; im.style.height="148mm"; im.style.pageBreakAfter="always"; } im.src=cv.toDataURL("image/png"); d.body.appendChild(im); });
 }
 
 /* ====== 大画面表示 ====== */

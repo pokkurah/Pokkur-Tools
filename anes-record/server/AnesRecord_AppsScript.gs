@@ -32,6 +32,8 @@ function handle_(p) {
     if (p.action === 'put') return out_(put_(p));
     if (p.action === 'del') return out_(del_(p.id));
     if (p.action === 'archive') return out_(archive_(p));
+    if (p.action === 'prep') return out_(prepPut_(p.id, p.img));
+    if (p.action === 'prepget') return out_(prepGet_(p.id));
     if (p.action === 'archived') return out_({ ok: true, rows: archived_(Number(p.days) || 90) });
     return out_({ ok: false, err: 'action' });
   } catch (err) {
@@ -110,6 +112,7 @@ function del_(id) {
 
 /* KEEP_DAYS を過ぎた記録を削除（毎日のトリガー＋書き込み時にときどき） */
 function cleanup() {
+  try { cleanupPrep_(); } catch (e) {}
   var sh = sheet_(), n = sh.getLastRow() - 1; if (n < 1) return;
   var v = sh.getRange(2, 3, n, 1).getValues(), lim = Date.now() - KEEP_DAYS * 864e5;
   for (var i = v.length - 1; i >= 0; i--) if (Number(v[i][0]) < lim) sh.deleteRow(i + 2);
@@ -209,4 +212,24 @@ function migrate_(sh, head) {
     if (i >= old.length || !old[i]) break;   /* 末尾に増えた列は差し込み不要 */
     if (old.indexOf(head[i]) < 0) { sh.insertColumnBefore(i + 1); old.splice(i, 0, head[i]); }
   }
+}
+
+/* 麻酔準備用紙の画像（麻酔薬計算の印刷シート）を一時保管。麻酔記録PDFの1枚目に使う。14日で削除 */
+function prepFolder_() { return sub_(folder_(), '_準備用紙（一時）'); }
+function prepPut_(id, b64) {
+  if (!id || !b64 || !/^[A-Za-z0-9_-]+$/.test(id)) return { ok: false, err: 'data' };
+  var f = prepFolder_(), it = f.getFilesByName(id + '.jpg');
+  while (it.hasNext()) it.next().setTrashed(true);
+  f.createFile(Utilities.newBlob(Utilities.base64Decode(b64), 'image/jpeg', id + '.jpg'));
+  return { ok: true, id: id };
+}
+function prepGet_(id) {
+  if (!id || !/^[A-Za-z0-9_-]+$/.test(id)) return { ok: false, err: 'data' };
+  var it = prepFolder_().getFilesByName(id + '.jpg');
+  if (!it.hasNext()) return { ok: false, err: 'notfound' };
+  return { ok: true, img: Utilities.base64Encode(it.next().getBlob().getBytes()) };
+}
+function cleanupPrep_() {
+  var lim = Date.now() - 14 * 864e5, it = prepFolder_().getFiles();
+  while (it.hasNext()) { var f = it.next(); if (f.getDateCreated().getTime() < lim) f.setTrashed(true); }
 }

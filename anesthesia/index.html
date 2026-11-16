@@ -373,9 +373,19 @@ function buildHandoff(){
   var fr=tnum(S.fl.rate), flt=fr==null?"":(S.fl.route==="iv"?S.fl.fluid+" "+fnum(fr)+"mL/kg/h = "+fnum(fr*w)+"mL/h":"");
   return {v:1,at:Date.now(),sp:S.sp,kg:w,wt:S.wu==="g"?fnum(tnum(S.wt))+"g":fnum(w)+"kg",pt:S.pt,plan:plan,em:em,cri:cri,fl:flt,flRate:S.fl.route==="iv"&&fr!=null?Math.round(fr*w*10)/10:null,karte:karteText()};
 }
+/* 麻酔準備用紙の画像（麻酔記録PDFの1枚目に付ける。院長指定 2026-11-16。麻酔記録セッション作） */
+var REC_API="https://script.google.com/macros/s/AKfycbwjFCXqUR0_LI4iJ4ZBV0z70TJRcNe6XUvcyE2qK_cRMYlnwQ-ECfo-i0LThozrQgSfYA/exec";
+function prepImage(){ try{ var src=renderSheet()[0], w=1654, c=document.createElement("canvas"); c.width=w; c.height=Math.round(src.height*w/src.width);
+  var x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,c.width,c.height); x.drawImage(src,0,0,c.width,c.height); return c.toDataURL("image/jpeg",0.8); }catch(e){ return null; } }
+function uploadPrep(img){ if(!REC_API||!img) return Promise.resolve(null);
+  var id="p"+Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-5);
+  return fetch(REC_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify({action:"prep",id:id,img:img.split(",")[1],k:ordKey()})})
+    .then(function(r){return r.json();}).then(function(j){ return j.ok?id:null; }).catch(function(){ return null; }); }
 function recHandoff(){
   var d=buildHandoff(); if(!d){ toast("動物種と体重を入れてください"); return; }
   if(S.ref&&S.ref.id) d.ordId=S.ref.id;
+  if(S.ref&&S.ref.prepId) d.prepId=S.ref.prepId;
+  try{ var im=prepImage(); if(im) localStorage.setItem("anrec_prep_handoff",im); }catch(e){}
   lsSet("anrec_handoff",d);
   location.href="../anes-record/?from=calc";
 }
@@ -386,14 +396,15 @@ function ordConfirm(go){
   if(miss.length){ toast("未入力："+miss.join("・")); return; }
   var today=addDays(0); if(P.date!==today){ if(!confirm("日付が今日（"+today+"）ではありません。今日の日付にして確定しますか？")) return; P.date=today; }
   var hd=buildHandoff();
-  ordApi({action:"save",id:(S.ref&&S.ref.id)||"",date:P.date,no:P.no,name:P.name,sp:S.sp,proc:P.proc,vet:P.vet,data:snapshot(hd)}).then(function(j){
+  uploadPrep(prepImage()).then(function(pid){ if(pid) hd.prepId=pid; return ordApi({action:"save",id:(S.ref&&S.ref.id)||"",date:P.date,no:P.no,name:P.name,sp:S.sp,proc:P.proc,vet:P.vet,data:snapshot(hd)}).then(function(j){
     if(!j.ok){ toast(j.err||"確定できませんでした"); if(go) recHandoff(); return; }
     return ordApi({action:"status",id:j.id,status:"確定"}).then(function(k){
       S.ref={id:j.id,date:P.date,wtRef:kg(),status:"確定",fixed:[]};
       toast(k.ok?"確定しました。麻酔記録から呼び出せます":"保存しましたが確定にできませんでした"); ORD.list=null;
+      if(pid) S.ref.prepId=pid;
       if(go) recHandoff(); else { ordLoadList(); renderMain(); }
     });
-  }).catch(function(){ toast("通信できませんでした"+(go?"。この端末だけで記録を始めます":"")); if(go) recHandoff(); });
+  }); }).catch(function(){ toast("通信できませんでした"+(go?"。この端末だけで記録を始めます":"")); if(go) recHandoff(); });
 }
 
 /* ===== ヘッダー ===== */

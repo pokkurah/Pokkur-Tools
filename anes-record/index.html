@@ -75,6 +75,7 @@ canvas.trend{width:100%;display:block}
 .preview img{width:100%;border:1px solid var(--line);margin-top:8px}
 .floatbtn{position:fixed;left:0;right:0;bottom:0;padding:10px 12px calc(10px + env(safe-area-inset-bottom));background:rgba(245,247,248,.95);border-top:1px solid var(--line);z-index:6}
 .floatbtn .btn{max-width:616px;margin:0 auto;display:block}
+body.embed main{padding-top:0}
 
 /* ===== 大画面表示 ===== */
 body.disp{background:#0d1417;color:#e8eef0;overflow:hidden}
@@ -170,7 +171,9 @@ var ITEMS=[
  {k:"jaw",l:"顎の緊張",t:"sel",o:["あり","弱い","なし"]},
  {k:"mm",l:"粘膜色",t:"sel",o:["ピンク","淡","チアノーゼ","充血"]},
  {k:"crt",l:"CRT",t:"sel",o:["2秒未満","2秒以上"]},
- {k:"vent",l:"換気",t:"sel",o:["自発","補助","調節(IPPV)"]}
+ {k:"vent",l:"換気",t:"sel",o:["自発","補助","調節(IPPV)"]},
+ {k:"pip",l:"気道内圧",u:"cmH₂O",t:"num",st:1,dp:0,c:"#7c3aed",ventOnly:1},
+ {k:"peep",l:"PEEP",u:"cmH₂O",t:"num",st:1,dp:0,c:"#c026d3",ventOnly:1}
 ];
 var IT={}; ITEMS.forEach(function(x){ IT[x.k]=x; });
 /* EtISO はセボフルランのとき EtSEV と表示 */
@@ -186,8 +189,8 @@ var DEF_ITEMS={
  rp:["hr","rr","spo2","etco2","temp","agent","etag","o2","air","fio2","fluid","reflex","jaw","mm"],   /* 犬猫から血圧・心電図を除く（院長指定 2026-11-16） */
  am:["hr","rr","temp","reflex"]
 };
-var EVENTS=["麻酔導入","挿管","吸入開始","手術開始","手術終了","吸入終了","抜管","覚醒（伏臥位）","体位変換","低血圧対応","不整脈","嘔吐・逆流","呼吸停止","その他"];
-var EV_ONCE=["麻酔導入","挿管","吸入開始","手術開始","手術終了","吸入終了","抜管","覚醒（伏臥位）"];
+var EVENTS=["前投薬投与","麻酔導入","挿管","吸入開始","手術開始","手術終了","吸入終了","抜管","覚醒（伏臥位）","人工呼吸開始","人工呼吸終了","体位変換","低血圧対応","不整脈","嘔吐・逆流","呼吸停止","その他"];
+var EV_ONCE=["前投薬投与","麻酔導入","挿管","吸入開始","手術開始","手術終了","吸入終了","抜管","覚醒（伏臥位）"];
 var EM_DEFAULT=["アドレナリン","アトロピン","グリコピロレート","エフェドリン","ドパミン","ドブタミン","静注用キシロカイン","ドプラム"];
 
 /* ====== 小道具 ====== */
@@ -269,7 +272,11 @@ function push(){
   if(SYNC.busy){ SYNC.again=true; return; }
   SYNC.busy=true; var rev=R.rev;
   var m=meta(R); m.action="put"; m.data=JSON.stringify(R);
-  api(m).then(function(j){ SYNC.busy=false; if(j.ok){ SYNC.st="ok"; SYNC.at=Date.now(); R.pushed=rev; lsSet("anrec_r_"+R.id,R); } else { SYNC.st="ng"; SYNC.err=j.err; }
+  api(m).then(function(j){ SYNC.busy=false;
+    if(j.ok&&j.stale){ /* 別の端末（大画面PCの臨時入力など）の方が新しい → そちらを取り込む */
+      api({action:"get",id:R.id}).then(function(g){ if(g.ok&&g.data){ var nr=JSON.parse(g.data); if(R&&nr.id===R.id){ R=nr; R.pushed=R.rev; saveLocal(); SYNC.st="ok"; paintSync(); if(!document.querySelector(".modal")) render(); toast("別の端末で入力された内容を取り込みました"); } } }).catch(function(){});
+      return; }
+    if(j.ok){ SYNC.st="ok"; SYNC.at=Date.now(); R.pushed=rev; lsSet("anrec_r_"+R.id,R); } else { SYNC.st="ng"; SYNC.err=j.err; }
     paintSync(); if(SYNC.again||(R&&R.rev>rev)){ SYNC.again=false; queuePush(); } })
   .catch(function(){ SYNC.busy=false; SYNC.st="ng"; SYNC.err="通信できません"; paintSync(); clearTimeout(SYNC.timer); SYNC.timer=setTimeout(push,8000); });
 }
@@ -423,7 +430,7 @@ function renderSetup(){
   /* モニター項目 */
   var c2=h("div",{class:"card"},h("h2",{text:"モニターする項目"}),h("div",{class:"note",style:"margin-bottom:8px",text:"動物種ごとの初期値。変えた選択はこの端末が動物種のグループごとに覚えます。"}));
   var chips=h("div",{class:"chips"});
-  ITEMS.forEach(function(x){ var on=R.items.indexOf(x.k)>=0;
+  ITEMS.forEach(function(x){ if(x.ventOnly) return; var on=R.items.indexOf(x.k)>=0;
     chips.appendChild(h("button",{class:on?"done":"",text:(on?"✓ ":"")+x.l,onclick:function(){
       if(on) R.items=R.items.filter(function(k){return k!==x.k;}); else R.items=ITEMS.map(function(y){return y.k;}).filter(function(k){return k===x.k||R.items.indexOf(k)>=0;});
       if(R.sp) lsSet("anrec_items2_"+spObj(R.sp).g,R.items); saveLocal(); render(); }})); });
@@ -450,6 +457,12 @@ function planCard(){
   if(R.fl) c.appendChild(h("div",{style:"font-size:13px;padding:3px 0"},h("span",{class:"tag dr",text:"輸液"}),R.fl));
   return c;
 }
+
+/* ====== 人工呼吸（院長指定 2026-11-16）：開始〜終了の間だけ 気道内圧・PEEP を入力・表示 ====== */
+function ventOn(r){ var a=null,b=null; r.ev.forEach(function(e){ if(e.k==="人工呼吸開始"&&(a==null||e.t>a)) a=e.t; if(e.k==="人工呼吸終了"&&(b==null||e.t>b)) b=e.t; }); return a!=null&&(b==null||b<a); }
+function itemsFor(r){ var it=r.items.filter(function(k){ return !(IT[k]&&IT[k].ventOnly); }); if(ventOn(r)) it=it.concat(["pip","peep"]); return it; }
+function ventPeriods(r){ var out=[], st=null; r.ev.slice().sort(function(a,b){return a.t-b.t;}).forEach(function(e){ if(e.k==="人工呼吸開始"&&st==null) st=e.t; else if(e.k==="人工呼吸終了"&&st!=null){ out.push([st,e.t]); st=null; } }); if(st!=null) out.push([st,null]); return out; }
+function ventText(r){ var ps=ventPeriods(r); if(!ps.length) return ""; var tot=0; var t=ps.map(function(p){ if(p[1]) tot+=p[1]-p[0]; return hm(p[0])+"–"+(p[1]?hm(p[1]):"（終了未記録）"); }).join("、"); return t+(tot?"（計"+mins(tot)+"分）":""); }
 
 /* ====== リセット・削除（院長指定 2026-11-16） ====== */
 function resetRecord(){
@@ -525,8 +538,14 @@ function renderLive(){
   var ce=h("div",{class:"card",style:"margin-top:10px"},h("h2",{text:"イベント（タップで今の時刻）"}));
   var g=h("div",{class:"grid"});
   EVENTS.forEach(function(e){ var d=R.ev.filter(function(x){return x.k===e;}).pop();
-    g.appendChild(h("button",{class:d&&EV_ONCE.indexOf(e)>=0?"done":"",onclick:function(){ addEvent(e); }},e,d&&EV_ONCE.indexOf(e)>=0?h("small",null,hm(d.t)):null)); });
+    var vOn=ventOn(R), isV=e==="人工呼吸開始"&&vOn;
+    g.appendChild(h("button",{class:(d&&EV_ONCE.indexOf(e)>=0)||isV?"done":"",onclick:function(){ addEvent(e); }},e,d&&EV_ONCE.indexOf(e)>=0?h("small",null,hm(d.t)):isV?h("small",null,"実施中 "+hm(d.t)):null)); });
   ce.appendChild(g); M.appendChild(ce);
+  /* 気管チューブ（途中でも入力可。PDFの最上段に載る） */
+  var tubeIn=h("input",{type:"text",inputmode:"decimal",placeholder:"内径 mm",value:R.tube||"",style:"width:110px",onchange:function(e){ var v=tnum(e.target.value); R.tube=v==null?"":String(v); touch(); render(); }});
+  M.appendChild(h("div",{class:"card"},h("h2",{text:"気管チューブ"+(R.tube?"：内径 "+R.tube+" mm":"")}),
+    h("div",{class:"seg",style:"margin-bottom:6px"},["2.0","2.5","3.0","3.5","4.0","4.5","5.0","5.5","6.0","6.5","7.0","7.5","8.0","9.0","10.0"].map(function(v){ return h("button",{class:R.tube===String(+v)?"on":"",text:v,onclick:function(){ R.tube=R.tube===String(+v)?"":String(+v); touch(); render(); }}); })),
+    h("div",{style:"display:flex;gap:6px;align-items:center"},tubeIn,h("span",{class:"note",text:"mm（一覧にない径は直接入力）"}))));
   /* 投与 */
   var cd=h("div",{class:"card"},h("h2",{text:"投与（タップで記録）"}));
   if(R.plan.length){ cd.appendChild(h("label",{class:"f",text:"指示の薬"}));
@@ -620,9 +639,9 @@ function openEntry(){
   var md=h("div",{class:"modal"}), sh=h("div",{class:"sh"});
   var tb=h("b",{text:hm(t)});
   function lvOf(k){ var lv=lastVal(k); if(k==="fluid"&&lv==null&&R.flRate!=null) lv=R.flRate; return lv; }
-  function numKeys(){ return R.items.filter(function(k){ return IT[k]&&IT[k].t==="num"; }); }
+  function numKeys(){ return itemsFor(R).filter(function(k){ return IT[k]&&IT[k].t==="num"; }); }
   sh.appendChild(h("div",{style:"display:flex;align-items:center;gap:8px"},h("h2",{text:"バイタル",style:"margin:0;flex:1"}),
-    h("button",{class:"btn sm ghost",text:"全部 前回と同じ",onclick:function(){ R.items.forEach(function(k){ var lv=lvOf(k); if(lv!=null&&vals[k]==null) vals[k]=lv; }); paint(); }})));
+    h("button",{class:"btn sm ghost",text:"全部 前回と同じ",onclick:function(){ itemsFor(R).forEach(function(k){ var lv=lvOf(k); if(lv!=null&&vals[k]==null) vals[k]=lv; }); paint(); }})));
   sh.appendChild(h("div",{class:"trow"},h("button",{class:"btn sm ghost",text:"−1分",onclick:function(){t-=60000;tb.textContent=hm(t);}}),tb,h("button",{class:"btn sm ghost",text:"＋1分",onclick:function(){t+=60000;tb.textContent=hm(t);}})));
   var box=h("div"); sh.appendChild(box);
   function show(k){ var el=fields[k]; if(!el) return; delete el.dataset.raw; el.value=vals[k]!=null?fv(k,vals[k]):""; el.classList.toggle("empty",vals[k]==null); }
@@ -646,7 +665,7 @@ function openEntry(){
   function paintSameBtns(){ Object.keys(sameBtns).forEach(function(k){ sameBtns[k].style.visibility=vals[k]==null?"visible":"hidden"; }); }
   function paint(){
     box.innerHTML=""; fields={}; sameBtns={};
-    R.items.forEach(function(k){
+    itemsFor(R).forEach(function(k){
       var x=IT[k], lv=lvOf(k);
       var st=x.st, dp=x.dp; if(k==="agent"&&isSevo()){ st=0.5; dp=1; }
       var row=h("div",{class:"vrow"},h("div",{class:"lb"},x.l,h("small",null,x.u?x.u:(x.sub||""))));
@@ -714,7 +733,7 @@ function entries(){
   R.dr.forEach(function(x){ a.push({t:x.t,kind:"dr",id:x.id,txt:x.name+" "+(x.amt||"")+" "+(x.route||"")}); });
   return a.sort(function(p,q){return p.t-q.t;});
 }
-function shortL(k){ return {hr:"HR",rr:"RR",spo2:"SpO₂",etco2:"EtCO₂",sys:"SYS",map:"MAP",dia:"DIA",dop:"Dop",temp:"体温",agent:"吸入",o2:"O₂",air:"Air",fio2:"FiO₂",etag:isSevo()?"EtSEV":"EtISO",fluid:"輸液",ecg:"ECG",reflex:"反射",jaw:"顎",mm:"粘膜",crt:"CRT",vent:"換気"}[k]||k; }
+function shortL(k){ return {hr:"HR",rr:"RR",spo2:"SpO₂",etco2:"EtCO₂",sys:"SYS",map:"MAP",dia:"DIA",dop:"Dop",temp:"体温",agent:"吸入",o2:"O₂",pip:"内圧",peep:"PEEP",air:"Air",fio2:"FiO₂",etag:isSevo()?"EtSEV":"EtISO",fluid:"輸液",ecg:"ECG",reflex:"反射",jaw:"顎",mm:"粘膜",crt:"CRT",vent:"換気"}[k]||k; }
 function timeline(edit){
   var d=h("div",{class:"tl"}), a=entries().reverse();
   if(!a.length) d.appendChild(h("div",{class:"note",text:"まだ記録がありません"}));
@@ -734,7 +753,8 @@ var PANELS=[
  {l:"SpO₂・EtCO₂",ks:["spo2","etco2"]},
  {l:"血圧",ks:["sys","map","dia","dop"],bp:1},
  {l:"体温",ks:["temp"]},
- {l:"吸入濃度・Et",ks:["agent","etag"]}
+ {l:"吸入濃度・Et",ks:["agent","etag"]},
+ {l:"気道内圧・PEEP",ks:["pip","peep"]}
 ];
 function activePanels(r){ return PANELS.filter(function(p){ return p.ks.some(function(k){ return r.items.indexOf(k)>=0||r.vit.some(function(x){return x.v[k]!=null;}); }); }); }
 function series(r,k){ return r.vit.filter(function(x){return x.v[k]!=null&&x.v[k]!=="";}).map(function(x){return {t:x.t,v:+x.v[k]};}); }
@@ -849,10 +869,10 @@ function statCols(){ var a=[]; ITEMS.forEach(function(x){ if(x.t!=="num") return
 function dbSheets(){
   var P=R.pt, pr=periods(), d=P.date;
   var st=statCols();
-  var head=["記録ID","日付","カルテNo","飼い主名","動物名","動物種","体重(kg)","術式・処置","ASA","担当医","麻酔管理者","吸入麻酔薬","麻酔開始","麻酔終了","麻酔時間(分)","手術開始","手術終了","手術時間(分)","吸入開始","吸入終了","吸入時間(分)","吸入時間は推定","投与","経過・イベント","合併症・メモ","注意事項","記録数"]
+  var head=["記録ID","日付","カルテNo","飼い主名","動物名","動物種","体重(kg)","術式・処置","ASA","担当医","麻酔管理者","吸入麻酔薬","麻酔開始","麻酔終了","麻酔時間(分)","手術開始","手術終了","手術時間(分)","吸入開始","吸入終了","吸入時間(分)","吸入時間は推定","気管チューブ(mm)","前投薬","人工呼吸","投与","経過・イベント","合併症・メモ","注意事項","記録数"]
     .concat(st.map(function(c){ return shortL(c[0])+c[1]+(IT[c[0]].u?"("+IT[c[0]].u+")":""); })).concat(["カルテ転記文","PDF","保存日時"]);
   var row=[R.id,d,P.no,P.owner||"",P.name,R.sp,R.kg!=null?Math.round(R.kg*1000)/1000:"",P.proc,P.asa?P.asa+(P.asaE?"E":""):"",P.vet,P.mgr,R.agent,
-    pr.a0?hm(pr.a0):"",pr.a1?hm(pr.a1):"",pr.a0&&pr.a1?mins(pr.a1-pr.a0):"",pr.s0?hm(pr.s0):"",pr.s1?hm(pr.s1):"",pr.s0&&pr.s1?mins(pr.s1-pr.s0):"",pr.i0?hm(pr.i0):"",pr.i1?hm(pr.i1):"",pr.i0&&pr.i1?mins(pr.i1-pr.i0):"",pr.iest?"推定":"",
+    pr.a0?hm(pr.a0):"",pr.a1?hm(pr.a1):"",pr.a0&&pr.a1?mins(pr.a1-pr.a0):"",pr.s0?hm(pr.s0):"",pr.s1?hm(pr.s1):"",pr.s0&&pr.s1?mins(pr.s1-pr.s0):"",pr.i0?hm(pr.i0):"",pr.i1?hm(pr.i1):"",pr.i0&&pr.i1?mins(pr.i1-pr.i0):"",pr.iest?"推定":"",R.tube||"",evT("前投薬投与")?hm(evT("前投薬投与")):"",ventText(R),
     R.dr.slice().sort(function(a,b){return a.t-b.t;}).map(function(x){return hm(x.t)+" "+x.name+" "+(x.amt||"")+" "+(x.route||"");}).join("\n"),
     R.ev.slice().sort(function(a,b){return a.t-b.t;}).map(function(x){return hm(x.t)+" "+x.k+(x.txt?"："+x.txt:"");}).join("\n"),
     R.memo||"",P.memo||"",R.vit.length]
@@ -899,6 +919,9 @@ function karte(){
   var P=R.pt, pr=periods(), out=[];
   out.push("【麻酔記録】"+P.date.replace(/-/g,"/")+" "+R.sp+" "+R.wt+(P.proc?" "+P.proc:"")+(P.asa?" ASA "+P.asa+(P.asaE?"E":""):""));
   out.push("担当医 "+(P.vet||"—")+"／麻酔管理 "+(P.mgr||"—"));
+  if(R.tube) out.push("気管チューブ 内径 "+R.tube+" mm");
+  if(evT("前投薬投与")) out.push("前投薬 "+hm(evT("前投薬投与")));
+  if(ventText(R)) out.push("人工呼吸 "+ventText(R));
   if(pr.a0) out.push("麻酔時間 "+hm(pr.a0)+"–"+(pr.a1?hm(pr.a1)+"（"+mins(pr.a1-pr.a0)+"分）":"—"));
   if(pr.s0) out.push("手術時間 "+hm(pr.s0)+"–"+(pr.s1?hm(pr.s1)+"（"+mins(pr.s1-pr.s0)+"分）":"—"));
   var ag=series(R,"agent").map(function(p){return p.v;}).filter(function(v){return v>0;});
@@ -925,10 +948,11 @@ function pages(){
   function page(){ var c=document.createElement("canvas"); c.width=PW; c.height=PH; var x=c.getContext("2d"); x.fillStyle="#fff"; x.fillRect(0,0,PW,PH); x.textBaseline="top"; out.push(c); return x; }
   var ctx=page(), y=PM;
   ctx.fillStyle="#1f8670"; ctx.font=pf(44,700); ctx.fillText("麻酔記録",PM,y); ctx.font=pf(26,500); ctx.fillStyle="#6b7a80"; ctx.textAlign="right"; ctx.fillText("ポックル動物病院",PW-PM,y+12); ctx.textAlign="left";
+  if(R.tube){ ctx.font=pf(32,700); ctx.fillStyle="#1f2a2e"; var tt="気管チューブ 内径 "+R.tube+" mm"; ctx.fillText(tt,PM+230,y+8); }
   y+=70; ctx.fillStyle="#1f8670"; ctx.fillRect(PM,y,PW-PM*2,3); y+=18;
   var info=[["日付",P.date.replace(/-/g,"/")],["カルテNo",P.no||"—"],["飼い主名",P.owner||"—"],["動物名",P.name||"—"],["動物種",R.sp],["体重",R.wt||"—"],["ASA",P.asa?P.asa+(P.asaE?"E":""):"—"],
     ["術式・処置",P.proc||"—"],["担当医",P.vet||"—"],["麻酔管理者",P.mgr||"—"],["吸入麻酔薬",R.agent],
-    ["麻酔時間",pr.a0?hm(pr.a0)+"–"+(pr.a1?hm(pr.a1)+"（"+mins(pr.a1-pr.a0)+"分）":""):"—"],["手術時間",pr.s0?hm(pr.s0)+"–"+(pr.s1?hm(pr.s1)+"（"+mins(pr.s1-pr.s0)+"分）":""):"—"],["吸入時間",inhText(pr)||"—"]];
+    ["麻酔時間",pr.a0?hm(pr.a0)+"–"+(pr.a1?hm(pr.a1)+"（"+mins(pr.a1-pr.a0)+"分）":""):"—"],["手術時間",pr.s0?hm(pr.s0)+"–"+(pr.s1?hm(pr.s1)+"（"+mins(pr.s1-pr.s0)+"分）":""):"—"],["吸入時間",inhText(pr)||"—"],["人工呼吸",ventText(R)||"—"],["前投薬",evT("前投薬投与")?hm(evT("前投薬投与")):"—"]];
   var cw=(PW-PM*2)/3;
   info.forEach(function(it,i){ var cx=PM+(i%3)*cw, cy=y+Math.floor(i/3)*52; ctx.font=pf(22,500); ctx.fillStyle="#6b7a80"; ctx.fillText(it[0],cx,cy+4); ctx.font=pf(28,600); ctx.fillStyle="#1f2a2e"; fit(ctx,it[1],cx+150,cy,cw-160); });
   y+=Math.ceil(info.length/3)*52+14;
@@ -1120,6 +1144,16 @@ function dClock(){
   var ds=document.getElementById("Dsnd"); if(ds) ds.style.display=SND.on&&(!SND.ctx||SND.ctx.state!=="running")?"block":"none";
   dWarn();
 }
+/* 緊急用：大画面PCの右端に入力画面を出す（iPhoneの電池切れなど。院長指定 2026-11-16） */
+function openEmergency(id){
+  var old=document.getElementById("emg"); if(old){ old.remove(); return; }
+  if(!confirm("この画面から臨時で入力します。iPhoneでの入力は止めてください（あとでiPhoneを開くと、こちらの入力が取り込まれます）。")) return;
+  var pn=h("div",{id:"emg",style:"position:fixed;top:0;left:0;width:min(470px,46vw);height:100vh;background:#fff;z-index:80;box-shadow:6px 0 24px rgba(0,0,0,.5);display:flex;flex-direction:column"},
+    h("div",{style:"display:flex;align-items:center;gap:8px;padding:8px 12px;background:#3a2e10;color:#ffcc4d;font-size:15px;font-weight:700"},h("span",{style:"flex:1",text:"✎ 臨時入力（大画面PC）"}),
+      h("button",{style:"background:#fff;border:0;border-radius:8px;padding:6px 12px;font-size:14px",text:"✕ 閉じる",onclick:function(){ pn.remove(); dPoll(); }})),
+    h("iframe",{src:location.pathname+"?take="+encodeURIComponent(id)+"&embed=1",style:"flex:1;border:0;width:100%"}));
+  document.body.appendChild(pn);
+}
 function dPaint(){
   var D=document.getElementById("D"); D.innerHTML="";
   var r=DS.r;
@@ -1137,6 +1171,7 @@ function dPaint(){
       h("div",{class:"ctl"},h("div",{class:"clk",id:"dclk"}),
         sndBtn("background:none;border:1px solid #26363c;border-radius:8px;font-size:20px;padding:0 8px"),
         h("button",{style:cbs,text:document.body.classList.contains("bigt")?"タイマー：特大":"タイマー：大",onclick:function(e){ var on=document.body.classList.toggle("bigt"); lsSet("anrec_disp_big",on); dPaint(); }}),
+        h("button",{style:cbs+";color:#ffcc4d;border-color:#5a4a1a",text:"✎ 臨時入力",title:"iPhoneが使えないときに、この画面から入力する",onclick:function(){ openEmergency(r.id); }}),
         h("button",{style:cbs,text:"症例切替",onclick:function(){ DS.id=null; DS.r=null; lsDel("anrec_disp_id"); DS.auto=false; dPoll(); }}))),
     h("div",{class:"tmr"},
       h("div",{class:"tb an",id:"tA"},h("div",{class:"lb"},h("span",null,"麻酔開始から"),h("small",{id:"tAs"})),h("div",{class:"tv",id:"tAv",text:"--:--"})),
@@ -1144,11 +1179,12 @@ function dPaint(){
   var g=h("div",{id:"Dg"}), cv=h("canvas"); g.appendChild(cv); D.appendChild(g);
   var side=h("div",{class:"ds"});
   var last={}; r.vit.forEach(function(x){ for(var k in x.v) last[k]=x.v[k]; });
-  var nums=r.items.filter(function(k){return IT[k]&&IT[k].t==="num";});
+  var nums=itemsFor(r).filter(function(k){return IT[k]&&IT[k].t==="num";});
   var big=nums.length>7?34:42;
   nums.forEach(function(k){ var v=last[k]; var al=v!=null?alertOf(r,k,+v):"";
     side.appendChild(h("div",{class:"tile "+al},h("span",{class:"l",text:shortL(k)}),h("span",{class:"v",style:"font-size:"+big+"px",text:v!=null?fv(k,v):"—"}),h("span",{class:"u",text:IT[k].u||""}))); });
   var sels=r.items.filter(function(k){return IT[k]&&IT[k].t==="sel"&&last[k]!=null;});
+  if(ventOn(r)) side.appendChild(h("div",{class:"dnext",style:"background:#2e1a4a;color:#d8b4fe;font-weight:700",text:"人工呼吸中（"+hm(ventPeriods(r).pop()[0])+"〜）"}));
   if(sels.length) side.appendChild(h("div",{class:"dnext",style:"font-size:15px"},sels.map(function(k){return shortL(k)+" "+last[k];}).join("　")));
   side.appendChild(h("div",{class:"dnext",id:"dnx"}));
   var lg=h("div",{class:"dlog"});
@@ -1167,6 +1203,16 @@ if(location.hash==="#display"){ startDisplay(); }
 else {
   window.addEventListener("hashchange",function(){ if(location.hash==="#display") location.reload(); });
   if(/from=calc/.test(location.search)&&lsGet("anrec_handoff")){ /* そのまま取り込み案内を表示 */ }
+  var QS=new URLSearchParams(location.search);
+  if(QS.get("embed")){ document.body.classList.add("embed"); SND.on=false; }   /* 大画面PCの臨時入力（音は大画面側で鳴らす） */
+  if(QS.get("take")){
+    var tid=QS.get("take");
+    var done=function(r){ if(!r){ M.innerHTML=""; M.appendChild(h("div",{class:"alert red",text:"記録を読み込めませんでした"})); return; }
+      R=r; R.rev=(R.rev||0)+1000; R.takenAt=Date.now(); saveLocal(); V.scr=R.status==="done"?"done":R.status==="live"?"live":"setup"; render(); touch(); };
+    M.appendChild(h("div",{class:"note",text:"読み込み中…"}));
+    if(REC_API) api({action:"get",id:tid}).then(function(g){ done(g.ok&&g.data?JSON.parse(g.data):null); }).catch(function(){ done(null); });
+    else done(lsGet("anrec_r_"+tid));
+  } else
   render();
   /* 記録中の画面は1分ごとにグラフを更新 */
   setInterval(function(){ if(V.scr==="live"&&!document.querySelector(".modal")) drawPhone(); },60000);

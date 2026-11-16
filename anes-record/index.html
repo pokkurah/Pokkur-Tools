@@ -205,6 +205,33 @@ function mins(ms){ return Math.round(ms/60000); }
 function fv(k,v){ var x=IT[k]; if(v==null||v==="") return "—"; if(!x||x.t!=="num") return String(v); return (+v).toFixed(x.dp); }
 function toast(t){ var d=h("div",{class:"toast",text:t}); document.body.appendChild(d); setTimeout(function(){d.remove();},1800); }
 function uid(){ return Math.random().toString(36).slice(2,8)+Date.now().toString(36).slice(-6); }
+/* 麻酔薬計算アプリの予約指示サーバー（当日「確定」した症例をここから呼び出す。院長指定 2026-11-16） */
+var ANES_API="https://script.google.com/macros/s/AKfycbzg3Wvwdg94BAONiDz62eSc04Alla6DAByOoZGdq3BTDuTnoSkU1kz_qwnHrY6M3bMu_g/exec";
+function anesApi(p){ p.k=apiKey();
+  var req=(p.action==="list"||p.action==="get")?fetch(ANES_API+"?"+new URLSearchParams(p).toString(),{cache:"no-store"})
+    :fetch(ANES_API,{method:"POST",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(p)});
+  return req.then(function(r){return r.json();}); }
+function confirmedCard(){
+  var c=h("div",{class:"card",style:"border-color:var(--mint)"},h("h2",{text:"確定した麻酔（麻酔薬計算から）"}));
+  var lst=h("div",{class:"note",text:"読み込み中…"}); c.appendChild(lst);
+  var t=ymd();
+  anesApi({action:"list"}).then(function(j){ lst.innerHTML="";
+    if(!j.ok){ lst.textContent=j.err==="auth"?"院内キーが違います（下の「別の端末の記録を引き継ぐ」から入れ直せます）":(j.err||"読み込めません"); return; }
+    var rows=(j.rows||[]).filter(function(x){return x.status==="確定"&&x.date>=t;}).sort(function(a,b){return a.date<b.date?-1:a.date>b.date?1:(a.updated||0)-(b.updated||0);});
+    if(!rows.length){ lst.textContent="今日確定した麻酔はありません。麻酔薬計算の「症例・印刷」で「✅ 当日の内容で確定する」を押すと、ここに出ます。"; return; }
+    rows.forEach(function(x){ lst.appendChild(h("div",{style:"display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)"},
+      h("div",{style:"flex:1;color:var(--ink);font-size:14px"},h("b",null,(x.name||"名前なし")+" "),x.sp+" "+(x.proc||""),h("div",{class:"note",text:(x.date===t?"今日":x.date)+"　カルテNo "+(x.no||"—")+"　担当 "+(x.vet||"—")})),
+      h("button",{class:"btn sm",text:"記録を始める",onclick:function(){
+        anesApi({action:"get",id:x.id}).then(function(g){
+          if(!g.ok){ toast(g.err||"開けません"); return; }
+          var d=null; try{ d=JSON.parse(g.row.data).handoff; }catch(e){}
+          if(!d){ toast("確定データがありません。麻酔薬計算でもう一度確定してください"); return; }
+          d.at=Date.now(); d.ordId=x.id; R=newRecord(d); saveLocal(); V.scr="setup"; render();
+          anesApi({action:"status",id:x.id,status:"使用済"}).catch(function(){});
+        }).catch(function(){ toast("通信できません"); }); }}))); });
+  }).catch(function(){ lst.textContent="通信できません"; });
+  return c;
+}
 function apiKey(){ try{ return localStorage.getItem("anes_key")||localStorage.getItem("rcb_key")||""; }catch(e){ return ""; } }
 function grpOf(R){ var o=spObj(R.sp); return o?o.g:"dc"; }
 
@@ -301,6 +328,7 @@ function renderHome(){
       h("div",{class:"note",style:"margin-bottom:8px",text:"薬 "+(hd.plan||[]).length+"件・CRI "+(hd.cri||[]).length+"件・緊急薬 "+(hd.em||[]).length+"件"}),
       h("button",{class:"btn big",text:"取り込んで記録を準備",onclick:function(){ R=newRecord(hd); lsDel("anrec_handoff"); saveLocal(); V.scr="setup"; render(); }})));
   }
+  if(apiKey()) M.appendChild(confirmedCard());
   var ids=localIds().map(function(id){return lsGet("anrec_r_"+id);}).filter(Boolean).sort(function(a,b){return b.updated-a.updated;});
   if(ids.length){
     var c=h("div",{class:"card"},h("h2",{text:"この端末の記録"}));

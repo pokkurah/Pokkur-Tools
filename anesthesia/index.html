@@ -359,6 +359,43 @@ function karteText(){
   return out.join("\n");
 }
 
+/* ===== 麻酔記録アプリへの引き渡し ===== */
+function buildHandoff(){
+  var w=kg(), o=sp(); if(!o||w==null) return null;
+  function vt(v){ return v.blocked||v.tiny?"":(v.f>1?fml(v.dml)+"mL（"+v.f+"倍液）":fml(v.ml)+"mL"); }
+  var plan=[], em=[], cri=[];
+  S.pre.forEach(function(it){ var r=rowById(it.id); if(!r) return; var p=product(r), d=tnum(it.ds); if(d==null) return;
+    var mg=bolusMg(d,r.u,w); plan.push({sec:r.cat==="その他"?"その他":r.cat==="導入"?"導入":"前投薬",name:dispName(p,r),dose:fnum(d)+r.u,mg:mg==null?"":fmg(mg),ml:mg==null?"":vt(vol(mg,p,it.f)),route:r.route}); });
+  rowsFor(function(r){return r.cat==="緊急"&&!isIno(r);}).forEach(function(r){ var p=product(r), mg=r.d!=null?bolusMg(r.d,r.u,w):null;
+    em.push({name:dispName(p,r),dose:r.d!=null?fnum(r.d)+r.u:"",mg:mg==null?"":fmg(mg),ml:mg==null?"":vt(vol(mg,p,null,EM_DIL)),route:r.route}); });
+  var kt=karteText().split("\n"), on=false;
+  kt.forEach(function(l){ if(/^■CRI/.test(l)){ on=true; return; } if(/^■|^$|^―/.test(l)){ on=false; return; } if(on) cri.push(l.replace(/^・/,"")); });
+  var fr=tnum(S.fl.rate), flt=fr==null?"":(S.fl.route==="iv"?S.fl.fluid+" "+fnum(fr)+"mL/kg/h = "+fnum(fr*w)+"mL/h":"");
+  return {v:1,at:Date.now(),sp:S.sp,kg:w,wt:S.wu==="g"?fnum(tnum(S.wt))+"g":fnum(w)+"kg",pt:S.pt,plan:plan,em:em,cri:cri,fl:flt,flRate:S.fl.route==="iv"&&fr!=null?Math.round(fr*w*10)/10:null,karte:karteText()};
+}
+function recHandoff(){
+  var d=buildHandoff(); if(!d){ toast("動物種と体重を入れてください"); return; }
+  if(S.ref&&S.ref.id) d.ordId=S.ref.id;
+  lsSet("anrec_handoff",d);
+  location.href="../anes-record/?from=calc";
+}
+/* 当日の内容で確定 → サーバーに保存（状態＝確定）。麻酔記録アプリの「確定した麻酔」から別の端末でも呼び出せる（院長指定 2026-11-16） */
+function ordConfirm(go){
+  var P=S.pt, miss=[];
+  if(!sp()) miss.push("動物種"); if(kg()==null) miss.push("当日の体重"); if(!P.no&&!P.name) miss.push("カルテNoか動物名"); if(!P.vet) miss.push("担当医"); if(!S.pre.length&&!S.criList.length) miss.push("薬");
+  if(miss.length){ toast("未入力："+miss.join("・")); return; }
+  var today=addDays(0); if(P.date!==today){ if(!confirm("日付が今日（"+today+"）ではありません。今日の日付にして確定しますか？")) return; P.date=today; }
+  var hd=buildHandoff();
+  ordApi({action:"save",id:(S.ref&&S.ref.id)||"",date:P.date,no:P.no,name:P.name,sp:S.sp,proc:P.proc,vet:P.vet,data:snapshot(hd)}).then(function(j){
+    if(!j.ok){ toast(j.err||"確定できませんでした"); if(go) recHandoff(); return; }
+    return ordApi({action:"status",id:j.id,status:"確定"}).then(function(k){
+      S.ref={id:j.id,date:P.date,wtRef:kg(),status:"確定",fixed:[]};
+      toast(k.ok?"確定しました。麻酔記録から呼び出せます":"保存しましたが確定にできませんでした"); ORD.list=null;
+      if(go) recHandoff(); else { ordLoadList(); renderMain(); }
+    });
+  }).catch(function(){ toast("通信できませんでした"+(go?"。この端末だけで記録を始めます":"")); if(go) recHandoff(); });
+}
+
 /* ===== ヘッダー ===== */
 function renderHeader(){
   var s=document.getElementById("src"); s.innerHTML="";
@@ -1071,6 +1108,12 @@ function renderRec(){
   fld("注意事項（あれば）",txtInput(P,"memo","例：心雑音あり、てんかん既往","area"));
   out.push(c1);
   var kt=karteText(); if(kt){ var kb=copyBox(kt,"カルテ転記用（まとめ）","緊急薬を除く投与薬すべて。その他の薬は区切り線の下に分けています"); kb.id="kt"; out.push(kb); }
+  if(sp()&&kg()!=null){ var done=S.ref&&S.ref.status==="確定";
+    out.push(h("div",{class:"card",style:"border-color:var(--mint)"},h("h2",{text:"麻酔記録"}),
+      h("div",{class:"note",style:"margin-bottom:8px",text:done?"✓ 確定済み。麻酔記録アプリの「確定した麻酔」から、どの端末でも呼び出せます。内容を直したら、もう一度確定してください。":"当日の体重で内容を確定すると、麻酔記録アプリの「確定した麻酔」から呼び出して、そのまま記録を始められます（別の端末でも可）。"}),
+      h("div",{style:"display:flex;gap:8px;flex-wrap:wrap"},
+        h("button",{class:"btn",text:done?"✅ もう一度確定する（内容を更新）":"✅ 当日の内容で確定する",onclick:function(){ordConfirm(false);}}),
+        h("button",{class:"btn ghost",text:"📈 確定して、この端末で麻酔記録を始める",onclick:function(){ordConfirm(true);}})))); }
   var c2=h("div",{class:"card"},h("h2",{text:"A5 印刷シート"}));
   c2.appendChild(h("div",{class:"note",text:"載せる内容：症例情報／投与する薬（前投与・導入タブ）／CRI（CRIタブで「印刷シートに追加」したもの）／緊急薬（自動）。下の項目は選べます。"}));
   c2.appendChild(h("div",{class:"seg",style:"margin-top:8px"},[["fl","輸液"],["la","局所麻酔の上限"],["rev","拮抗"]].map(function(k){
@@ -1136,8 +1179,8 @@ function ordLoadList(){
   ordApi({action:"list"}).then(function(j){ ORD.loading=false; if(j.ok){ ORD.list=j.rows||[]; } else ORD.err=j.err||"読み込めませんでした"; if(S.tab==="rec") renderMain(); })
     .catch(function(){ ORD.loading=false; ORD.err="通信できませんでした。電波を確認して「更新」してください"; if(S.tab==="rec") renderMain(); });
 }
-function snapshot(){
-  return JSON.stringify({v:1,sp:S.sp,wu:S.wu,wtRef:kg(),pt:S.pt,pre:S.pre,criList:S.criList,fl:S.fl,la:S.la,rev:S.rev,prt:S.prt});
+function snapshot(hd){
+  return JSON.stringify({v:1,sp:S.sp,wu:S.wu,wtRef:kg(),pt:S.pt,pre:S.pre,criList:S.criList,fl:S.fl,la:S.la,rev:S.rev,prt:S.prt,handoff:hd||null});
 }
 /* 保存後に用量表の区分・経路が変わっても、同じ成分の行に付け替える */
 function fixId(id,fixed){
@@ -1200,7 +1243,7 @@ function ordersCard(){
     var cur=S.ref&&S.ref.id===r.id, used=r.status==="使用済";
     return h("div",{class:"row",style:"padding:8px 0;border-top:1px solid var(--line);"+(used?"opacity:.55":"")},
       h("div",{class:"grow"},h("b",null,wd(r.date)+"　"+(r.name||"（名前なし）")+"　"),h("span",null,r.sp+(r.proc?"・"+r.proc:"")),
-        h("div",{class:"note",text:"カルテNo "+(r.no||"—")+"／担当 "+(r.vet||"—")+(used?"／使用済":"")+(cur?"／表示中":"")})),
+        h("div",{class:"note",text:"カルテNo "+(r.no||"—")+"／担当 "+(r.vet||"—")+(used?"／使用済":"")+(r.status==="確定"?"／✓ 確定済み":"")+(cur?"／表示中":"")})),
       h("button",{class:"btn"+(cur?" ghost":""),style:"padding:6px 12px",text:cur?"表示中":"呼び出す",onclick:function(){ ordOpen(r.id); }}));
   }
   function sec(label,a,open){ if(!a.length) return; c.appendChild(h("div",{class:"f",style:"margin-top:8px;font-weight:700",text:label+"（"+a.length+"件）"})); a.forEach(function(r){ c.appendChild(item(r)); }); }

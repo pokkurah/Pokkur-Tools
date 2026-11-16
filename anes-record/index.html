@@ -335,7 +335,8 @@ function renderHome(){
     ids.forEach(function(r){
       c.appendChild(h("div",{style:"display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)"},
         h("div",{style:"flex:1;font-size:14px"},h("b",null,(r.pt.name||"名前なし")+" "),r.sp+" "+(r.pt.proc||""),h("div",{class:"note",text:r.pt.date+"　"+(r.status==="live"?"記録中":r.status==="done"?"終了":"準備中")})),
-        h("button",{class:"btn sm",text:r.status==="done"?"開く":"再開",onclick:function(){ R=r; V.scr=r.status==="done"?"done":r.status==="live"?"live":"setup"; render(); }})));
+        h("button",{class:"btn sm",text:r.status==="done"?"開く":"再開",onclick:function(){ R=r; V.scr=r.status==="done"?"done":r.status==="live"?"live":"setup"; render(); }}),
+        h("button",{class:"btn sm ghost",style:"color:var(--warn);border-color:#f1c4bf",text:"削除",onclick:function(){ discardRecord(r); }})));
     });
     M.appendChild(c);
   }
@@ -450,6 +451,20 @@ function planCard(){
   return c;
 }
 
+/* ====== リセット・削除（院長指定 2026-11-16） ====== */
+function resetRecord(){
+  if(!confirm("バイタル・イベント・投与の記録をすべて消して、タイマーを0に戻します。\n動物種・体重・症例情報・モニター項目は残ります。よろしいですか？")) return;
+  R.vit=[]; R.ev=[]; R.dr=[]; R.memo=""; R.t0=null; R.started=Date.now(); R.ended=null; R.archived=null; R.status="live";
+  touch(); toast("リセットしました"); V.scr="live"; render(); window.scrollTo(0,0);
+}
+function discardRecord(r){
+  if(!r) return;
+  if(!confirm((r.pt.name||"名前なし")+"（"+r.sp+"）の麻酔記録を削除します。この端末と大画面から消え、元に戻せません。"+(r.archived?"\n※ドライブに保存済みのPDF・DBは残ります。":"\n※ドライブにはまだ保存されていません。")+"\n削除しますか？")) return;
+  dropLocal(r.id); if(REC_API) api({action:"del",id:r.id}).catch(function(){});
+  if(R&&R.id===r.id) R=null;
+  V.scr="home"; render(); window.scrollTo(0,0); toast("削除しました");
+}
+
 /* ====== 記録時刻のアラーム（院長指定 2026-11-15） ======
    iPhoneは最初のタップで音を有効化（ブラウザの決まり）。消音スイッチでも鳴るよう playback を指定。
    記録時刻に3回鳴らし、記録されるまで1分ごとに鳴らし直す（最大5回）。 */
@@ -540,7 +555,11 @@ function renderLive(){
   M.appendChild(cm);
   M.appendChild(h("div",{class:"card"},h("h2",{text:"設定"}),
     h("label",{class:"f",text:"記録間隔"}),h("div",{class:"seg"},[3,5,10].map(function(n){ return h("button",{class:R.interval===n?"on":"",text:n+"分",onclick:function(){R.interval=n;touch();render();}}); })),
-    h("label",{class:"f",text:"モニター項目・症例情報"}),h("button",{class:"btn sm ghost",text:"準備画面で変更",onclick:function(){V.scr="setup";render();}})));
+    h("label",{class:"f",text:"モニター項目・症例情報"}),h("button",{class:"btn sm ghost",text:"準備画面で変更",onclick:function(){V.scr="setup";render();}}),
+    h("label",{class:"f",text:"やり直し"}),
+    h("div",{style:"display:flex;gap:8px;flex-wrap:wrap"},
+      h("button",{class:"btn sm ghost",text:"記録をリセット（症例情報は残す）",onclick:resetRecord}),
+      h("button",{class:"btn sm ghost",style:"color:var(--warn);border-color:#f1c4bf",text:"この記録を削除",onclick:function(){ discardRecord(R); }}))));
   M.appendChild(h("button",{class:"btn big red",style:"margin-top:6px",text:"麻酔記録を終了する",onclick:function(){
     if(!confirm("麻酔記録を終了しますか？（終了後も修正できます）")) return; R.status="done"; R.ended=Date.now(); touch(); V.scr="done"; render(); window.scrollTo(0,0); }}));
   requestAnimationFrame(function(){ drawPhone(); });

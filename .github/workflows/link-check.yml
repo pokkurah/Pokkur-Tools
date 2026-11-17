@@ -1,0 +1,19 @@
+name: 麻酔薬計算と麻酔記録の連携チェック
+# 麻酔薬計算・麻酔記録が更新されるたびに、つなぐ部分が残っているかを確認する。
+# 失敗すると GitHub から pokkurah アカウントのメールに通知が届く。
+on:
+  push:
+    branches: [main]
+    paths:
+      - "anesthesia/**"
+      - "anes-record/**"
+      - "tools/link-check.sh"
+      - ".github/workflows/link-check.yml"
+  workflow_dispatch:
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 連携部分の確認
+        run: bash tools/link-check.sh

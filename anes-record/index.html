@@ -554,7 +554,7 @@ function renderLive(){
   M.appendChild(h("div",{style:"margin-top:10px"}));
   M.appendChild(h("button",{class:"btn big",text:"📝 バイタルを記録",onclick:openEntry}));
   /* イベント */
-  var ce=h("div",{class:"card",style:"margin-top:10px"},h("h2",{text:"イベント（タップで今の時刻）"}));
+  var ce=h("div",{class:"card",style:"margin-top:10px"},h("div",{style:"display:flex;align-items:center;gap:8px;margin-bottom:8px"},h("h2",{text:"イベント（タップで今の時刻）",style:"margin:0;flex:1"}),h("button",{class:"btn sm ghost",text:"⏱ 時刻を指定して追加",onclick:openLateEvent})));
   var g=h("div",{class:"grid"});
   EVENTS.forEach(function(e){ var d=R.ev.filter(function(x){return x.k===e;}).pop();
     var vOn=ventOn(R), isV=e==="人工呼吸開始"&&vOn;
@@ -588,7 +588,7 @@ function renderLive(){
   var ct=h("div",{class:"card"},h("h2",{text:"トレンド"}));
   var cv=h("canvas",{class:"trend",id:"tcv"}); ct.appendChild(cv); M.appendChild(ct);
   /* 経過 */
-  var cl=h("div",{class:"card"},h("h2",{text:"経過（新しい順）"}),timeline(true)); M.appendChild(cl);
+  var cl=h("div",{class:"card"},h("h2",{text:"経過（新しい順・時刻をタップで修正）"}),timeline(true)); M.appendChild(cl);
   var cm=h("div",{class:"card"},h("h2",{text:"メモ・合併症"}),h("textarea",{oninput:function(e){R.memo=e.target.value; clearTimeout(V.mt); V.mt=setTimeout(touch,1200);}},R.memo||""));
   M.appendChild(cm);
   M.appendChild(h("div",{class:"card"},h("h2",{text:"設定"}),
@@ -618,15 +618,63 @@ function paintTick(){
 }
 
 /* イベント */
-function addEvent(e){
-  if(e==="その他"){ var t=prompt("イベントの内容"); if(!t) return; R.ev.push({id:uid(),t:Date.now(),k:"その他",txt:t}); }
+function addEvent(e,at,txt){
+  var t=at||Date.now();
+  if(e==="その他"){ if(txt==null) txt=prompt("イベントの内容"); if(!txt) return; R.ev.push({id:uid(),t:t,k:"その他",txt:txt}); }
   else {
     var done=R.ev.filter(function(x){return x.k===e;}).pop();
     if(done&&EV_ONCE.indexOf(e)>=0&&!confirm(e+" は "+hm(done.t)+" に記録済みです。もう一度記録しますか？")) return;
-    R.ev.push({id:uid(),t:Date.now(),k:e});
-    if(e==="麻酔導入"&&!R.t0) R.t0=Date.now();
+    R.ev.push({id:uid(),t:t,k:e});
+    if(e==="麻酔導入"&&(!R.t0||t<R.t0)) R.t0=t;
   }
-  touch(); toast(e+"　"+hm(Date.now())); render();
+  R.ev.sort(function(a,b){return a.t-b.t;});
+  touch(); toast(e+"　"+hm(t)); render();
+}
+/* ====== あとから時刻を指定して入力・時刻の修正（院長指定 2026-11-17） ====== */
+function timeOfDay(hhmm,ref){ /* "HH:MM" → 記録開始日のその時刻。日をまたぐ場合を補正 */
+  var m=/^(\d{1,2}):(\d{2})$/.exec(hhmm||""); if(!m) return null;
+  var base=new Date(ref||R.started||Date.now()); base.setHours(+m[1],+m[2],0,0);
+  var t=base.getTime(), now=Date.now();
+  if(t>now+60*60000) t-=864e5; else if(ref&&t<ref-12*3600e3) t+=864e5;
+  return t;
+}
+function hhmm(t){ var d=new Date(t); return p2(d.getHours())+":"+p2(d.getMinutes()); }
+function timeField(t0,onchg){
+  var t=t0, inp=h("input",{type:"time",value:hhmm(t),style:"font-size:22px;padding:6px 8px;width:130px;text-align:center",onchange:function(){ var v=timeOfDay(inp.value,R.started); if(v!=null){ t=v; onchg(t); } }});
+  function add(m){ t+=m*60000; inp.value=hhmm(t); onchg(t); }
+  return h("div",{class:"trow",style:"flex-wrap:wrap"},
+    h("button",{class:"btn sm ghost",text:"−5分",onclick:function(){add(-5);}}),h("button",{class:"btn sm ghost",text:"−1分",onclick:function(){add(-1);}}),
+    inp,
+    h("button",{class:"btn sm ghost",text:"＋1分",onclick:function(){add(1);}}),h("button",{class:"btn sm ghost",text:"＋5分",onclick:function(){add(5);}}));
+}
+function openLateEvent(){
+  var t=Date.now()-5*60000, sel=null;
+  var md=h("div",{class:"modal",onclick:function(ev){ if(ev.target===md) md.remove(); }}), sh=h("div",{class:"sh"});
+  var txt=h("input",{type:"text",placeholder:"「その他」の内容",style:"display:none;margin-top:8px"});
+  var g=h("div",{class:"grid"});
+  function paint(){ g.innerHTML=""; EVENTS.forEach(function(e){ g.appendChild(h("button",{class:sel===e?"done":"",onclick:function(){ sel=e; txt.style.display=e==="その他"?"":"none"; paint(); }},e)); }); }
+  paint();
+  sh.appendChild(h("h2",{text:"時刻を指定してイベントを追加"}));
+  sh.appendChild(h("label",{class:"f",text:"時刻"})); sh.appendChild(timeField(t,function(v){ t=v; }));
+  sh.appendChild(h("label",{class:"f",text:"イベント"})); sh.appendChild(g); sh.appendChild(txt);
+  sh.appendChild(h("div",{style:"display:flex;gap:8px;margin-top:12px"},h("button",{class:"btn ghost",style:"flex:1",text:"やめる",onclick:function(){md.remove();}}),
+    h("button",{class:"btn",style:"flex:2",text:"追加する",onclick:function(){ if(!sel){ toast("イベントを選んでください"); return; } if(t>Date.now()+60000){ toast("未来の時刻は入れられません"); return; }
+      if(sel==="その他"&&!txt.value.trim()){ toast("内容を入れてください"); return; }
+      md.remove(); addEvent(sel,t,sel==="その他"?txt.value.trim():null); }})));
+  md.appendChild(sh); document.body.appendChild(md);
+}
+function editTime(kind,id){
+  var key={vt:"vit",ev:"ev",dr:"dr"}[kind], it=R[key].filter(function(x){return x.id===id;})[0]; if(!it) return;
+  var t=it.t, md=h("div",{class:"modal",onclick:function(ev){ if(ev.target===md) md.remove(); }}), sh=h("div",{class:"sh"});
+  sh.appendChild(h("h2",{text:"時刻を修正"}));
+  sh.appendChild(h("div",{class:"note",style:"margin-bottom:6px",text:kind==="ev"?(it.k+(it.txt?"："+it.txt:"")):kind==="dr"?(it.name+" "+(it.amt||"")):"バイタル"}));
+  sh.appendChild(timeField(t,function(v){ t=v; }));
+  sh.appendChild(h("div",{style:"display:flex;gap:8px;margin-top:12px"},h("button",{class:"btn ghost",style:"flex:1",text:"やめる",onclick:function(){md.remove();}}),
+    h("button",{class:"btn",style:"flex:2",text:"この時刻にする",onclick:function(){ if(t>Date.now()+60000){ toast("未来の時刻は入れられません"); return; }
+      it.t=t; R[key].sort(function(a,b){return a.t-b.t;});
+      if(kind==="ev"&&it.k==="麻酔導入"){ var f=R.ev.filter(function(x){return x.k==="麻酔導入";})[0]; R.t0=f?f.t:R.t0; }
+      md.remove(); touch(); toast("時刻を "+hm(t)+" にしました"); render(); }})));
+  md.appendChild(sh); document.body.appendChild(md);
 }
 
 /* 投与入力 */
@@ -757,7 +805,7 @@ function timeline(edit){
   var d=h("div",{class:"tl"}), a=entries().reverse();
   if(!a.length) d.appendChild(h("div",{class:"note",text:"まだ記録がありません"}));
   a.forEach(function(e){
-    d.appendChild(h("div",null,h("span",{class:"tm",text:hm(e.t)}),h("span",null,h("span",{class:"tag "+e.kind,text:{vt:"値",ev:"イベント",dr:"投与"}[e.kind]}),e.txt),
+    d.appendChild(h("div",null,edit?h("span",{class:"tm",style:"text-decoration:underline dotted;cursor:pointer;color:var(--mint-d)",title:"タップで時刻を修正",text:hm(e.t),onclick:function(){ editTime(e.kind,e.id); }}):h("span",{class:"tm",text:hm(e.t)}),h("span",null,h("span",{class:"tag "+e.kind,text:{vt:"値",ev:"イベント",dr:"投与"}[e.kind]}),e.txt),
       edit?h("button",{class:"x",text:"✕",onclick:function(){ if(!confirm(hm(e.t)+" の記録を削除しますか？")) return;
         var key={vt:"vit",ev:"ev",dr:"dr"}[e.kind]; R[key]=R[key].filter(function(x){return x.id!==e.id;});
         if(e.kind==="ev"&&R.t0&&!R.ev.some(function(x){return x.k==="麻酔導入";})) R.t0=null;

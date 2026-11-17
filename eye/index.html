@@ -32,6 +32,7 @@ header{position:sticky;top:0;z-index:20;background:#fff;border-bottom:1px solid 
 .colhead .bar{background:var(--mint);height:20px;border-radius:2px;opacity:.55}
 .colhead.show{display:grid}
 main{padding:12px 12px 120px;max-width:680px;margin:0 auto}
+@media (min-width:900px){main{max-width:820px}.foot{justify-content:center}.foot button{flex:0 1 260px}}
 .card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
 .card h2{font-size:15px;margin:0 0 10px;color:var(--mint-d)}
 label.f{display:block;font-size:13px;color:var(--sub);margin:10px 0 4px;font-weight:600}
@@ -614,10 +615,25 @@ try{
   }
 }catch(e){}
 
+/* パソコン対応（院長指定 2026-11-17）：PCは「印刷する」（A5縦・余白なし）と「PDFをダウンロード」。共有メニューは使わない */
+var IS_PC=(function(){ try{ return window.matchMedia("(pointer:fine)").matches && !/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) && !(navigator.maxTouchPoints>1&&/Macintosh/.test(navigator.userAgent)); }catch(e){ return false; } })();
+function printPages(msgEl){
+  var pages=renderPages(), fr=document.createElement("iframe");
+  fr.style.cssText="position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden";
+  document.body.appendChild(fr);
+  var d=fr.contentWindow.document;
+  d.open(); d.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>'+fileName().replace(/\.pdf$/,"")+'</title><style>@page{size:A5 portrait;margin:0}html,body{margin:0;padding:0}img{display:block;width:148mm;height:210mm;page-break-after:always}img:last-child{page-break-after:auto}</style></head><body>'+
+    pages.map(function(c){return '<img src="'+c.toDataURL("image/jpeg",0.92)+'">';}).join("")+'</body></html>'); d.close();
+  var imgs=d.images, left=imgs.length;
+  function go(){ try{ fr.contentWindow.focus(); fr.contentWindow.print(); }catch(e){} setTimeout(function(){ fr.remove(); },60000); }
+  if(!left) go(); else Array.prototype.forEach.call(imgs,function(im){ if(im.complete){ if(--left===0) go(); } else im.onload=im.onerror=function(){ if(--left===0) go(); }; });
+  if(msgEl){ msgEl.className="msg ok"; msgEl.textContent="印刷画面を開きました。用紙：A5・縦／余白：なし／倍率：100%"; msgEl.classList.remove("hide"); }
+}
 function savePdf(msgEl){
   var blob=buildPdf(renderPages()), name=fileName();
   function ok(t){ msgEl.className="msg ok"; msgEl.textContent=t; msgEl.classList.remove("hide"); }
   function ng(t){ msgEl.className="msg ng"; msgEl.textContent=t; msgEl.classList.remove("hide"); }
+  if(IS_PC&&!dl){ anchor(); return; }
   if(dl){
     dl.save({filename:name, data:blob}).then(function(){ ok("保存しました："+name); })
       .catch(function(e){ if(e&&e.code==="declined") ng("保存をキャンセルしました。"); else fallback(); });
@@ -660,7 +676,7 @@ function viewOut(){
     msg,
     h("div",{class:"fname",text:"ファイル名："+fileName()+"（A5・"+pages.length+"ページ）"}),
     prev,
-    h("p",{class:"hint",text:"保存先：共有メニュー →「ファイルに保存」→ Googleドライブの「眼科検査」フォルダ。院内PCで開いて印刷・ARMIXに添付。"})
+    h("p",{class:"hint",text:IS_PC?"パソコン：「🖨 印刷する」でそのまま印刷（A5・縦・余白なし・100%）。「PDFをダウンロード」で保存して、Googleドライブの「眼科検査」フォルダやARMIXに添付。":"保存先：共有メニュー →「ファイルに保存」→ Googleドライブの「眼科検査」フォルダ。院内PCで開いて印刷・ARMIXに添付。"})
   );
 }
 var outMsgEl=null;
@@ -686,7 +702,10 @@ function render(){
   }else if(view==="out"){
     $main.appendChild(viewOut());
     $foot.appendChild(h("button",{text:"← 修正",onclick:function(){ go("ex"); }}));
-    $foot.appendChild(h("button",{class:"pri",text:"PDFを保存・共有",onclick:function(){ savePdf(outMsgEl); }}));
+    if(IS_PC){
+      $foot.appendChild(h("button",{text:"PDFをダウンロード",onclick:function(){ savePdf(outMsgEl); }}));
+      $foot.appendChild(h("button",{class:"pri",text:"🖨 印刷する",onclick:function(){ printPages(outMsgEl); }}));
+    } else $foot.appendChild(h("button",{class:"pri",text:"PDFを保存・共有",onclick:function(){ savePdf(outMsgEl); }}));
   }
 }
 render();

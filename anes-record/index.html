@@ -224,6 +224,9 @@ function confirmedCard(){
     if(!rows.length){ lst.textContent="今日確定した麻酔はありません。麻酔薬計算の「症例・印刷」で「✅ 当日の内容で確定する」を押すと、ここに出ます。"; return; }
     rows.forEach(function(x){ lst.appendChild(h("div",{style:"display:flex;gap:8px;align-items:center;padding:6px 0;border-top:1px solid var(--line)"},
       h("div",{style:"flex:1;color:var(--ink);font-size:14px"},h("b",null,(x.name||"名前なし")+" "),x.sp+" "+(x.proc||""),h("div",{class:"note",text:(x.date===t?"今日":x.date)+"　カルテNo "+(x.no||"—")+"　担当 "+(x.vet||"—")})),
+      h("button",{class:"btn sm ghost",style:"color:var(--warn);border-color:#f1c4bf",text:"削除",title:"手書きで記録するなど、このアプリを使わないとき",onclick:function(){
+        if(!confirm((x.name||"名前なし")+"（"+x.sp+"）の確定した麻酔を一覧から削除します。\n手書きで記録するなど、麻酔記録アプリを使わないときに使います。よろしいですか？")) return;
+        anesApi({action:"del",id:x.id}).then(function(j){ if(j.ok){ toast("削除しました"); render(); } else toast(j.err||"削除できませんでした"); }).catch(function(){ toast("通信できません"); }); }}),
       h("button",{class:"btn sm",text:"記録を始める",onclick:function(){
         anesApi({action:"get",id:x.id}).then(function(g){
           if(!g.ok){ toast(g.err||"開けません"); return; }
@@ -374,7 +377,7 @@ function renderHome(){
 /* 保存済みの記録（ドライブの麻酔記録DB）：PCからPDFを開いて印刷・カルテ文をコピー */
 function archivedCard(){
   var c=h("div",{class:"card"},h("h2",{text:"保存済みの記録（ドライブ）"}),
-    h("div",{class:"note",style:"margin-bottom:8px",text:"直近90日。PDFを開いて印刷（動物病院アカウントでログインしたPC）、カルテ文のコピーができます。"}));
+    h("div",{class:"note",style:"margin-bottom:8px",text:"直近5日分。PDFを開いて印刷（動物病院アカウントでログインしたPC）、カルテ文のコピーができます。"}));
   var q=h("input",{type:"text",placeholder:"カルテNo・動物名・飼い主名・術式で絞り込み"}), lst=h("div",{class:"note",style:"margin-top:8px",text:"読み込み中…"}), rows=[];
   function draw(){
     lst.innerHTML=""; var w=q.value.trim().toLowerCase();
@@ -394,7 +397,7 @@ function archivedCard(){
   }
   q.addEventListener("input",draw);
   c.appendChild(q); c.appendChild(lst);
-  api({action:"archived",days:90}).then(function(j){ if(!j.ok){ lst.textContent=j.err||"読み込めません"; return; } rows=j.rows||[]; draw(); })
+  api({action:"archived",days:5}).then(function(j){ if(!j.ok){ lst.textContent=j.err||"読み込めません"; return; } rows=j.rows||[]; draw(); })
     .catch(function(){ lst.textContent="通信できません"; });
   return c;
 }
@@ -511,7 +514,10 @@ function resetRecord(){
 }
 function discardRecord(r){
   if(!r) return;
-  if(r.status==="done"&&!r.archived){ alert("終了した麻酔記録は、ドライブとDBに保存するまで削除できません。記録を開いて「ドライブとDBに保存」を押してください。"); return; }
+  if(r.status==="done"&&!r.archived){
+    if(!confirm("この麻酔記録はドライブとDBに保存されていません。\n手書きで記録した場合など、このアプリの記録を残さないときだけ削除してください。\n\n保存せずに削除しますか？")) return;
+    if(!confirm("本当に保存せずに削除しますか？（元に戻せません）")) return;
+    dropLocal(r.id); if(REC_API) api({action:"del",id:r.id}).catch(function(){}); if(R&&R.id===r.id) R=null; V.scr="home"; render(); window.scrollTo(0,0); toast("削除しました"); return; }
   if(!confirm((r.pt.name||"名前なし")+"（"+r.sp+"）の麻酔記録を削除します。この端末と大画面から消え、元に戻せません。"+(r.archived?"\n※ドライブに保存済みのPDF・DBは残ります。":"\n※ドライブにはまだ保存されていません。")+"\n削除しますか？")) return;
   dropLocal(r.id); if(REC_API) api({action:"del",id:r.id}).catch(function(){});
   if(R&&R.id===r.id) R=null;
@@ -959,9 +965,10 @@ function renderDone(){
     h("button",{class:"btn",text:R.archived?"保存し直す":"ドライブとDBに保存",onclick:function(e){ archive(e.target); }}),
     h("button",{class:"btn red",style:"margin-left:8px"+(R.archived?"":";opacity:.35"),text:"完了（端末から消去）",onclick:function(){
       /* 保存しないと消去できない（院長指定 2026-11-19） */
-      if(!R.archived){ alert("先に「ドライブとDBに保存」を押してください。保存が終わるまで、この端末からは消去できません。"); return; }
+      if(!R.archived){ alert("先に「ドライブとDBに保存」を押してください。保存が終わるまで、この端末からは消去できません。\n（手書きで記録して、このアプリの記録を残さない場合は、下の「保存せずに削除」を使ってください）"); return; }
       if(!confirm("カルテ文をアーミックスに入れましたか？　この端末から消去します。")) return;
-      var id=R.id; dropLocal(id); if(REC_API) api({action:"del",id:id}).catch(function(){}); R=null; V.scr="home"; render(); toast("消去しました"); }})));
+      var id=R.id; dropLocal(id); if(REC_API) api({action:"del",id:id}).catch(function(){}); R=null; V.scr="home"; render(); toast("消去しました"); }}),
+    R.archived?null:h("div",{style:"margin-top:10px"},h("button",{class:"btn sm ghost",style:"color:var(--warn);border-color:#f1c4bf",text:"手書きで記録した（保存せずに削除）",onclick:function(){ discardRecord(R); }}))));
 }
 /* ===== 永久保存：PDF＋集計シート（院長決定 2026-11-15：飼い主名も保存、院内で共有） ===== */
 function blobB64(blob){ return new Promise(function(ok,ng){ var r=new FileReader(); r.onload=function(){ ok(String(r.result).split(",")[1]); }; r.onerror=ng; r.readAsDataURL(blob); }); }

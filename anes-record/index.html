@@ -482,6 +482,26 @@ function ventOn(r){ var a=null,b=null; r.ev.forEach(function(e){ if(e.k==="人�
 function itemsFor(r){ var it=r.items.filter(function(k){ return !(IT[k]&&IT[k].ventOnly); }); if(ventOn(r)) it=it.concat(["pip","peep"]); return it; }
 function ventPeriods(r){ var out=[], st=null; r.ev.slice().sort(function(a,b){return a.t-b.t;}).forEach(function(e){ if(e.k==="人工呼吸開始"&&st==null) st=e.t; else if(e.k==="人工呼吸終了"&&st!=null){ out.push([st,e.t]); st=null; } }); if(st!=null) out.push([st,null]); return out; }
 function ventText(r){ var ps=ventPeriods(r); if(!ps.length) return ""; var tot=0; var t=ps.map(function(p){ if(p[1]) tot+=p[1]-p[0]; return hm(p[0])+"–"+(p[1]?hm(p[1]):"（終了未記録）"); }).join("、"); return t+(tot?"（計"+mins(tot)+"分）":""); }
+/* ====== 手術／スケーリング（歯科）の区分（院長指定 2026-11-19）：手術開始でスケーリングを選ぶと歯科のボタンが出る ====== */
+var DENTAL=[["歯科検査","歯科検査開始","歯科検査終了"],["スケーリング","スケーリング開始","スケーリング終了"],["抜歯","抜歯開始","抜歯終了"]];
+var DENTAL_EV=[]; DENTAL.forEach(function(d){ DENTAL_EV.push(d[1],d[2]); });
+function isDental(r){ return (r||R)&&(r||R).procType==="dental"; }
+function evList(r){ if(!isDental(r)) return EVENTS; var out=[]; EVENTS.forEach(function(e){ out.push(e); if(e==="手術開始") out=out.concat(DENTAL_EV); }); return out; }
+function pairPeriods(r,a,b){ var out=[], st=null; r.ev.slice().sort(function(x,y){return x.t-y.t;}).forEach(function(e){ if(e.k===a&&st==null) st=e.t; else if(e.k===b&&st!=null){ out.push([st,e.t]); st=null; } }); if(st!=null) out.push([st,null]); return out; }
+function pairText(r,a,b){ var ps=pairPeriods(r,a,b); if(!ps.length) return ""; var tot=0; var t=ps.map(function(p){ if(p[1]) tot+=p[1]-p[0]; return hm(p[0])+"–"+(p[1]?hm(p[1]):"（終了未記録）"); }).join("、"); return t+(tot?"（計"+mins(tot)+"分）":""); }
+function pairOn(r,a,b){ var ps=pairPeriods(r,a,b); return ps.length&&ps[ps.length-1][1]==null?ps[ps.length-1][0]:null; }
+function dentalNow(r){ for(var i=0;i<DENTAL.length;i++){ var t=pairOn(r,DENTAL[i][1],DENTAL[i][2]); if(t) return [DENTAL[i][0],t]; } return null; }
+function chooseProc(cb){ /* 手術開始の時点で区分を選ぶ */
+  var md=h("div",{class:"modal",onclick:function(ev){ if(ev.target===md) md.remove(); }}), sh=h("div",{class:"sh"});
+  function pick(v){ md.remove(); R.procType=v; cb(); }
+  sh.appendChild(h("h2",{text:"手術開始：処置の区分を選んでください"}));
+  sh.appendChild(h("div",{style:"display:flex;gap:10px;margin-top:10px"},
+    h("button",{class:"btn big",style:"flex:1",text:"手術",onclick:function(){ pick("surgery"); }}),
+    h("button",{class:"btn big",style:"flex:1;background:#2563eb",text:"スケーリング（歯科）",onclick:function(){ pick("dental"); }})));
+  sh.appendChild(h("div",{class:"note",style:"margin-top:8px",text:"スケーリングを選ぶと「歯科検査・スケーリング・抜歯」の開始／終了ボタンが出ます。"}));
+  sh.appendChild(h("button",{class:"btn ghost",style:"width:100%;margin-top:10px",text:"やめる",onclick:function(){ md.remove(); }}));
+  md.appendChild(sh); document.body.appendChild(md);
+}
 
 /* ====== リセット・削除（院長指定 2026-11-16） ====== */
 function resetRecord(){
@@ -556,8 +576,9 @@ function renderLive(){
   /* イベント */
   var ce=h("div",{class:"card",style:"margin-top:10px"},h("div",{style:"display:flex;align-items:center;gap:8px;margin-bottom:8px"},h("h2",{text:"イベント（タップで今の時刻）",style:"margin:0;flex:1"}),h("button",{class:"btn sm ghost",text:"⏱ 時刻を指定して追加",onclick:openLateEvent})));
   var g=h("div",{class:"grid"});
-  EVENTS.forEach(function(e){ var d=R.ev.filter(function(x){return x.k===e;}).pop();
-    var vOn=ventOn(R), isV=e==="人工呼吸開始"&&vOn;
+  evList(R).forEach(function(e){ var d=R.ev.filter(function(x){return x.k===e;}).pop();
+    var vOn=ventOn(R), isV=(e==="人工呼吸開始"&&vOn)||DENTAL.some(function(p){ return e===p[1]&&pairOn(R,p[1],p[2]); });
+    if(DENTAL_EV.indexOf(e)>=0){ g.appendChild(h("button",{class:isV?"done":"",style:"border-color:#93c5fd;color:#1d4ed8",onclick:function(){ addEvent(e); }},e,isV?h("small",null,"実施中 "+hm(d.t)):d&&/終了$/.test(e)?h("small",null,hm(d.t)):null)); return; }
     g.appendChild(h("button",{class:(d&&EV_ONCE.indexOf(e)>=0)||isV?"done":"",onclick:function(){ addEvent(e); }},e,d&&EV_ONCE.indexOf(e)>=0?h("small",null,hm(d.t)):isV?h("small",null,"実施中 "+hm(d.t)):null)); });
   ce.appendChild(g); M.appendChild(ce);
   /* 気管チューブ（途中でも入力可。PDFの最上段に載る） */
@@ -620,11 +641,12 @@ function paintTick(){
 /* イベント */
 function addEvent(e,at,txt){
   var t=at||Date.now();
+  if(e==="手術開始"&&!txt&&!R.ev.some(function(x){return x.k==="手術開始";})){ chooseProc(function(){ addEvent(e,t,R.procType==="dental"?"スケーリング":"-"); }); return; }
   if(e==="その他"){ if(txt==null) txt=prompt("イベントの内容"); if(!txt) return; R.ev.push({id:uid(),t:t,k:"その他",txt:txt}); }
   else {
     var done=R.ev.filter(function(x){return x.k===e;}).pop();
     if(done&&EV_ONCE.indexOf(e)>=0&&!confirm(e+" は "+hm(done.t)+" に記録済みです。もう一度記録しますか？")) return;
-    R.ev.push({id:uid(),t:t,k:e});
+    R.ev.push(txt&&txt!=="-"&&e==="手術開始"?{id:uid(),t:t,k:e,txt:txt}:{id:uid(),t:t,k:e});
     if(e==="麻酔導入"&&(!R.t0||t<R.t0)) R.t0=t;
   }
   R.ev.sort(function(a,b){return a.t-b.t;});
@@ -652,7 +674,7 @@ function openLateEvent(){
   var md=h("div",{class:"modal",onclick:function(ev){ if(ev.target===md) md.remove(); }}), sh=h("div",{class:"sh"});
   var txt=h("input",{type:"text",placeholder:"「その他」の内容",style:"display:none;margin-top:8px"});
   var g=h("div",{class:"grid"});
-  function paint(){ g.innerHTML=""; EVENTS.forEach(function(e){ g.appendChild(h("button",{class:sel===e?"done":"",onclick:function(){ sel=e; txt.style.display=e==="その他"?"":"none"; paint(); }},e)); }); }
+  function paint(){ g.innerHTML=""; evList(R).forEach(function(e){ g.appendChild(h("button",{class:sel===e?"done":"",onclick:function(){ sel=e; txt.style.display=e==="その他"?"":"none"; paint(); }},e)); }); }
   paint();
   sh.appendChild(h("h2",{text:"時刻を指定してイベントを追加"}));
   sh.appendChild(h("label",{class:"f",text:"時刻"})); sh.appendChild(timeField(t,function(v){ t=v; }));
@@ -945,10 +967,10 @@ function statCols(){ var a=[]; ITEMS.forEach(function(x){ if(x.t!=="num") return
 function dbSheets(){
   var P=R.pt, pr=periods(), d=P.date;
   var st=statCols();
-  var head=["記録ID","日付","カルテNo","飼い主名","動物名","動物種","体重(kg)","術式・処置","ASA","担当医","麻酔管理者","吸入麻酔薬","麻酔開始","麻酔終了","麻酔時間(分)","手術開始","手術終了","手術時間(分)","吸入開始","吸入終了","吸入時間(分)","吸入時間は推定","気管チューブ(mm)","前投薬","人工呼吸","投与","経過・イベント","合併症・メモ","注意事項","記録数"]
+  var head=["記録ID","日付","カルテNo","飼い主名","動物名","動物種","体重(kg)","術式・処置","ASA","担当医","麻酔管理者","吸入麻酔薬","麻酔開始","麻酔終了","麻酔時間(分)","手術開始","手術終了","手術時間(分)","吸入開始","吸入終了","吸入時間(分)","吸入時間は推定","気管チューブ(mm)","前投薬","人工呼吸","処置区分","歯科検査","スケーリング","抜歯","投与","経過・イベント","合併症・メモ","注意事項","記録数"]
     .concat(st.map(function(c){ return shortL(c[0])+c[1]+(IT[c[0]].u?"("+IT[c[0]].u+")":""); })).concat(["カルテ転記文","PDF","保存日時"]);
   var row=[R.id,d,P.no,P.owner||"",P.name,R.sp,R.kg!=null?Math.round(R.kg*1000)/1000:"",P.proc,P.asa?P.asa+(P.asaE?"E":""):"",P.vet,P.mgr,R.agent,
-    pr.a0?hm(pr.a0):"",pr.a1?hm(pr.a1):"",pr.a0&&pr.a1?mins(pr.a1-pr.a0):"",pr.s0?hm(pr.s0):"",pr.s1?hm(pr.s1):"",pr.s0&&pr.s1?mins(pr.s1-pr.s0):"",pr.i0?hm(pr.i0):"",pr.i1?hm(pr.i1):"",pr.i0&&pr.i1?mins(pr.i1-pr.i0):"",pr.iest?"推定":"",R.tube||"",evT("前投薬投与")?hm(evT("前投薬投与")):"",ventText(R),
+    pr.a0?hm(pr.a0):"",pr.a1?hm(pr.a1):"",pr.a0&&pr.a1?mins(pr.a1-pr.a0):"",pr.s0?hm(pr.s0):"",pr.s1?hm(pr.s1):"",pr.s0&&pr.s1?mins(pr.s1-pr.s0):"",pr.i0?hm(pr.i0):"",pr.i1?hm(pr.i1):"",pr.i0&&pr.i1?mins(pr.i1-pr.i0):"",pr.iest?"推定":"",R.tube||"",evT("前投薬投与")?hm(evT("前投薬投与")):"",ventText(R),isDental()?"スケーリング（歯科）":R.procType==="surgery"?"手術":"",pairText(R,"歯科検査開始","歯科検査終了"),pairText(R,"スケーリング開始","スケーリング終了"),pairText(R,"抜歯開始","抜歯終了"),
     R.dr.slice().sort(function(a,b){return a.t-b.t;}).map(function(x){return hm(x.t)+" "+x.name+" "+(x.amt||"")+" "+(x.route||"");}).join("\n"),
     R.ev.slice().sort(function(a,b){return a.t-b.t;}).map(function(x){return hm(x.t)+" "+x.k+(x.txt?"："+x.txt:"");}).join("\n"),
     R.memo||"",P.memo||"",R.vit.length]
@@ -998,6 +1020,7 @@ function karte(){
   if(R.tube) out.push("気管チューブ 内径 "+R.tube+" mm");
   if(evT("前投薬投与")) out.push("前投薬 "+hm(evT("前投薬投与")));
   if(ventText(R)) out.push("人工呼吸 "+ventText(R));
+  if(isDental()){ var dl=DENTAL.map(function(d){ var t=pairText(R,d[1],d[2]); return t?d[0]+" "+t:""; }).filter(Boolean); out.push("処置区分 スケーリング（歯科）"+(dl.length?"／"+dl.join("／"):"")); }
   if(pr.a0) out.push("麻酔時間 "+hm(pr.a0)+"–"+(pr.a1?hm(pr.a1)+"（"+mins(pr.a1-pr.a0)+"分）":"—"));
   if(pr.s0) out.push("手術時間 "+hm(pr.s0)+"–"+(pr.s1?hm(pr.s1)+"（"+mins(pr.s1-pr.s0)+"分）":"—"));
   var ag=series(R,"agent").map(function(p){return p.v;}).filter(function(v){return v>0;});
@@ -1029,6 +1052,7 @@ function pages(){
   var info=[["日付",P.date.replace(/-/g,"/")],["カルテNo",P.no||"—"],["飼い主名",P.owner||"—"],["動物名",P.name||"—"],["動物種",R.sp],["体重",R.wt||"—"],["ASA",P.asa?P.asa+(P.asaE?"E":""):"—"],
     ["術式・処置",P.proc||"—"],["担当医",P.vet||"—"],["麻酔管理者",P.mgr||"—"],["吸入麻酔薬",R.agent],
     ["麻酔時間",pr.a0?hm(pr.a0)+"–"+(pr.a1?hm(pr.a1)+"（"+mins(pr.a1-pr.a0)+"分）":""):"—"],["手術時間",pr.s0?hm(pr.s0)+"–"+(pr.s1?hm(pr.s1)+"（"+mins(pr.s1-pr.s0)+"分）":""):"—"],["吸入時間",inhText(pr)||"—"],["人工呼吸",ventText(R)||"—"],["前投薬",evT("前投薬投与")?hm(evT("前投薬投与")):"—"]];
+  if(isDental()){ info.push(["処置区分","スケーリング（歯科）"]); DENTAL.forEach(function(d){ info.push([d[0],pairText(R,d[1],d[2])||"—"]); }); }
   var cw=(PW-PM*2)/3;
   info.forEach(function(it,i){ var cx=PM+(i%3)*cw, cy=y+Math.floor(i/3)*52; ctx.font=pf(22,500); ctx.fillStyle="#6b7a80"; ctx.fillText(it[0],cx,cy+4); ctx.font=pf(28,600); ctx.fillStyle="#1f2a2e"; fit(ctx,it[1],cx+150,cy,cw-160); });
   y+=Math.ceil(info.length/3)*52+14;
@@ -1261,6 +1285,7 @@ function dPaint(){
   nums.forEach(function(k){ var v=last[k]; var al=v!=null?alertOf(r,k,+v):"";
     side.appendChild(h("div",{class:"tile "+al},h("span",{class:"l",text:shortL(k)}),h("span",{class:"v",style:"font-size:"+big+"px",text:v!=null?fv(k,v):"—"}),h("span",{class:"u",text:IT[k].u||""}))); });
   var sels=r.items.filter(function(k){return IT[k]&&IT[k].t==="sel"&&last[k]!=null;});
+  var dn=dentalNow(r); if(dn) side.appendChild(h("div",{class:"dnext",style:"background:#132a4a;color:#93c5fd;font-weight:700",text:dn[0]+"中（"+hm(dn[1])+"〜）"}));
   if(ventOn(r)) side.appendChild(h("div",{class:"dnext",style:"background:#2e1a4a;color:#d8b4fe;font-weight:700",text:"人工呼吸中（"+hm(ventPeriods(r).pop()[0])+"〜）"}));
   if(sels.length) side.appendChild(h("div",{class:"dnext",style:"font-size:15px"},sels.map(function(k){return shortL(k)+" "+last[k];}).join("　")));
   side.appendChild(h("div",{class:"dnext",id:"dnx"}));

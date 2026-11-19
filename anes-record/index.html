@@ -511,6 +511,7 @@ function resetRecord(){
 }
 function discardRecord(r){
   if(!r) return;
+  if(r.status==="done"&&!r.archived){ alert("終了した麻酔記録は、ドライブとDBに保存するまで削除できません。記録を開いて「ドライブとDBに保存」を押してください。"); return; }
   if(!confirm((r.pt.name||"名前なし")+"（"+r.sp+"）の麻酔記録を削除します。この端末と大画面から消え、元に戻せません。"+(r.archived?"\n※ドライブに保存済みのPDF・DBは残ります。":"\n※ドライブにはまだ保存されていません。")+"\n削除しますか？")) return;
   dropLocal(r.id); if(REC_API) api({action:"del",id:r.id}).catch(function(){});
   if(R&&R.id===r.id) R=null;
@@ -954,11 +955,12 @@ function renderDone(){
     h("button",{class:"btn ghost",text:"記録画面に戻る",onclick:function(){ R.status="live"; touch(); V.scr="live"; render(); }})));
   M.appendChild(h("div",{class:"card"},h("h2",{text:"③ 保存して完了"}),
     h("div",{class:"note",style:"margin-bottom:8px",text:"院内共有ドライブの「ポックル 麻酔記録」フォルダにPDFを保存し、全症例の集計シート「麻酔記録DB」に追加します。そのあと、この端末と一時保存（大画面用）から消去します。"}),
-    R.archived?h("div",{class:"alert mint",text:"保存済み（"+R.archived+"）。修正して保存し直すと上書きされます"}):null,
+    R.archived?h("div",{class:"alert mint",text:"保存済み（"+R.archived+"）。修正して保存し直すと上書きされます"}):h("div",{class:"alert amber",text:"まだ保存していません。保存すると「完了」が押せるようになります。"}),
     h("button",{class:"btn",text:R.archived?"保存し直す":"ドライブとDBに保存",onclick:function(e){ archive(e.target); }}),
-    h("button",{class:"btn red",style:"margin-left:8px",text:"完了（端末から消去）",onclick:function(){
-      if(!R.archived&&!confirm("まだドライブとDBに保存されていません。消去すると記録は残りません。消去しますか？")) return;
-      if(R.archived&&!confirm("カルテ文をアーミックスに入れましたか？　この端末から消去します。")) return;
+    h("button",{class:"btn red",style:"margin-left:8px"+(R.archived?"":";opacity:.35"),text:"完了（端末から消去）",onclick:function(){
+      /* 保存しないと消去できない（院長指定 2026-11-19） */
+      if(!R.archived){ alert("先に「ドライブとDBに保存」を押してください。保存が終わるまで、この端末からは消去できません。"); return; }
+      if(!confirm("カルテ文をアーミックスに入れましたか？　この端末から消去します。")) return;
       var id=R.id; dropLocal(id); if(REC_API) api({action:"del",id:id}).catch(function(){}); R=null; V.scr="home"; render(); toast("消去しました"); }})));
 }
 /* ===== 永久保存：PDF＋集計シート（院長決定 2026-11-15：飼い主名も保存、院内で共有） ===== */

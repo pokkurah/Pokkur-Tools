@@ -277,7 +277,7 @@ function push(){
   var m=meta(R); m.action="put"; m.data=JSON.stringify(R);
   api(m).then(function(j){ SYNC.busy=false;
     if(j.ok&&j.stale){ /* 別の端末（大画面PCの臨時入力など）の方が新しい → そちらを取り込む */
-      api({action:"get",id:R.id}).then(function(g){ if(g.ok&&g.data){ var nr=JSON.parse(g.data); if(R&&nr.id===R.id){ R=nr; R.pushed=R.rev; saveLocal(); SYNC.st="ok"; paintSync(); if(!document.querySelector(".modal")) render(); toast("別の端末で入力された内容を取り込みました"); } } }).catch(function(){});
+      api({action:"get",id:R.id}).then(function(g){ if(g.ok&&g.data){ var nr=JSON.parse(g.data); if(R&&nr.id===R.id){ R=nr; R.pushed=R.rev; saveLocal(); SYNC.st="ok"; paintSync(); if(!visibleModal()) render(); toast("別の端末で入力された内容を取り込みました"); } } }).catch(function(){});
       return; }
     if(j.ok){ SYNC.st="ok"; SYNC.at=Date.now(); R.pushed=rev; lsSet("anrec_r_"+R.id,R); } else { SYNC.st="ng"; SYNC.err=j.err; }
     paintSync(); if(SYNC.again||(R&&R.rev>rev)){ SYNC.again=false; queuePush(); } })
@@ -579,7 +579,8 @@ function renderLive(){
   keepAwake();
   /* バイタル */
   M.appendChild(h("div",{style:"margin-top:10px"}));
-  M.appendChild(h("button",{class:"btn big",text:"📝 バイタルを記録",onclick:openEntry}));
+  M.appendChild(h("button",{class:"btn big",text:ENTRY?"📝 入力中のバイタルに戻る":"📝 バイタルを記録",onclick:openEntry}));
+  if(ENTRY&&ENTRY.md.style.display==="none") entryPill(ENTRY.count());
   /* イベント */
   var ce=h("div",{class:"card",style:"margin-top:10px"},h("div",{style:"display:flex;align-items:center;gap:8px;margin-bottom:8px"},h("h2",{text:"イベント（タップで今の時刻）",style:"margin:0;flex:1"}),h("button",{class:"btn sm ghost",text:"⏱ 時刻を指定して追加",onclick:openLateEvent})));
   var g=h("div",{class:"grid"});
@@ -730,12 +731,26 @@ function openDrug(d){
 
 /* バイタル入力 */
 function lastVal(k){ for(var i=R.vit.length-1;i>=0;i--){ var v=R.vit[i].v[k]; if(v!=null&&v!=="") return v; } return null; }
+/* バイタル入力は途中で元の画面に戻れる（入力は保持。院長指定 2026-11-24） */
+var ENTRY=null;
+function visibleModal(){ return [].slice.call(document.querySelectorAll(".modal")).some(function(m){ return m.style.display!=="none"; }); }
+function entryPill(n){
+  var p=document.getElementById("entpill"); if(p) p.remove(); if(n==null) return;
+  document.body.appendChild(h("button",{id:"entpill",style:"position:fixed;right:12px;bottom:calc(84px + env(safe-area-inset-bottom));z-index:40;background:var(--mint-d);color:#fff;border:0;border-radius:24px;padding:12px 18px;font-size:16px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.25)",
+    text:"📝 バイタル入力中"+(n?"（"+n+"項目）":"")+"　戻る ▶",onclick:function(){ if(ENTRY) ENTRY.show(); }}));
+}
 function openEntry(){
+  if(ENTRY&&document.body.contains(ENTRY.md)){ ENTRY.show(); return; }
   var t=Date.now(), vals={}, cur=null, fresh=false, fields={};
-  var md=h("div",{class:"modal"}), sh=h("div",{class:"sh"});
+  var md=h("div",{class:"modal",onclick:function(ev){ if(ev.target===md) hideEntry(); }}), sh=h("div",{class:"sh"});
   var tb=h("b",{text:hm(t)});
+  function hideEntry(){ md.style.display="none"; entryPill(Object.keys(vals).length); }
+  function showEntry(){ if(!Object.keys(vals).length){ t=Date.now(); tb.textContent=hm(t); } md.style.display=""; entryPill(null); mark(); }
+  function close(){ document.removeEventListener("keydown",hk,true); md.remove(); ENTRY=null; entryPill(null); }
+  ENTRY={md:md,show:showEntry,count:function(){ return Object.keys(vals).length; }};
   function lvOf(k){ var lv=lastVal(k); if(k==="fluid"&&lv==null&&R.flRate!=null) lv=R.flRate; return lv; }
   function numKeys(){ return itemsFor(R).filter(function(k){ return IT[k]&&IT[k].t==="num"; }); }
+  sh.appendChild(h("button",{class:"btn sm ghost",style:"width:100%;margin-bottom:8px",text:"◀ 元の画面へ（入力はそのまま。イベント・投与を押したら戻れます）",onclick:hideEntry}));
   sh.appendChild(h("div",{style:"display:flex;align-items:center;gap:8px"},h("h2",{text:"バイタル",style:"margin:0;flex:1"}),
     h("button",{class:"btn sm ghost",text:"全部 前回と同じ",onclick:function(){ itemsFor(R).forEach(function(k){ var lv=lvOf(k); if(lv!=null&&vals[k]==null) vals[k]=lv; }); paint(); }})));
   sh.appendChild(h("div",{class:"trow"},h("button",{class:"btn sm ghost",text:"−1分",onclick:function(){t-=60000;tb.textContent=hm(t);}}),tb,h("button",{class:"btn sm ghost",text:"＋1分",onclick:function(){t+=60000;tb.textContent=hm(t);}})));
@@ -790,10 +805,11 @@ function openEntry(){
     R.vit.push({id:uid(),t:t,v:vals}); R.vit.sort(function(a,b){return a.t-b.t;});
     if(vals.fluid!=null) R.flRate=vals.fluid;
     document.removeEventListener("keydown",hk,true);
-    touch(); md.remove(); toast("保存しました　"+hm(t)); render();
+    close(); touch(); toast("保存しました　"+hm(t)); render();
   }
   function hk(e){ /* パソコン・外付けキーボード：入力欄の外でも数字とEnterを受ける */
     if(!document.body.contains(md)){ document.removeEventListener("keydown",hk,true); return; }
+    if(md.style.display==="none"||visibleModal()&&[].slice.call(document.querySelectorAll(".modal")).filter(function(m){return m!==md&&m.style.display!=="none";}).length) return;
     if(e.target&&e.target.tagName==="INPUT") return;
     if(/^[0-9.]$/.test(e.key)){ e.preventDefault(); press(e.key); } else if(e.key==="Backspace"){ e.preventDefault(); press("⌫"); } else if(e.key==="Enter"){ e.preventDefault(); press("⏎"); }
   }
@@ -801,7 +817,7 @@ function openEntry(){
   paint();
   sh.appendChild(h("div",{class:"note",style:"margin-top:6px",text:"下のキーで入力 →「⏎ 次へ」で次の項目へ。空欄のまま ⏎ を押すと前回と同じ値が入ります。最後の項目のあとに ⏎ で保存。"}));
   sh.appendChild(h("div",{style:"display:flex;gap:8px;margin-top:10px"},
-    h("button",{class:"btn ghost",style:"flex:1",text:"やめる",onclick:function(){ if(Object.keys(vals).length&&!confirm("入力を破棄しますか？")) return; document.removeEventListener("keydown",hk,true); md.remove(); }}),
+    h("button",{class:"btn ghost",style:"flex:1",text:"やめる",onclick:function(){ if(Object.keys(vals).length&&!confirm("入力を破棄しますか？")) return; close(); }}),
     h("button",{class:"btn",style:"flex:2",text:"保存",onclick:save})));
   var kp=h("div",{class:"kp"},h("div",{class:"kl",id:"kplb"}));
   ["7","8","9","⌫","4","5","6",".","1","2","3","0"].forEach(function(c){ kp.appendChild(h("button",{text:c,onclick:function(){ press(c); }})); });
@@ -1350,7 +1366,7 @@ else {
   } else
   render();
   /* 記録中の画面は1分ごとにグラフを更新 */
-  setInterval(function(){ if(V.scr==="live"&&!document.querySelector(".modal")) drawPhone(); },60000);
+  setInterval(function(){ if(V.scr==="live"&&!visibleModal()) drawPhone(); },60000);
 }
 })();
 </script>

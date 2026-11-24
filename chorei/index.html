@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<script src="../gate.js"></script>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="朝礼ルーレット">
+<meta name="robots" content="noindex,nofollow">
+<title>朝礼ルーレット</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&family=Noto+Sans+JP:wght@400;600&display=swap">
+<style>
+:root{
+  --bg:#f6f8f7; --surface:#ffffff; --fg:#26302d; --muted:#6b7773; --line:#dbe3e0;
+  --accent:#3fb59a; --accent-ink:#ffffff; --accent-soft:#e3f4ef;
+  --s1:#3fb59a; --s2:#9fdcc9; --s3:#c9d3d0; --s4:#7cc8b3; --s5:#e4ebe9; --s6:#5fa794;
+  --dont:#c4373d; --dont-soft:#fdf1f1; --accent-soft2:#eef7f4;
+  --display:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Noto Sans JP",sans-serif;
+  --body:"Noto Sans JP","Hiragino Sans",system-ui,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#131917; --surface:#1c2421; --fg:#e8efec; --muted:#93a19c; --line:#2d3834;
+  --accent:#4cc7aa; --accent-ink:#0f1513; --accent-soft:#1e3830;
+  --s1:#3a9e86; --s2:#2b6b5c; --s3:#3a4642; --s4:#4fb89e; --s5:#283330; --s6:#317a69; --dont:#e86a6f; --dont-soft:#2e1f20; --accent-soft2:#18302a; color-scheme:dark}}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+.wrap{max-width:520px;margin:0 auto;padding:20px 16px 40px;display:grid;gap:18px}
+header{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+header a{color:var(--muted);font-size:.8rem;text-decoration:none}
+h1{font-family:var(--display);font-weight:800;font-size:1.5rem;margin:0}
+.date{color:var(--muted);font-size:.85rem;font-variant-numeric:tabular-nums}
+.stage{position:relative;width:100%;max-width:400px;margin:0 auto;aspect-ratio:1}
+canvas{width:100%;height:100%;display:block}
+.pin{position:absolute;top:-4px;left:50%;transform:translateX(-50%);width:0;height:0;
+  border-left:16px solid transparent;border-right:16px solid transparent;border-top:28px solid var(--fg);
+  filter:drop-shadow(0 2px 2px rgba(0,0,0,.2))}
+.hub{position:absolute;inset:0;margin:auto;width:22%;height:22%;border-radius:50%;
+  background:var(--surface);border:3px solid var(--line);display:grid;place-items:center;
+  font-family:var(--display);font-weight:800;color:var(--accent);font-size:.8rem;letter-spacing:.08em}
+.result{text-align:center;min-height:5.2rem;display:grid;align-content:center;gap:2px}
+.result .label{color:var(--muted);font-size:.8rem;letter-spacing:.1em}
+.result .name{font-family:var(--display);font-weight:800;font-size:2.4rem;line-height:1.2}
+.result .name.hit{color:var(--accent);animation:pop .4s ease-out}
+@keyframes pop{0%{transform:scale(.7)}70%{transform:scale(1.08)}100%{transform:scale(1)}}
+.spin{font-family:var(--display);font-weight:800;font-size:1.25rem;padding:16px;border:0;border-radius:999px;
+  background:var(--accent);color:var(--accent-ink);cursor:pointer;width:100%}
+.spin:disabled{opacity:.5;cursor:default}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.opts{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;font-size:.9rem}
+.opts label{display:flex;align-items:center;gap:8px;cursor:pointer}
+.opts input{width:18px;height:18px;accent-color:var(--accent)}
+.ghost{background:none;border:1px solid var(--line);color:var(--fg);border-radius:999px;padding:6px 14px;font:inherit;font-size:.85rem;cursor:pointer}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:10px}
+.panel h2{font-size:.85rem;margin:0;color:var(--muted);letter-spacing:.08em;font-weight:600;display:flex;justify-content:space-between}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--fg);border-radius:999px;padding:5px 12px;font:inherit;font-size:.9rem;cursor:pointer}
+.chip.done{text-decoration:line-through;color:var(--muted);background:transparent;border-style:dashed}
+.chip.off{opacity:.4;text-decoration:line-through}
+.hint{color:var(--muted);font-size:.8rem;margin:0}
+textarea{width:100%;min-height:9rem;font:inherit;border:1px solid var(--line);border-radius:10px;padding:10px;background:var(--bg);color:var(--fg);resize:vertical}
+.row{display:flex;gap:8px;justify-content:flex-end}
+.topic{background:var(--accent-soft2);border:2px solid var(--accent);border-radius:16px;padding:16px 18px;display:grid;gap:12px}
+.topic.dont{background:var(--dont-soft);border-color:var(--dont)}
+.topic-head{display:flex;align-items:baseline;flex-wrap:wrap;gap:6px 10px}
+.tag{font-family:var(--display);font-weight:800;font-size:.9rem;padding:2px 12px;border-radius:6px;background:var(--accent);color:var(--accent-ink)}
+.topic.dont .tag{background:var(--dont)}
+.team{font-family:var(--display);font-weight:800;font-size:1.2rem}
+.theme{font-size:.8rem;color:var(--accent);font-weight:600}
+.topic.dont .theme{color:var(--dont)}
+.topic-lead{margin:0;font-size:.85rem;color:var(--muted)}
+.topic-list{margin:0;padding:0;list-style:none;display:grid;gap:8px;counter-reset:n}
+.topic-list li{display:grid;grid-template-columns:1.7rem 1fr;gap:10px;align-items:start;font-family:var(--display);font-weight:800;font-size:1.08rem;line-height:1.5;counter-increment:n}
+.topic-list li::before{content:counter(n);display:grid;place-items:center;width:1.7rem;height:1.7rem;border-radius:50%;background:var(--accent);color:var(--accent-ink);font-size:.85rem;margin-top:.05rem}
+.topic.dont .topic-list li::before{content:"×";background:transparent;color:var(--dont);font-size:1.2rem}
+.topic-ask{border-top:1px dashed var(--line);padding-top:10px;font-size:.92rem;line-height:1.7}
+.topic-ask b{font-weight:600}
+.topic .ghost{justify-self:start}
+@media (prefers-reduced-motion: reduce){.result .name.hit{animation:none}}
+</style></head><body>
+
+<div class="wrap">
+  <header>
+    <h1>朝礼ルーレット</h1>
+    <span class="date" id="date"></span>
+  </header>
+
+  <div class="stage">
+    <canvas id="wheel" width="800" height="800" aria-label="ルーレット"></canvas>
+    <div class="pin" aria-hidden="true"></div>
+    <div class="hub" aria-hidden="true">POKKUR</div>
+  </div>
+
+  <div class="result" aria-live="polite">
+    <span class="label">今日のグッド＆ニュー</span>
+    <span class="name" id="resName">だれかな？</span>
+  </div>
+
+  <section class="topic" id="topic" hidden>
+    <div class="topic-head">
+      <span class="tag" id="topicTag">Do</span>
+      <span class="team" id="topicTeam"></span>
+      <span class="theme" id="topicTheme"></span>
+    </div>
+    <p class="topic-lead" id="topicLead"></p>
+    <ol class="topic-list" id="topicList"></ol>
+    <div class="topic-ask" id="topicAsk"></div>
+    <button class="ghost" id="rerollBtn">別のカテゴリにする</button>
+  </section>
+
+  <button class="spin" id="spinBtn">回す</button>
+
+  <div class="opts">
+    <label><input type="checkbox" id="noRepeat" checked> 当たった人は次から外す</label>
+    <button class="ghost" id="resetBtn">当たり履歴をリセット</button>
+  </div>
+
+  <section class="panel">
+    <h2><span>今日のメンバー</span><span id="count"></span></h2>
+    <div class="chips" id="chips"></div>
+    <p class="hint" id="chipHint">タップで「今日いない人」を外せます。もう一度タップで戻ります。</p>
+  </section>
+
+  <section class="panel">
+    <h2><span>メンバー編集</span></h2>
+    <textarea id="names" aria-label="メンバー名（1行に1人）" placeholder="1行に1人ずつ名前を入力"></textarea>
+    <p class="hint">1行に1人。この端末に保存されます。</p>
+    <div class="row"><button class="ghost" id="saveBtn">保存</button></div>
+  </section>
+
+  <p class="hint" style="text-align:center"><a href="../" style="color:inherit">← 院内ツール一覧</a></p>
+</div>
+
+<script>
+// 初期メンバー（院長決定によりコードに記載）。端末ごとに「メンバー編集」で変更可
+const DEFAULT=["院長","晶子","蒲原","榮藤","柿本","植松","阿部","八柳","三上","三瓶","澤田","平尾","新岡","内山","木村"];
+const P='chorei_';
+const store={get(k,d){try{const v=localStorage.getItem(P+k);return v?JSON.parse(v):d}catch(e){return d}},
+             set(k,v){try{localStorage.setItem(P+k,JSON.stringify(v))}catch(e){}}};
+const now=new Date();
+const today=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+document.getElementById('date').textContent=now.toLocaleDateString('ja-JP',{month:'long',day:'numeric',weekday:'short'});
+// 前日以前の欠席リストを掃除
+try{Object.keys(localStorage).forEach(k=>{if(k.startsWith(P+'absent_')&&k!==P+'absent_'+today)localStorage.removeItem(k)})}catch(e){}
+
+let names=store.get('names',DEFAULT);
+let absent=new Set(store.get('absent_'+today,[]));
+let done=new Set(store.get('done',[]));
+let angle=0, spinning=false;
+
+const cv=document.getElementById('wheel'), ctx=cv.getContext('2d');
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const noRepeat=document.getElementById('noRepeat');
+const pool=()=>names.filter(n=>!absent.has(n) && !(noRepeat.checked && done.has(n)));
+
+function draw(){
+  const list=pool(), W=800, R=390, c=W/2;
+  ctx.clearRect(0,0,W,W);
+  const cols=['--s1','--s2','--s4','--s3','--s6','--s5'].map(css);
+  if(!list.length){
+    ctx.fillStyle=css('--s5');ctx.beginPath();ctx.arc(c,c,R,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle=css('--muted');ctx.font='600 36px '+css('--body');ctx.textAlign='center';
+    ctx.fillText(names.length?'全員当たりました':'メンバーを登録してください',c,c-120);return;
+  }
+  const seg=Math.PI*2/list.length;
+  list.forEach((n,i)=>{
+    const a0=angle+i*seg-Math.PI/2;
+    ctx.beginPath();ctx.moveTo(c,c);ctx.arc(c,c,R,a0,a0+seg);ctx.closePath();
+    ctx.fillStyle=cols[(i===list.length-1&&i>0&&i%cols.length===0)?3:i%cols.length];ctx.fill();
+    ctx.strokeStyle=css('--surface');ctx.lineWidth=4;ctx.stroke();
+    ctx.save();ctx.translate(c,c);ctx.rotate(a0+seg/2);
+    ctx.fillStyle=css('--fg');ctx.textAlign='right';ctx.textBaseline='middle';
+    const fs=Math.max(22,Math.min(44,seg*R*0.55));
+    ctx.font='800 '+fs+'px '+css('--display');
+    ctx.fillText(n,R-28,0);ctx.restore();
+  });
+}
+
+function renderChips(){
+  const el=document.getElementById('chips');el.innerHTML='';
+  names.forEach(n=>{
+    const b=document.createElement('button');b.className='chip';b.textContent=n;
+    if(absent.has(n))b.classList.add('off');
+    else if(noRepeat.checked&&done.has(n))b.classList.add('done');
+    b.onclick=()=>{if(spinning)return;absent.has(n)?absent.delete(n):absent.add(n);
+      store.set('absent_'+today,[...absent]);refresh();};
+    el.appendChild(b);
+  });
+  document.getElementById('chipHint').hidden=!names.length;
+  document.getElementById('count').textContent='対象 '+pool().length+'人';
+}
+function refresh(){draw();renderChips();document.getElementById('spinBtn').disabled=!pool().length||spinning;}
+
+document.getElementById('spinBtn').onclick=()=>{
+  const list=pool();if(!list.length||spinning)return;
+  spinning=true;refresh();document.getElementById('topic').hidden=true;
+  const nameEl=document.getElementById('resName');nameEl.classList.remove('hit');nameEl.textContent='…';
+  const pick=Math.floor(Math.random()*list.length), seg=Math.PI*2/list.length;
+  const target=-(pick*seg+seg/2)+(Math.random()-.5)*seg*0.6;
+  const base=angle%(Math.PI*2);
+  let delta=((target-base)%(Math.PI*2)+Math.PI*2)%(Math.PI*2);
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  delta+=Math.PI*2*(reduce?1:6);
+  const start=angle, dur=reduce?600:4200, t0=performance.now();
+  (function step(t){
+    const p=Math.min(1,(t-t0)/dur), e=1-Math.pow(1-p,4);
+    angle=start+delta*e;draw();
+    if(p<1)return requestAnimationFrame(step);
+    spinning=false;const who=list[pick];
+    nameEl.textContent=who+' さん';void nameEl.offsetWidth;nameEl.classList.add('hit');
+    showTopic();
+    if(noRepeat.checked){done.add(who);store.set('done',[...done]);}
+    setTimeout(refresh,1200);document.getElementById('spinBtn').disabled=false;renderChips();
+  })(t0);
+};
+noRepeat.onchange=refresh;
+document.getElementById('resetBtn').onclick=()=>{done.clear();store.set('done',[]);
+  const r=document.getElementById('resName');r.textContent='だれかな？';r.classList.remove('hit');refresh();};
+const ta=document.getElementById('names');ta.value=names.join('\n');
+document.getElementById('saveBtn').onclick=()=>{
+  names=[...new Set(ta.value.split('\n').map(s=>s.trim()).filter(Boolean))];
+  store.set('names',names);ta.value=names.join('\n');refresh();};
+
+// ---- Do/Don't お題（2026/10/3 全体MT 確定版） ----
+const CATS=[
+ {type:'Do',name:'飼い主さんに対して',theme:'幸せを循環',items:['目を見て笑顔で対応','ポジティブな声かけをする','寄り添った対応をする','担当した動物を理解し、それを飼い主さんに伝える','ポックルに来て良かったと思ってもらう']},
+ {type:'Do',name:'動物に対して',theme:'人とペットにやさしく',items:['飼い主さんと一緒に過ごす時間を大切にする','快適に過ごせるためのケアをする','院内で預かる際に過ごしやすい環境を作る','普段の呼び名で安心できる声かけをする']},
+ {type:'Do',name:'仲間に対して',theme:'人にやさしく・幸せを循環',items:['話したくなる雰囲気を作る','お互いを助け合う','名前を呼んで話しかける','良いと思ったことは伝える','目標を実現させてあげるようフォローをする']},
+ {type:'Do',name:'仕事の進め方',theme:'知識を循環',items:['引き継ぎ・情報の共有をする','手があいたら出来ることをする','時間を意識して仕事をする','分からない事はその日に解決する','報連相をしっかりする','業務を抱え込まない']},
+ {type:"Don't",name:'飼い主さんに対して',theme:'幸せを循環',items:['話を最後まで聞かない','心のこもっていない扱いをする','声かけなく無駄に待たせる']},
+ {type:"Don't",name:'動物に対して',theme:'人とペットにやさしく',items:['不必要な痛みを与える','不快な環境を放置する','個々の動物にあった工夫をしない','動物に対して雑な対応をする']},
+ {type:"Don't",name:'仲間に対して',theme:'人にやさしく・幸せを循環',items:['否定的な言葉・態度を出す','相手の状況を考えない','相手に関心を持たない']},
+ {type:"Don't",name:'仕事の進め方',theme:'知識を循環',items:['他の担当の動物をみない','重症動物のケアを後回しにする','効率重視で質を下げる','向上心を持たずに仕事をする']}
+];
+let lastCat=-1;
+function showTopic(){
+  const box=document.getElementById('topic');box.hidden=false;
+  let i;do{i=Math.floor(Math.random()*CATS.length)}while(i===lastCat);
+  lastCat=i;const c=CATS[i],isDo=c.type==='Do';
+  box.classList.toggle('dont',!isDo);
+  document.getElementById('topicTag').textContent=c.type;
+  document.getElementById('topicTeam').textContent=c.name;
+  document.getElementById('topicTheme').textContent=c.theme;
+  document.getElementById('topicLead').textContent=isDo?'この中から1つ選んでください':'この中から1つ選んでください（守れていなかった人の話はしない）';
+  const ol=document.getElementById('topicList');ol.innerHTML='';
+  c.items.forEach(t=>{const li=document.createElement('li');li.textContent=t;ol.appendChild(li);});
+  document.getElementById('topicAsk').innerHTML=isDo
+    ?'<b>話すこと：</b>この行動ができていた場面を1つ。できていた人がいたら、名前を挙げてほめる。'
+    :'<b>話すこと：</b>これをしないで済んでいた場面を1つ（忙しい時でも〜しなかった、など）。または、今日みんなで気をつけたいことを一言。';
+}
+document.getElementById('rerollBtn').onclick=showTopic;
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change',draw);
+document.fonts?.ready.then(draw);
+refresh();
+</script>
+</body></html>

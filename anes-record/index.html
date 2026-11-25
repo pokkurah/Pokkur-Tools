@@ -368,6 +368,9 @@ function renderHome(){
   }
   M.appendChild(sc);
   if(REC_API&&apiKey()) M.appendChild(archivedCard());
+  if(REC_API&&apiKey()) M.appendChild(h("div",{class:"card"},h("h2",{text:"院内キー（この端末は登録済み）"}),
+    h("div",{class:"note",text:"ほかのiPhoneはカメラでQRを読むだけで登録できます（麻酔薬計算にも効きます）。キーが消えたときもこれで戻せます。"}),
+    h("div",{style:"margin-top:8px"},h("button",{class:"btn sm",text:"📱 他の端末へ渡す（QR）",onclick:keyShare}))));
   M.appendChild(h("div",{class:"card"},h("h2",{text:"大画面（プロジェクター・ディスプレイ）"}),
     h("div",{class:"note",text:"麻酔室の大画面につないだPC・スティック端末のブラウザで、このURLを開いて全画面にします。記録中の症例を自動で表示します。"}),
     h("pre",{class:"copy",style:"margin-top:6px",text:location.origin+location.pathname+"#display"}),
@@ -401,9 +404,29 @@ function archivedCard(){
     .catch(function(){ lst.textContent="通信できません"; });
   return c;
 }
+/* 院内キーを他の端末へ（QR／リンク）。リンクの #k= は gate.js が保存してURLから消す */
+function keyShare(){
+  var base=location.origin+location.pathname, k=encodeURIComponent(apiKey());
+  var url=base+"#k="+k, pc=base+"#display&k="+k;
+  var qr=h("div",{style:"width:240px;height:240px;margin:6px auto",text:"QRを作成中…"});
+  var ov=h("div",{style:"position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:16px"});
+  function close(){ ov.remove(); }
+  ov.addEventListener("click",function(e){ if(e.target===ov) close(); });
+  ov.appendChild(h("div",{style:"background:#fff;border-radius:14px;padding:18px;max-width:360px;width:100%;text-align:center"},
+    h("h2",{text:"院内キーを渡す",style:"margin:0 0 4px"}),
+    h("div",{class:"note",text:"登録したいiPhoneのカメラで読み取り → 出てきたリンクを開く（Safari）"}),qr,
+    h("div",{class:"note",style:"text-align:left;margin:6px 0",text:"手術室PC：下のリンクをコピーして大画面のブックマークにすると、開くたびにキーが入り直します。"}),
+    h("div",{style:"display:flex;gap:6px;justify-content:center"},
+      h("button",{class:"btn sm ghost",text:"PC用リンクをコピー",onclick:function(){ copy(pc); }}),
+      h("button",{class:"btn sm",text:"閉じる",onclick:close})),
+    h("div",{class:"note",style:"margin-top:8px;color:var(--warn)",text:"院外の人に見せない・送らないでください"})));
+  document.body.appendChild(ov);
+  function draw(){ try{ var q=qrcode(0,"M"); q.addData(url); q.make(); qr.innerHTML=q.createSvgTag({cellSize:4,margin:4,scalable:true}); var sv=qr.querySelector("svg"); if(sv){ sv.style.width="100%"; sv.style.height="100%"; } }catch(e){ qr.textContent="QRを作れませんでした"; } }
+  if(window.qrcode) draw(); else { var sc=document.createElement("script"); sc.src="qrcode.js"; sc.onload=draw; sc.onerror=function(){ qr.textContent="QRを読み込めませんでした（通信を確認）"; }; document.head.appendChild(sc); }
+}
 function keyBox(msg){
   var ki=h("input",{type:"text",placeholder:"院内キー（受付ボードと同じ）",value:""});
-  return h("div",{style:"margin-bottom:8px"},h("div",{class:"alert amber",text:msg||"この端末に院内キーが登録されていません"}),
+  return h("div",{style:"margin-bottom:8px"},h("div",{class:"alert amber",text:(msg||"この端末に院内キーが登録されていません")+"（登録済みの端末の「📱 他の端末へ渡す（QR）」を読み取れば入力不要）"}),
     h("div",{style:"display:flex;gap:6px"},ki,h("button",{class:"btn sm",text:"登録",onclick:function(){ var v=ki.value.trim(); if(!v){ toast("キーを入れてください"); return; } try{localStorage.setItem("anes_key",v);}catch(e){} toast("登録しました"); render(); }})));
 }
 
@@ -1365,6 +1388,7 @@ else {
     else done(lsGet("anrec_r_"+tid));
   } else
   render();
+  if(window.POKKUR_KEY_SET) setTimeout(function(){ toast("院内キーをこの端末に登録しました"); },300);
   /* 記録中の画面は1分ごとにグラフを更新 */
   setInterval(function(){ if(V.scr==="live"&&!visibleModal()) drawPhone(); },60000);
 }

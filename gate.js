@@ -5,6 +5,23 @@
   var HASH = '3bdb2e4b18c012c6d2be36a65286d48af7f996abd1e7a5328ff763143a9945c1';
   var KEY = 'pokkur_staff_pass';
   var de = document.documentElement;
+  /* 院内キーの登録リンク（#k=キー）：麻酔記録・麻酔薬計算のキーをこの端末に保存し、URLからキーを消す。
+     受付ボードは自分で #k= を読むので触らない */
+  function takeKey() {
+    try {
+      if (!location.hash || location.pathname.indexOf('/reception-board/') >= 0) return false;
+      var kv = '', rest = [];
+      location.hash.slice(1).split('&').forEach(function (x) { if (x.slice(0, 2) === 'k=') kv = decodeURIComponent(x.slice(2)).trim(); else if (x) rest.push(x); });
+      if (!kv) return false;
+      localStorage.setItem('anes_key', kv);
+      history.replaceState(null, '', location.pathname + location.search + (rest.length ? '#' + rest.join('&') : ''));
+      return true;
+    } catch (e) { return false; }
+  }
+  if (takeKey()) window.POKKUR_KEY_SET = true;
+  window.addEventListener('hashchange', function () { if (takeKey()) location.reload(); });   /* 開いたままのタブでリンクを開いたとき */
+  /* 保存データをブラウザに消されにくくする（対応ブラウザのみ） */
+  try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
   if (localStorage.getItem(KEY) === HASH) return;
   de.style.visibility = 'hidden';
   function sha(t) {

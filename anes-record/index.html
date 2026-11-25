@@ -208,7 +208,7 @@ var ITEMS=[
 ];
 var IT={}; ITEMS.forEach(function(x){ IT[x.k]=x; });
 /* グラフ専用：酸素と空気の流量から計算したFiO₂の理論値（新鮮ガス。回路内の再呼吸は考えない） */
-IT.fio2c={k:"fio2c",l:"FiO₂（理論値）",u:"%",t:"num",dp:0,c:"#16a34a",calc:1};
+IT.fio2c={k:"fio2c",l:"FiO₂（理論値）",u:"%",t:"num",dp:0,c:"#8a9aa8",calc:1};  /* 実測（緑・実線・塗り点）と区別：灰色・点線・白抜き点 */
 /* EtISO はセボフルランのとき EtSEV と表示 */
 function curRec(){ return (typeof R!=="undefined"&&R)||(typeof DS!=="undefined"&&DS.r)||null; }
 function isSevo(){ var r=curRec(); return !!(r&&r.agent==="セボフルラン"); }
@@ -224,6 +224,8 @@ var DEF_ITEMS={
 };
 var EVENTS=["前投薬投与","麻酔導入","挿管","吸入開始","手術開始","手術終了","吸入終了","抜管","覚醒（伏臥位）","人工呼吸開始","人工呼吸終了","体位変換","低血圧対応","不整脈","嘔吐・逆流","呼吸停止","その他"];
 var EV_ONCE=["前投薬投与","麻酔導入","挿管","吸入開始","手術開始","手術終了","吸入終了","抜管","覚醒（伏臥位）"];
+/* 術中に追加で投与する薬（緊急薬とは別枠。院長指定 2026-11-25）。量はタップ後にmLで入れる（濃度・用量の計算はしない） */
+var INTRA_DEFAULT=[{name:"デクスメデトミジン（100倍希釈）",route:"IV"}];
 var EM_DEFAULT=["アドレナリン","アトロピン","グリコピロレート","エフェドリン","ドパミン","ドブタミン","静注用キシロカイン","ドプラム"];
 
 /* ====== 小道具 ====== */
@@ -699,6 +701,11 @@ function renderLive(){
   cc.appendChild(h("button",{onclick:function(){ openDrug({name:"CRI",amt:"",route:"IV",free:true}); }},"CRI（その他）"));
   cc.appendChild(h("button",{onclick:function(){ openDrug({name:"輸液",amt:R.flRate!=null?R.flRate+"mL/h":"",route:"IV"}); }},"輸液 速度変更"));
   cd.appendChild(cc);
+  cd.appendChild(h("label",{class:"f",text:"術中の追加投与"}));
+  var ci2=h("div",{class:"chips"});
+  INTRA_DEFAULT.forEach(function(p){ var n=R.dr.filter(function(x){return x.name===p.name;}).length;
+    ci2.appendChild(h("button",{class:n?"done":"",onclick:function(){ openDrug({name:p.name,amt:"",route:p.route}); }},p.name+(n?" ":""),n?h("small",null,"✓"+n):null)); });
+  cd.appendChild(ci2);
   cd.appendChild(h("label",{class:"f",text:"緊急薬"}));
   var ce2=h("div",{class:"chips"});
   (R.em.length?R.em:EM_DEFAULT.map(function(n){return {name:n};})).forEach(function(p){
@@ -943,7 +950,7 @@ function entries(){
   R.dr.forEach(function(x){ a.push({t:x.t,kind:"dr",id:x.id,txt:x.name+" "+(x.amt||"")+" "+(x.route||"")}); });
   return a.sort(function(p,q){return p.t-q.t;});
 }
-function shortL(k){ return {hr:"HR",rr:"RR",spo2:"SpO₂",etco2:"EtCO₂",sys:"SYS",map:"MAP",dia:"DIA",dop:"Dop",temp:"体温",agent:"吸入",o2:"O₂",pip:"内圧",peep:"PEEP",air:"Air",fio2:"FiO₂",etag:isSevo()?"EtSEV":"EtISO",fluid:"輸液",fio2c:"FiO₂(理論)",ecg:"ECG",reflex:"反射",jaw:"顎",mm:"粘膜",crt:"CRT",vent:"換気"}[k]||k; }
+function shortL(k){ return {hr:"HR",rr:"RR",spo2:"SpO₂",etco2:"EtCO₂",sys:"SYS",map:"MAP",dia:"DIA",dop:"Dop",temp:"体温",agent:"吸入",o2:"O₂",pip:"内圧",peep:"PEEP",air:"Air",fio2:"FiO₂",etag:isSevo()?"EtSEV":"EtISO",fluid:"輸液",fio2c:"FiO₂ 理論値",ecg:"ECG",reflex:"反射",jaw:"顎",mm:"粘膜",crt:"CRT",vent:"換気"}[k]||k; }
 function timeline(edit){
   var d=h("div",{class:"tl"}), a=entries().reverse();
   if(!a.length) d.appendChild(h("div",{class:"note",text:"まだ記録がありません"}));
@@ -964,13 +971,17 @@ var PANELS=[
  {l:"主要バイタル",ks:["hr","rr","spo2","etco2","sys","map","dia","dop"],main:1,w:4.2},
  {l:"体温",ks:["temp"],w:1.1},
  {l:"吸入濃度・EtISO",ks:["agent","etag"],area:1,w:1.6},
- {l:"FiO₂（理論値）",ks:["fio2c"],src:["o2","air"],w:1},
+ {l:"FiO₂（実測／理論値）",ks:["fio2","fio2c"],src:["o2","air","fio2"],w:1.1},
  {l:"気道内圧・PEEP",ks:["pip","peep"],w:1.2}
 ];
 function activePanels(r){ return PANELS.filter(function(p){ return (p.src||p.ks).some(function(k){ return r.items.indexOf(k)>=0||r.vit.some(function(x){return x.v[k]!=null;}); }); }); }
 function panelW(r){ return activePanels(r).reduce(function(a,p){ return a+p.w; },0)||1; }
 function fio2Of(v){ var o=v.o2!=null&&v.o2!==""?+v.o2:null, a=v.air!=null&&v.air!==""?+v.air:null; if(o==null&&a==null) return null; o=o||0; a=a||0; if(o+a<=0) return null; return Math.round((o*100+a*21)/(o+a)); }
-function series(r,k){ if(k==="fio2c") return r.vit.map(function(x){ return {t:x.t,v:fio2Of(x.v)}; }).filter(function(p){ return p.v!=null; });
+/* FiO₂：実測を入力した時点は実測、入力していない時点だけ流量から理論値（院長指定 2026-11-25）。i＝何回目の記録か（線を途切れさせる判定用） */
+function hasV(v,k){ return v[k]!=null&&v[k]!==""; }
+function series(r,k){
+  if(k==="fio2c") return r.vit.map(function(x,i){ return {t:x.t,v:hasV(x.v,"fio2")?null:fio2Of(x.v),i:i}; }).filter(function(p){ return p.v!=null; });
+  if(k==="fio2") return r.vit.map(function(x,i){ return {t:x.t,v:hasV(x.v,"fio2")?+x.v.fio2:null,i:i}; }).filter(function(p){ return p.v!=null; });
   return r.vit.filter(function(x){return x.v[k]!=null&&x.v[k]!=="";}).map(function(x){return {t:x.t,v:+x.v[k]};}); }
 /* 面積グラフ用：吸入濃度は「吸入開始の濃度」から始め、吸入終了で0に落とす（syn＝点を打たない補助点） */
 function areaSeries(r,k){
@@ -1017,10 +1028,11 @@ function drawTrend(ctx,r,opt){
   ps.forEach(function(p){
     var ph=unit*p.w, y0=yc+fs*0.3, y1=yc+ph-fs*0.3; yc+=ph;
     ctx.strokeStyle=C.grid; ctx.lineWidth=1; ctx.strokeRect(L,y0,W-L-Rm,y1-y0);
-    var ks=p.src?p.ks:p.ks.filter(function(k){ return r.items.indexOf(k)>=0||series(r,k).length; });
+    var ks=p.src?p.ks.filter(function(k){ return series(r,k).length; }):p.ks.filter(function(k){ return r.items.indexOf(k)>=0||series(r,k).length; });
+    if(p.src&&!ks.length) ks=[p.ks[0]];
     /* 凡例（先に高さを決める。主要バイタルは折り返す） */
     ctx.font="bold "+fs*0.95+"px sans-serif"; var lw=[], lrows=1, lxx=L+6;
-    ks.forEach(function(k){ var s=series(r,k), last=s.length?s[s.length-1].v:null, tx=shortL(k)+(last!=null?" "+fv(k,last)+((p.area||k==="fio2c")&&IT[k].u?" "+IT[k].u:""):"");
+    ks.forEach(function(k){ var s=series(r,k), last=s.length?s[s.length-1].v:null, tx=(p.src&&k==="fio2"?"FiO₂ 実測":shortL(k))+(last!=null?" "+fv(k,last)+((p.area||p.src)&&IT[k].u?" "+IT[k].u:""):"");
       if(k==="fio2c"){ var lv=r.vit.length?r.vit[r.vit.length-1].v:{}; if(lv.o2!=null||lv.air!=null) tx+="（O₂ "+(lv.o2!=null?fv("o2",lv.o2):"0")+"＋Air "+(lv.air!=null?fv("air",lv.air):"0")+" L/分）"; }
       var w=ctx.measureText(tx).width+fs*1.9; if(lxx+w>W-Rm-4&&lxx>L+6){ lrows++; lxx=L+6; } lw.push({k:k,tx:tx,x:lxx,row:lrows-1}); lxx+=w; });
     var legH=lrows*fs*1.25+fs*0.3, gy0=y0+legH; mTop=gy0;
@@ -1055,11 +1067,18 @@ function drawTrend(ctx,r,opt){
     }
     /* 凡例を描く */
     ctx.font="bold "+fs*0.95+"px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="top";
-    lw.forEach(function(o){ var yy=y0+fs*0.2+o.row*fs*1.25; ctx.fillStyle=IT[o.k].c; ctx.fillRect(o.x,yy+fs*0.12,fs*0.8,fs*0.8); ctx.fillStyle=C.tx; ctx.fillText(o.tx,o.x+fs,yy); });
+    lw.forEach(function(o){ var yy=y0+fs*0.2+o.row*fs*1.25;
+      if(o.k==="fio2c"){ ctx.strokeStyle=IT.fio2c.c; ctx.lineWidth=Math.max(1.5,fs*0.12); ctx.beginPath(); ctx.arc(o.x+fs*0.4,yy+fs*0.52,fs*0.32,0,7); ctx.stroke(); ctx.fillStyle=C.ax; }
+      else { ctx.fillStyle=IT[o.k].c; ctx.fillRect(o.x,yy+fs*0.12,fs*0.8,fs*0.8); ctx.fillStyle=C.tx; }
+      ctx.fillText(o.tx,o.x+fs,yy); });
   });
-  function line(k,Y,dash){ var s=series(r,k); if(!s.length) return; ctx.strokeStyle=IT[k].c; ctx.fillStyle=IT[k].c; ctx.lineWidth=Math.max(2,fs*0.18);
-    if(dash) ctx.setLineDash([fs*0.5,fs*0.3]); ctx.beginPath(); s.forEach(function(p,j){ var x=X(p.t),y=Y(p.v); if(j) ctx.lineTo(x,y); else ctx.moveTo(x,y); }); ctx.stroke(); ctx.setLineDash([]);
-    s.forEach(function(p){ ctx.beginPath(); ctx.arc(X(p.t),Y(p.v),Math.max(2.5,fs*0.25),0,7); ctx.fill(); }); }
+  function line(k,Y,dash){ var s=series(r,k); if(!s.length) return; var hollow=k==="fio2c"; if(hollow) dash=true;
+    ctx.strokeStyle=IT[k].c; ctx.fillStyle=IT[k].c; ctx.lineWidth=Math.max(2,fs*0.18);
+    if(dash) ctx.setLineDash([fs*0.5,fs*0.3]); ctx.beginPath();
+    s.forEach(function(p,j){ var x=X(p.t),y=Y(p.v); if(j&&!(p.i!=null&&p.i-s[j-1].i>1)) ctx.lineTo(x,y); else ctx.moveTo(x,y); }); ctx.stroke(); ctx.setLineDash([]);
+    var rad=Math.max(2.5,fs*0.25);
+    s.forEach(function(p){ ctx.beginPath(); ctx.arc(X(p.t),Y(p.v),hollow?rad*1.1:rad,0,7);
+      if(hollow){ ctx.fillStyle=C.bg; ctx.fill(); ctx.lineWidth=Math.max(1.5,fs*0.12); ctx.stroke(); ctx.fillStyle=IT[k].c; } else ctx.fill(); }); }
   /* 最高値・最低値を小さく書く（院長指定 2026-11-25） */
   function mark(s,Y,k){ s=s.filter(function(p){return !p.syn;}); if(s.length<2) return; var hi=s[0],lo=s[0];
     s.forEach(function(p){ if(p.v>hi.v) hi=p; if(p.v<lo.v) lo=p; }); if(hi.v===lo.v) return;

@@ -85,7 +85,14 @@ body.embed main{padding-top:0}
 body.disp{background:#0d1417;color:#e8eef0;overflow:hidden}
 body.disp main{display:none}
 #D{display:none}
-body.disp #D{display:grid;height:100vh;grid-template-rows:auto 1fr;grid-template-columns:1fr 340px;gap:10px;padding:12px 16px}
+body.disp #D{display:grid;height:100vh;grid-template-rows:auto auto 1fr;grid-template-columns:1fr 360px;gap:10px;padding:12px 16px}
+.dv{grid-column:1/3;display:flex;gap:10px}
+.dv .vt{flex:1 1 0;overflow:hidden;min-width:0;background:#152126;border-radius:12px;padding:6px 12px 8px;display:flex;flex-direction:column}
+.dv .vt .l{font-size:16px;color:#9fb3b9;font-weight:700;white-space:nowrap}
+.dv .vt .v{font-size:clamp(30px,5.4vh,60px);font-weight:800;font-variant-numeric:tabular-nums;line-height:1.05;white-space:nowrap}
+.dv .vt .v small{font-size:.45em;color:#9fb3b9;font-weight:600;margin-left:4px}
+.dv .vt.y{background:#3a2e10} .dv .vt.y .v{color:#ffcc4d}
+.dv .vt.r{background:#4a1714} .dv .vt.r .v{color:#ff7466;animation:bl 1.2s infinite}
 .dh{grid-column:1/3;display:flex;align-items:center;gap:18px;border-bottom:1px solid #26363c;padding-bottom:10px}
 .dh .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
 .dh .ctl{display:flex;align-items:center;gap:10px}
@@ -117,8 +124,9 @@ body.disp.bigt{--tz:15vh}
 .dnext{background:#152126;border-radius:12px;padding:8px 12px;font-size:16px;color:#9fb3b9}
 .dnext b{font-size:26px;color:#e8eef0;font-variant-numeric:tabular-nums;margin-left:8px}
 .dnext.due{background:#4a1714} .dnext.due b{color:#ff7466}
-.dlog{background:#152126;border-radius:12px;padding:8px 12px;font-size:15px;flex:1;min-height:0;overflow:hidden}
-.dlog div{padding:3px 0;border-top:1px solid #22323a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlog{background:#152126;border-radius:12px;padding:8px 12px;font-size:19px;flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
+.dlog .hd{font-size:15px;color:#9fb3b9;font-weight:700;border-top:0;margin-bottom:auto;padding-bottom:4px}
+.dlog div{flex:0 0 auto;padding:4px 0;border-top:1px solid #22323a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dlog div:first-child{border-top:0}
 .dlog .tm{color:#9fb3b9;margin-right:8px;font-variant-numeric:tabular-nums}
 .dmsg{grid-column:1/3;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;font-size:22px;color:#9fb3b9}
@@ -891,18 +899,34 @@ function timeline(edit){
 }
 
 /* ====== グラフ（スマホ・大画面・PDF共通） ====== */
+/* 院長指定 2026-11-25：主要バイタル（心拍・呼吸・SpO₂・EtCO₂・血圧）は1つのグラフに。
+   吸入濃度・EtISO・酸素流量・空気流量はそれぞれ独立したグラフで、線の下を塗りつぶして量を面積で見せる。w＝高さの比 */
 var PANELS=[
- {l:"心拍数・呼吸数",ks:["hr","rr"]},
- {l:"SpO₂・EtCO₂",ks:["spo2","etco2"]},
- {l:"血圧",ks:["sys","map","dia","dop"],bp:1},
- {l:"体温",ks:["temp"]},
- {l:"吸入濃度・Et",ks:["agent","etag"]},
- {l:"気道内圧・PEEP",ks:["pip","peep"]}
+ {l:"主要バイタル",ks:["hr","rr","spo2","etco2","sys","map","dia","dop"],main:1,w:4.2},
+ {l:"体温",ks:["temp"],w:1.1},
+ {l:"吸入濃度",ks:["agent"],area:1,w:1},
+ {l:"EtISO",ks:["etag"],area:1,w:1},
+ {l:"酸素流量",ks:["o2"],area:1,w:1},
+ {l:"空気流量",ks:["air"],area:1,w:1},
+ {l:"気道内圧・PEEP",ks:["pip","peep"],w:1.2}
 ];
 function activePanels(r){ return PANELS.filter(function(p){ return p.ks.some(function(k){ return r.items.indexOf(k)>=0||r.vit.some(function(x){return x.v[k]!=null;}); }); }); }
+function panelW(r){ return activePanels(r).reduce(function(a,p){ return a+p.w; },0)||1; }
 function series(r,k){ return r.vit.filter(function(x){return x.v[k]!=null&&x.v[k]!=="";}).map(function(x){return {t:x.t,v:+x.v[k]};}); }
+/* 面積グラフ用：吸入濃度は「吸入開始の濃度」から始め、吸入終了で0に落とす（syn＝点を打たない補助点） */
+function areaSeries(r,k){
+  var s=series(r,k);
+  if(k==="agent"){
+    var e0=r.ev.filter(function(x){return x.k==="吸入開始";}).sort(function(a,b){return a.t-b.t;})[0], m=e0&&/^([\d.]+)%$/.exec(e0.txt||"");
+    if(m&&(!s.length||e0.t<s[0].t)) s.unshift({t:e0.t,v:+m[1]});
+    var e1=r.ev.filter(function(x){return x.k==="吸入終了";}).sort(function(a,b){return b.t-a.t;})[0];
+    if(e1&&s.length&&e1.t>=s[s.length-1].t){ s.push({t:e1.t,v:s[s.length-1].v,syn:1}); s.push({t:e1.t,v:0,syn:1}); }
+  }
+  return s;
+}
 function range(r,ks){ var lo=Infinity,hi=-Infinity; ks.forEach(function(k){ series(r,k).forEach(function(p){ if(p.v<lo)lo=p.v; if(p.v>hi)hi=p.v; }); }); if(lo===Infinity) return null; return [lo,hi]; }
 function nice(lo,hi){ if(lo===hi){ lo-=1; hi+=1; } var pad=(hi-lo)*0.15; lo=Math.max(0,lo-pad); hi=hi+pad; var st=Math.pow(10,Math.floor(Math.log10((hi-lo)/4))), m=(hi-lo)/4/st; st*=m>5?10:m>2?5:m>1?2:1; return {lo:Math.floor(lo/st)*st,hi:Math.ceil(hi/st)*st,st:st}; }
+function hexA(c,a){ var n=parseInt(c.slice(1),16); return "rgba("+(n>>16)+","+(n>>8&255)+","+(n&255)+","+a+")"; }
 /* opt: {W,H,dark,fs,now,labels} */
 function drawTrend(ctx,r,opt){
   var W=opt.W,H=opt.H,fs=opt.fs||12,dark=opt.dark;
@@ -912,8 +936,8 @@ function drawTrend(ctx,r,opt){
   var ts=[]; r.vit.forEach(function(x){ts.push(x.t);}); r.ev.forEach(function(x){ts.push(x.t);}); r.dr.forEach(function(x){ts.push(x.t);});
   var start=Math.min.apply(null,ts.concat([r.t0||r.started||Date.now()])), end=Math.max.apply(null,ts.concat([opt.now||Date.now()]));
   start=Math.floor(start/300000)*300000-300000; end=Math.max(end+300000,start+30*60000);
-  var L=fs*3.6, Rm=opt.dual===false?fs:fs*3.4, top=fs*(opt.labels?4.2:1.6), bot=fs*1.9;
-  var ph=(H-top-bot)/ps.length;
+  var L=fs*3.6, Rm=fs, top=fs*(opt.labels?4.2:1.6), bot=fs*1.9;
+  var unit=(H-top-bot)/panelW(r);
   function X(t){ return L+(t-start)/(end-start)*(W-L-Rm); }
   /* 時間軸 */
   var span=(end-start)/60000, stepM=span<=40?5:span<=90?10:span<=180?15:30;
@@ -927,39 +951,53 @@ function drawTrend(ctx,r,opt){
   evs.forEach(function(e){ var x=X(e.t); ctx.strokeStyle=C.ev; ctx.setLineDash([4,4]); ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(x,top-(opt.labels?fs*0.2:0)); ctx.lineTo(x,H-bot); ctx.stroke(); ctx.setLineDash([]);
     if(opt.labels){ row=x-lastX<fs*7?(row+1)%3:0; lastX=x; ctx.fillStyle=C.ev; ctx.textAlign="left"; ctx.textBaseline="top"; ctx.font="bold "+fs*0.95+"px sans-serif"; ctx.fillText(e.k==="その他"?(e.txt||"").slice(0,8):e.k.replace("（伏臥位）",""),x+3,row*fs*1.25); } });
   r.dr.forEach(function(d){ var x=X(d.t); ctx.fillStyle=C.dr; ctx.beginPath(); ctx.moveTo(x,top-2); ctx.lineTo(x-fs*0.4,top-fs*0.75); ctx.lineTo(x+fs*0.4,top-fs*0.75); ctx.fill(); });
-  ps.forEach(function(p,i){
-    var y0=top+i*ph+fs*0.4, y1=top+(i+1)*ph-fs*0.4;
+  var yc=top;
+  ps.forEach(function(p){
+    var ph=unit*p.w, y0=yc+fs*0.3, y1=yc+ph-fs*0.3; yc+=ph;
     ctx.strokeStyle=C.grid; ctx.lineWidth=1; ctx.strokeRect(L,y0,W-L-Rm,y1-y0);
     var ks=p.ks.filter(function(k){ return r.items.indexOf(k)>=0||series(r,k).length; });
-    var axes=p.dual&&ks.length===2?[[ks[0]],[ks[1]]]:[ks];
-    axes.forEach(function(ak,ai){
-      var rg=range(r,ak); if(!rg) return; var n=nice(rg[0],rg[1]);
-      if(ak.indexOf("spo2")>=0&&ak.length>1){ /* SpO2とEtCO2を同じ軸に（0〜100） */ n=nice(Math.min(rg[0],30),100); }
-      function Y(v){ return y1-(v-n.lo)/(n.hi-n.lo)*(y1-y0); }
-      ctx.font=fs*0.9+"px sans-serif"; ctx.textBaseline="middle"; ctx.textAlign=ai===0?"right":"left";
-      for(var v=n.lo;v<=n.hi+1e-9;v+=n.st){ var yy=Y(v); if(ai===0){ ctx.strokeStyle=C.grid; ctx.beginPath(); ctx.moveTo(L,yy); ctx.lineTo(W-Rm,yy); ctx.stroke(); }
-        ctx.fillStyle=ai===0?C.ax:IT[ak[0]].c; ctx.fillText(+v.toFixed(2),ai===0?L-4:W-Rm+4,yy); }
-      if(p.bp){ /* 収縮〜拡張のバー＋平均 */
-        r.vit.forEach(function(x){ var s=x.v.sys,d=x.v.dia,m=x.v.map,X0=X(x.t);
-          if(s!=null&&d!=null){ ctx.strokeStyle=IT.sys.c; ctx.lineWidth=fs*0.35; ctx.beginPath(); ctx.moveTo(X0,Y(+s)); ctx.lineTo(X0,Y(+d)); ctx.stroke(); }
-          ctx.fillStyle=IT.sys.c; if(s!=null){ ctx.beginPath(); ctx.moveTo(X0-fs*0.45,Y(+s)-fs*0.45); ctx.lineTo(X0+fs*0.45,Y(+s)-fs*0.45); ctx.lineTo(X0,Y(+s)); ctx.fill(); }
-          if(d!=null){ ctx.beginPath(); ctx.moveTo(X0-fs*0.45,Y(+d)+fs*0.45); ctx.lineTo(X0+fs*0.45,Y(+d)+fs*0.45); ctx.lineTo(X0,Y(+d)); ctx.fill(); }
-        });
-        line("map",Y); line("dop",Y,true);
-      } else ak.forEach(function(k){ line(k,Y); });
-    });
-    /* 凡例 */
-    ctx.font="bold "+fs*0.95+"px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="top"; var lx=L+6;
-    ks.forEach(function(k){ var s=series(r,k), last=s.length?s[s.length-1].v:null, tx=shortL(k)+(last!=null?" "+fv(k,last):"");
-      ctx.fillStyle=IT[k].c; ctx.fillRect(lx,y0+fs*0.45,fs*0.8,fs*0.8); ctx.fillStyle=C.tx; ctx.fillText(tx,lx+fs,y0+fs*0.3); lx+=ctx.measureText(tx).width+fs*1.8; });
+    /* 凡例（先に高さを決める。主要バイタルは折り返す） */
+    ctx.font="bold "+fs*0.95+"px sans-serif"; var lw=[], lrows=1, lxx=L+6;
+    ks.forEach(function(k){ var s=series(r,k), last=s.length?s[s.length-1].v:null, tx=shortL(k)+(last!=null?" "+fv(k,last)+(p.area&&IT[k].u?" "+IT[k].u:""):"");
+      var w=ctx.measureText(tx).width+fs*1.9; if(lxx+w>W-Rm-4&&lxx>L+6){ lrows++; lxx=L+6; } lw.push({k:k,tx:tx,x:lxx,row:lrows-1}); lxx+=w; });
+    var legH=lrows*fs*1.25+fs*0.3, gy0=y0+legH;
+    var rg=range(r,ks.concat(p.area?[]:[])); 
+    if(p.area){ var mx=0; ks.forEach(function(k){ areaSeries(r,k).forEach(function(q){ if(q.v>mx) mx=q.v; }); }); rg=mx>0?[0,mx]:null; }
+    if(rg){
+      var n=p.main?nice(0,Math.max(rg[1],100)):p.area?nice(0,rg[1]):nice(rg[0],rg[1]);
+      if(p.main||p.area){ n.lo=0; }
+      var Y=function(v){ return y1-(v-n.lo)/(n.hi-n.lo)*(y1-gy0); };
+      var maxT=Math.max(2,Math.floor((y1-gy0)/(fs*1.5))), st=n.st; while((n.hi-n.lo)/st>maxT) st*=2;
+      ctx.font=fs*0.9+"px sans-serif"; ctx.textBaseline="middle"; ctx.textAlign="right";
+      for(var v=n.lo;v<=n.hi+1e-9;v+=st){ var yy=Y(v); ctx.strokeStyle=C.grid; ctx.beginPath(); ctx.moveTo(L,yy); ctx.lineTo(W-Rm,yy); ctx.stroke(); ctx.fillStyle=C.ax; ctx.fillText(+v.toFixed(2),L-4,yy); }
+      if(p.area) ks.forEach(function(k){ area(k,Y,y1); });
+      else {
+        if(ks.indexOf("sys")>=0||ks.indexOf("dia")>=0){ /* 収縮〜拡張のバー＋平均 */
+          r.vit.forEach(function(x){ var s=x.v.sys,d=x.v.dia,X0=X(x.t);
+            if(s!=null&&d!=null){ ctx.strokeStyle=hexA(IT.sys.c,0.55); ctx.lineWidth=fs*0.35; ctx.beginPath(); ctx.moveTo(X0,Y(+s)); ctx.lineTo(X0,Y(+d)); ctx.stroke(); }
+            ctx.fillStyle=IT.sys.c; if(s!=null){ ctx.beginPath(); ctx.moveTo(X0-fs*0.45,Y(+s)-fs*0.45); ctx.lineTo(X0+fs*0.45,Y(+s)-fs*0.45); ctx.lineTo(X0,Y(+s)); ctx.fill(); }
+            if(d!=null){ ctx.fillStyle=IT.dia.c; ctx.beginPath(); ctx.moveTo(X0-fs*0.45,Y(+d)+fs*0.45); ctx.lineTo(X0+fs*0.45,Y(+d)+fs*0.45); ctx.lineTo(X0,Y(+d)); ctx.fill(); }
+          });
+        }
+        ks.forEach(function(k){ if(k==="sys"||k==="dia") return; line(k,Y,k==="dop"); });
+      }
+    }
+    /* 凡例を描く */
+    ctx.font="bold "+fs*0.95+"px sans-serif"; ctx.textAlign="left"; ctx.textBaseline="top";
+    lw.forEach(function(o){ var yy=y0+fs*0.2+o.row*fs*1.25; ctx.fillStyle=IT[o.k].c; ctx.fillRect(o.x,yy+fs*0.12,fs*0.8,fs*0.8); ctx.fillStyle=C.tx; ctx.fillText(o.tx,o.x+fs,yy); });
   });
   function line(k,Y,dash){ var s=series(r,k); if(!s.length) return; ctx.strokeStyle=IT[k].c; ctx.fillStyle=IT[k].c; ctx.lineWidth=Math.max(2,fs*0.18);
     if(dash) ctx.setLineDash([fs*0.5,fs*0.3]); ctx.beginPath(); s.forEach(function(p,j){ var x=X(p.t),y=Y(p.v); if(j) ctx.lineTo(x,y); else ctx.moveTo(x,y); }); ctx.stroke(); ctx.setLineDash([]);
     s.forEach(function(p){ ctx.beginPath(); ctx.arc(X(p.t),Y(p.v),Math.max(2.5,fs*0.25),0,7); ctx.fill(); }); }
+  function area(k,Y,yb){ var s=areaSeries(r,k); if(!s.length) return; var c=IT[k].c;
+    ctx.beginPath(); ctx.moveTo(X(s[0].t),yb); s.forEach(function(p){ ctx.lineTo(X(p.t),Y(p.v)); }); ctx.lineTo(X(s[s.length-1].t),yb); ctx.closePath();
+    ctx.fillStyle=hexA(c,dark?0.45:0.3); ctx.fill();
+    ctx.strokeStyle=c; ctx.lineWidth=Math.max(2,fs*0.16); ctx.beginPath(); s.forEach(function(p,j){ var x=X(p.t),y=Y(p.v); if(j) ctx.lineTo(x,y); else ctx.moveTo(x,y); }); ctx.stroke();
+    ctx.fillStyle=c; s.forEach(function(p){ if(!p.syn){ ctx.beginPath(); ctx.arc(X(p.t),Y(p.v),Math.max(2.5,fs*0.22),0,7); ctx.fill(); } }); }
 }
 function drawPhone(){
   var cv=document.getElementById("tcv"); if(!cv) return;
-  var W=cv.clientWidth||340, n=Math.max(1,activePanels(R).length), H=Math.round(60+n*120), dpr=window.devicePixelRatio||1;
+  var W=cv.clientWidth||340, H=Math.round(70+panelW(R)*72), dpr=window.devicePixelRatio||1;
   cv.width=W*dpr; cv.height=H*dpr; cv.style.height=H+"px";
   var ctx=cv.getContext("2d"); ctx.scale(dpr,dpr); drawTrend(ctx,R,{W:W,H:H,fs:11,labels:true});
 }
@@ -1139,7 +1177,7 @@ function pages(){
   if(P.memo){ ctx.font=pf(24,500); ctx.fillStyle="#9a6200"; y=wrap(ctx,"注意事項："+P.memo,PM,y,PW-PM*2,32); y+=6; }
   /* トレンド */
   ctx.font=pf(28,700); ctx.fillStyle="#1f2a2e"; ctx.fillText("トレンド",PM,y); y+=42;
-  var gh=Math.min(980,240+activePanels(R).length*190);
+  var gh=Math.min(1250,240+panelW(R)*110);
   var g=document.createElement("canvas"); g.width=PW-PM*2; g.height=gh; drawTrend(g.getContext("2d"),R,{W:g.width,H:gh,fs:22,labels:true,now:lastT()});
   ctx.drawImage(g,PM,y); y+=gh+20;
   /* 投与・経過 */
@@ -1357,21 +1395,30 @@ function dPaint(){
     h("div",{class:"tmr"},
       h("div",{class:"tb an",id:"tA"},h("div",{class:"lb"},h("span",null,"麻酔開始から"),h("small",{id:"tAs"})),h("div",{class:"tv",id:"tAv",text:"--:--"})),
       h("div",{class:"tb cut",id:"tC"},h("div",{class:"lb"},h("span",null,"手術開始から"),h("small",{id:"tCs"})),h("div",{class:"tv",id:"tCv",text:"--:--"})))));
-  var g=h("div",{id:"Dg"}), cv=h("canvas"); g.appendChild(cv); D.appendChild(g);
-  var side=h("div",{class:"ds"});
+  /* 上段：大事な現在値だけ（院長指定 2026-11-25） */
   var last={}; r.vit.forEach(function(x){ for(var k in x.v) last[k]=x.v[k]; });
-  var nums=itemsFor(r).filter(function(k){return IT[k]&&IT[k].t==="num";});
-  var big=nums.length>7?34:42;
-  nums.forEach(function(k){ var v=last[k]; var al=v!=null?alertOf(r,k,+v):"";
-    side.appendChild(h("div",{class:"tile "+al},h("span",{class:"l",text:shortL(k)}),h("span",{class:"v",style:"font-size:"+big+"px",text:v!=null?fv(k,v):"—"}),h("span",{class:"u",text:IT[k].u||""}))); });
+  var its=itemsFor(r), has=function(k){ return its.indexOf(k)>=0||last[k]!=null; };
+  var strip=h("div",{class:"dv"});
+  function tile(lab,txt,unit,al){ strip.appendChild(h("div",{class:"vt "+(al||"")},h("span",{class:"l",text:lab}),h("span",{class:"v"},txt,unit?h("small",null,unit):null))); }
+  function worst(a){ return a.indexOf("r")>=0?"r":a.indexOf("y")>=0?"y":""; }
+  function one(k,lab){ if(!has(k)) return; var v=last[k]; tile(lab||shortL(k),v!=null?fv(k,v):"—",IT[k].u,v!=null?alertOf(r,k,+v):""); }
+  one("hr","心拍"); one("spo2"); one("etco2"); one("rr","呼吸");
+  if(has("sys")||has("map")||has("dia")){ var sy=last.sys,mp=last.map,di=last.dia;
+    tile("血圧 mmHg"+(mp!=null?"（平均 "+fv("map",mp)+"）":""),(sy!=null?fv("sys",sy):"—")+"/"+(di!=null?fv("dia",di):"—"),"",worst([sy!=null?alertOf(r,"sys",+sy):"",mp!=null?alertOf(r,"map",+mp):""])); }
+  else one("dop","ドップラー");
+  one("temp","体温"); one("agent","吸入濃度");
+  D.appendChild(strip);
+  var g=h("div",{id:"Dg"}), cv=h("canvas"); g.appendChild(cv); D.appendChild(g);
+  /* 右：次の記録・状態・何時に何をしたか */
+  var side=h("div",{class:"ds"});
   var sels=r.items.filter(function(k){return IT[k]&&IT[k].t==="sel"&&last[k]!=null;});
+  side.appendChild(h("div",{class:"dnext",id:"dnx"}));
   var dn=dentalNow(r); if(dn) side.appendChild(h("div",{class:"dnext",style:"background:#132a4a;color:#93c5fd;font-weight:700",text:dn[0]+"中（"+hm(dn[1])+"〜）"}));
   if(ventOn(r)) side.appendChild(h("div",{class:"dnext",style:"background:#2e1a4a;color:#d8b4fe;font-weight:700",text:"人工呼吸中（"+hm(ventPeriods(r).pop()[0])+"〜）"}));
   if(sels.length) side.appendChild(h("div",{class:"dnext",style:"font-size:15px"},sels.map(function(k){return shortL(k)+" "+last[k];}).join("　")));
-  side.appendChild(h("div",{class:"dnext",id:"dnx"}));
-  var lg=h("div",{class:"dlog"});
+  var lg=h("div",{class:"dlog"},h("div",{class:"hd",text:"経過（イベント・投与）"}));
   var ent=[]; r.ev.forEach(function(x){ent.push({t:x.t,s:x.k+(x.txt?"："+x.txt:""),c:"#8fb4ff"});}); r.dr.forEach(function(x){ent.push({t:x.t,s:x.name+" "+(x.amt||"")+" "+(x.route||""),c:"#f0b44c"});});
-  ent.sort(function(a,b){return b.t-a.t;}).slice(0,14).forEach(function(e){ lg.appendChild(h("div",null,h("span",{class:"tm",text:hm(e.t)}),h("span",{style:"color:"+e.c,text:e.s}))); });
+  ent.sort(function(a,b){return a.t-b.t;}).slice(-40).forEach(function(e){ lg.appendChild(h("div",null,h("span",{class:"tm",text:hm(e.t)}),h("span",{style:"color:"+e.c,text:e.s}))); });
   if(!ent.length) lg.appendChild(h("div",{style:"color:#9fb3b9",text:"イベント・投与はまだありません"}));
   side.appendChild(lg);
   D.appendChild(side);

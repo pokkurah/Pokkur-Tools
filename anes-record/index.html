@@ -310,7 +310,7 @@ function push(){
   var m=meta(R); m.action="put"; m.data=JSON.stringify(R);
   api(m).then(function(j){ SYNC.busy=false;
     if(j.ok&&j.stale){ /* 別の端末（大画面PCの臨時入力など）の方が新しい → そちらを取り込む */
-      api({action:"get",id:R.id}).then(function(g){ if(g.ok&&g.data){ var nr=JSON.parse(g.data); if(R&&nr.id===R.id){ R=nr; R.pushed=R.rev; saveLocal(); SYNC.st="ok"; paintSync(); if(!visibleModal()) render(); toast("別の端末で入力された内容を取り込みました"); } } }).catch(function(){});
+      api({action:"get",id:R.id}).then(function(g){ if(g.ok&&g.data){ var nr=JSON.parse(g.data); if(R&&nr.id===R.id){ R=nr; R.pushed=R.rev; saveLocal(); SYNC.st="ok"; paintSync(); if(R.status==="setup"&&V.scr==="live") V.scr="setup"; if(!visibleModal()) render(); toast("別の端末で入力された内容を取り込みました"); } } }).catch(function(){});
       return; }
     if(j.ok){ SYNC.st="ok"; SYNC.at=Date.now(); R.pushed=rev; lsSet("anrec_r_"+R.id,R); } else { SYNC.st="ng"; SYNC.err=j.err; }
     paintSync(); if(SYNC.again||(R&&R.rev>rev)){ SYNC.again=false; queuePush(); } })
@@ -372,8 +372,25 @@ function renderHome(){
       h("div",{class:"note",style:"margin-bottom:8px",text:"薬 "+(hd.plan||[]).length+"件・CRI "+(hd.cri||[]).length+"件・緊急薬 "+(hd.em||[]).length+"件"}),
       h("button",{class:"btn big",text:"取り込んで記録を準備",onclick:function(){ R=newRecord(hd); lsDel("anrec_handoff"); saveLocal(); adoptHandoffPrep(); V.scr="setup"; render(); }})));
   }
+  /* 現在記録中の麻酔（この端末＋別の端末。院長指定 2026-11-25） */
+  var allLocal=localIds().map(function(id){return lsGet("anrec_r_"+id);}).filter(Boolean).sort(function(a,b){return b.updated-a.updated;});
+  var lc=h("div",{class:"card",style:"border-color:var(--mint)"},h("h2",{text:"現在記録中の麻酔"})), lcBody=h("div"); lc.appendChild(lcBody);
+  function liveRow(x,local){
+    var st=x.t0||x.started, mini="background:none;border:0;padding:2px 4px;font-size:12px;text-decoration:underline;cursor:pointer";
+    lcBody.appendChild(h("div",{style:"display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)"},
+      h("div",{style:"flex:1;min-width:0;font-size:14px"},h("b",null,(x.name||"名前なし")+" "),x.sp+" "+(x.proc||""),
+        h("div",{class:"note",text:(st?"開始 "+hm(st)+"（"+mins(Date.now()-st)+"分）":"開始時刻なし")+"　"+(local?"この端末":"別の端末")}),
+        h("div",{style:"margin-top:2px"},
+          h("button",{style:mini+";color:var(--ink-2,#6b7a80)",text:"開始前に戻す",onclick:function(){ unstart(x.id,local); }}),
+          h("button",{style:mini+";color:var(--warn)",text:"記録を消去",onclick:function(){ eraseLive(x.id,local); }}))),
+      h("button",{class:"btn sm",text:local?"開く":"引き継ぐ",onclick:function(){ if(local){ R=lsGet("anrec_r_"+x.id); V.scr="live"; render(); } else takeOver(x.id); }})));
+  }
+  allLocal.filter(function(r){return r.status==="live";}).forEach(function(r){ var m=meta(r); m.t0=r.t0; m.started=r.started; liveRow(m,true); });
+  function liveEmpty(){ if(!lcBody.children.length) lcBody.appendChild(h("div",{class:"note",text:"記録中の麻酔はありません"})); }
+  M.appendChild(lc);
+  if(!REC_API) liveEmpty();
   if(apiKey()) M.appendChild(confirmedCard());
-  var ids=localIds().map(function(id){return lsGet("anrec_r_"+id);}).filter(Boolean).sort(function(a,b){return b.updated-a.updated;});
+  var ids=allLocal.filter(function(r){return r.status!=="live";});
   if(ids.length){
     var c=h("div",{class:"card"},h("h2",{text:"この端末の記録"}));
     ids.forEach(function(r){
@@ -393,11 +410,13 @@ function renderHome(){
     var lst=h("div",{class:"note",text:"読み込み中…"}); sc.appendChild(lst);
     api({action:"list"}).then(function(j){ lst.innerHTML=""; if(!j.ok){ lst.textContent=j.err||"読み込めません"; if(j.auth) lst.parentNode.insertBefore(keyBox(j.err),lst); return; }
       var rows=(j.rows||[]).filter(function(x){return localIds().indexOf(x.id)<0;});
+      rows.filter(function(x){return x.status==="live";}).forEach(function(x){ liveRow(x,false); }); liveEmpty();
+      rows=rows.filter(function(x){return x.status!=="live";});
       if(!rows.length){ lst.textContent="ほかの端末の記録はありません"; return; }
       rows.forEach(function(x){ lst.appendChild(h("div",{style:"display:flex;gap:8px;align-items:center;padding:6px 0"},
         h("div",{style:"flex:1;color:var(--ink);font-size:14px"},(x.name||"名前なし")+" "+x.sp+" "+(x.proc||"")+"（"+x.status+"）"),
         h("button",{class:"btn sm ghost",text:"引き継ぐ",onclick:function(){ api({action:"get",id:x.id}).then(function(g){ if(!g.ok){toast(g.err||"開けません");return;} R=JSON.parse(g.data); saveLocal(); V.scr=R.status==="done"?"done":R.status==="live"?"live":"setup"; render(); }).catch(function(){toast("通信できません");}); }}))); });
-    }).catch(function(){ lst.textContent="通信できません"; });
+    }).catch(function(){ lst.textContent="通信できません"; liveEmpty(); });
   }
   M.appendChild(sc);
   if(REC_API&&apiKey()) M.appendChild(archivedCard());
@@ -413,7 +432,7 @@ function renderHome(){
 /* 保存済みの記録（ドライブの麻酔記録DB）：PCからPDFを開いて印刷・カルテ文をコピー */
 function archivedCard(){
   var c=h("div",{class:"card"},h("h2",{text:"保存済みの記録（ドライブ）"}),
-    h("div",{class:"note",style:"margin-bottom:8px",text:"直近5日分。PDFを開いて印刷（動物病院アカウントでログインしたPC）、カルテ文のコピーができます。"}));
+    h("div",{class:"note",style:"margin-bottom:8px",text:"直近3日分。PDFを開いて印刷（動物病院アカウントでログインしたPC）、カルテ文のコピーができます。"}));
   var q=h("input",{type:"text",placeholder:"カルテNo・動物名・飼い主名・術式で絞り込み"}), lst=h("div",{class:"note",style:"margin-top:8px",text:"読み込み中…"}), rows=[];
   function draw(){
     lst.innerHTML=""; var w=q.value.trim().toLowerCase();
@@ -433,7 +452,7 @@ function archivedCard(){
   }
   q.addEventListener("input",draw);
   c.appendChild(q); c.appendChild(lst);
-  api({action:"archived",days:5}).then(function(j){ if(!j.ok){ lst.textContent=j.err||"読み込めません"; return; } rows=j.rows||[]; draw(); })
+  api({action:"archived",days:3}).then(function(j){ if(!j.ok){ lst.textContent=j.err||"読み込めません"; return; } rows=j.rows||[]; draw(); })
     .catch(function(){ lst.textContent="通信できません"; });
   return c;
 }
@@ -550,6 +569,25 @@ function resetRecord(){
   R.vit=[]; R.ev=[]; R.dr=[]; R.memo=""; R.t0=null; R.started=Date.now(); R.ended=null; R.archived=null; R.status="live";
   touch(); toast("リセットしました"); V.scr="live"; render(); window.scrollTo(0,0);
 }
+/* 間違って始めた麻酔：開始前（準備中）に戻す／記録を消去（院長指定 2026-11-25） */
+function unstartRec(r){ r.vit=[]; r.ev=[]; r.dr=[]; r.memo=""; r.t0=null; r.started=null; r.ended=null; r.archived=null; r.status="setup"; r.updated=Date.now(); return r; }
+function unstart(id,local){
+  if(!confirm("この麻酔を「開始前」に戻します。\nバイタル・イベント・投与の記録は消え、動物種・体重・症例情報は残ります。よろしいですか？")) return;
+  if(local){ var r=lsGet("anrec_r_"+id); if(!r) return; unstartRec(r); r.rev=(r.rev||0)+1; lsSet("anrec_r_"+id,r); if(R&&R.id===id) R=r;
+    if(REC_API){ var m0=meta(r); m0.action="put"; m0.data=JSON.stringify(r); api(m0).then(function(j){ if(j.ok){ r.pushed=r.rev; lsSet("anrec_r_"+id,r); } }).catch(function(){}); }
+    try{ new BroadcastChannel("anrec").postMessage(1); }catch(e){}
+    render(); toast("開始前に戻しました（この端末の記録に残っています）"); return; }
+  api({action:"get",id:id}).then(function(g){ if(!g.ok||!g.data){ toast(g.err||"開けません"); return; }
+    var r=unstartRec(JSON.parse(g.data)); r.rev=(r.rev||0)+1000; /* 記録している端末は次の送信でこちらを取り込む */
+    var m=meta(r); m.action="put"; m.data=JSON.stringify(r);
+    return api(m).then(function(j){ if(!j.ok){ toast(j.err||"保存できません"); return; } render(); toast("開始前に戻しました"); }); }).catch(function(){ toast("通信できません"); });
+}
+function eraseLive(id,local){
+  if(local){ discardRecord(lsGet("anrec_r_"+id)); return; }
+  if(!confirm("別の端末で記録中の麻酔を消去します。大画面からも消え、元に戻せません。\n※記録しているiPhoneでも、その記録を削除してください。")) return;
+  api({action:"del",id:id}).then(function(j){ if(!j.ok){ toast(j.err||"消去できません"); return; } render(); toast("消去しました"); }).catch(function(){ toast("通信できません"); });
+}
+function takeOver(id){ api({action:"get",id:id}).then(function(g){ if(!g.ok){toast(g.err||"開けません");return;} R=JSON.parse(g.data); saveLocal(); V.scr=R.status==="done"?"done":R.status==="live"?"live":"setup"; render(); }).catch(function(){toast("通信できません");}); }
 function discardRecord(r){
   if(!r) return;
   if(r.status==="done"&&!r.archived){

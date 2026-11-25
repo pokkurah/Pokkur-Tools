@@ -5,17 +5,22 @@
   var HASH = '3bdb2e4b18c012c6d2be36a65286d48af7f996abd1e7a5328ff763143a9945c1';
   var KEY = 'pokkur_staff_pass';
   var de = document.documentElement;
-  /* 院内キーの登録リンク（#k=キー）：麻酔記録・麻酔薬計算のキーをこの端末に保存し、URLからキーを消す。
-     受付ボードは自分で #k= を読むので触らない */
+  /* 登録QR／リンク（#g=…&k=…）：院内パスコードと院内キーをこの端末に保存し、URLから消す。
+     g＝パスコードの確認値（HASH）、k＝院内キー（受付ボードと同じ）。受付ボードは自分で #k= を読むので触らない */
   function takeKey() {
     try {
       if (!location.hash || location.pathname.indexOf('/reception-board/') >= 0) return false;
-      var kv = '', rest = [];
-      location.hash.slice(1).split('&').forEach(function (x) { if (x.slice(0, 2) === 'k=') kv = decodeURIComponent(x.slice(2)).trim(); else if (x) rest.push(x); });
-      if (!kv) return false;
-      localStorage.setItem('anes_key', kv);
+      var kv = '', gv = '', rest = [];
+      location.hash.slice(1).split('&').forEach(function (x) {
+        if (x.slice(0, 2) === 'k=') kv = decodeURIComponent(x.slice(2)).trim();
+        else if (x.slice(0, 2) === 'g=') gv = x.slice(2);
+        else if (x) rest.push(x);
+      });
+      if (!kv && !gv) return false;
+      if (gv === HASH) localStorage.setItem(KEY, HASH);
+      if (kv) { localStorage.setItem('anes_key', kv); localStorage.setItem('rcb_key', kv); }
       history.replaceState(null, '', location.pathname + location.search + (rest.length ? '#' + rest.join('&') : ''));
-      return true;
+      return !!kv;
     } catch (e) { return false; }
   }
   if (takeKey()) window.POKKUR_KEY_SET = true;
@@ -34,7 +39,7 @@
     w.setAttribute('style', 'position:fixed;inset:0;z-index:2147483647;background:#f5f7f8;display:flex;align-items:center;justify-content:center;visibility:visible;font-family:-apple-system,"Hiragino Sans","Meiryo UI","Noto Sans JP",sans-serif');
     w.innerHTML = '<form style="background:#fff;border:1px solid #e3e8ea;border-radius:14px;padding:24px;width:300px;text-align:center">' +
       '<div style="font-size:18px;font-weight:700;color:#1f8670;margin-bottom:4px">ポックル院内ツール</div>' +
-      '<div style="font-size:13px;color:#6b7a80;margin-bottom:16px">スタッフ専用です。院内パスコードを入力してください。</div>' +
+      '<div style="font-size:13px;color:#6b7a80;margin-bottom:16px">スタッフ専用です。<b style="color:#1f8670">手術室の「登録QR」をカメラで写せば入力不要</b>。または院内パスコードを入力してください。</div>' +
       '<input type="password" inputmode="numeric" autocomplete="off" style="width:100%;font-size:20px;padding:10px;border:1px solid #c9d2d6;border-radius:10px;text-align:center;letter-spacing:4px">' +
       '<div class="e" style="color:#c62828;font-size:13px;min-height:18px;margin-top:6px"></div>' +
       '<button style="width:100%;margin-top:6px;background:#1f8670;color:#fff;border:0;border-radius:10px;font-size:16px;padding:10px">開く</button></form>';

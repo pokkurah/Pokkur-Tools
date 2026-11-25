@@ -106,12 +106,18 @@ button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
 #minibar{display:none}
 .mini>#minibar{display:flex}
 .mini>*:not(#minibar){display:none!important}
-#minibar{align-items:center;gap:6px;height:52px;padding:0 6px;background:#eef3f4;color:#1f2a2e;font-size:14px;cursor:pointer;overflow:hidden;white-space:nowrap}
+#minibar{align-items:center;gap:6px;height:56px;padding:0 6px;background:#eef3f4;color:#1f2a2e;font-size:14px;cursor:pointer;overflow:hidden;white-space:nowrap}
 #minibar .tg b{font-size:15px;padding:2px 7px}
-#minibar .sum{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:700}
-#minibar .cd2{font-weight:800;font-variant-numeric:tabular-nums;background:#1f2a2e;color:#ffd54f;border-radius:6px;padding:2px 6px}
+#minibar .mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px;justify-content:center}
+#minibar .row2{display:flex;gap:4px;align-items:center}
+#minibar .sum{min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+#minibar .cd2{font-size:12px;font-weight:800;font-variant-numeric:tabular-nums;background:#1f2a2e;color:#ffd54f;border-radius:6px;padding:2px 6px}
 #minibar .cd2.over{background:#b71c1c;color:#fff}
-#minibar .stp{font-weight:700;color:#ff6d00}
+#minibar .chips{display:flex;gap:2px;flex-shrink:0}
+#minibar .chip{font-size:11px;font-weight:700;padding:2px 4px;border-radius:5px;background:#fff;color:#46555b;border:1px solid #cfd8db;line-height:1.2}
+#minibar .chip.done{background:#1f8670;color:#fff;border-color:#1f8670}
+#minibar .chip.skip{background:#dfe5e8;color:#9aa6aa;border-color:#dfe5e8;text-decoration:line-through}
+#minibar .chip.now{background:#ff6d00;color:#fff;border-color:#fff;font-size:12px}
 #minibar button{padding:3px 8px;font-size:14px;flex-shrink:0;background:rgba(255,255,255,.85)}
 #minibar.alert{color:#fff}#minibar.alert .stp{color:#ffe0b2}
 #minibar.blink{animation:bl 1s infinite}
@@ -255,16 +261,23 @@ function drawMini(){
   [['red','r','赤'],['yellow','y','黄']].forEach(function(c){var n=S[c[0]]||0;if(n){var g=el('div','tg '+c[1]);g.appendChild(el('b','',c[2]+n));M.appendChild(g)}});
   var order=['emer','claim','quiet','delay','phone','note'],al=S.alerts.slice().sort(function(a,b){return order.indexOf(a.type)-order.indexOf(b.type)||a.at-b.at});
   var sum=el('span','sum');
+  var eve=isEve(),TINY={emer:'エマ',claim:'クレーム',quiet:'看取り',phone:'留守電',note:'申し送り'};
   if(al.length){var a=al[0];sum.textContent=ICON[a.type]+' '+title(a)+(al.length>1?'　ほか'+(al.length-1)+'件':'');M.style.background=COLOR[a.type];M.className='alert'+(a.type==='emer'?' blink':'')}
-  else sum.textContent=S.red||S.yellow?'':'平常';
-  M.appendChild(sum);
-  if(isEve()){
+  else sum.textContent=eve?'平常（表示なし）':S.red||S.yellow?'':'平常';
+  var mid=el('div','mid');mid.appendChild(sum);M.appendChild(mid);
+  if(eve){
     var prog=L.progress(S),cur=current(prog),t=jst(now()),sod=t.getUTCHours()*3600+t.getUTCMinutes()*60+t.getUTCSeconds();if(t.getUTCHours()<4)sod+=86400;
     var sec=19*3600-sod;
-    if(cur){
-      M.appendChild(el('span','cd2'+(sec<0?' over':''),sec>=0?Math.floor(sec/3600)+':'+('0'+Math.floor(sec%3600/60)).slice(-2):'超過'+Math.floor(-sec/60)+'分'));
-      var stp=L.STEPS.filter(function(x){return x.id===cur})[0];M.appendChild(el('span','stp','▶'+stp.label+(cur==='check'?' '+prog.pct+'%':'')));
-    }else M.appendChild(el('span','stp','✓ 終了'));
+    var row=el('div','row2');mid.appendChild(row);
+    row.appendChild(el('span','cd2'+(sec<0&&cur?' over':''),!cur?'✓':sec>=0?Math.floor(sec/3600)+':'+('0'+Math.floor(sec%3600/60)).slice(-2):'超過'+Math.floor(-sec/60)+'分'));
+    /* 段取りを小さな札で：済＝緑✓、今日なし＝灰、今やること＝橙、まだ＝白 */
+    var SH={gairai:'外来',nyuin:'入院',hotel:'ホテル',check:'チェック',meet:'MTG'},cs=el('span','chips');
+    L.STEPS.forEach(function(x){
+      var st=S.day.steps[x.id]||(x.id==='check'&&prog.all&&prog.done===prog.all?'done':'');
+      var lb=SH[x.id]+(x.id==='check'&&st!=='done'&&st!=='skip'?prog.pct+'%':'');
+      cs.appendChild(el('span','chip '+(x.id===cur?'now':st||'todo'),(st==='done'?'✓':'')+lb));
+    });
+    row.appendChild(cs);
   }
   M.appendChild(btn('⤢',function(){setMini(false)}));
   if(pip)M.appendChild(btn('✕',function(){pip.close()}));
@@ -395,7 +408,7 @@ function openCheck(a){
 }
 
 /* 最前面（Document Picture-in-Picture） */
-var FULL={w:360,h:560},MINI={w:440,h:52};
+var FULL={w:360,h:560},MINI={w:440,h:56};
 function setMini(v,auto){
   mini=v;$('panel').classList.toggle('mini',mini);$('miniBtn').textContent=mini?'広げる':'縮める';
   if(pip&&!auto){try{pip.resizeTo(mini?MINI.w:FULL.w,mini?MINI.h:FULL.h)}catch(e){}}

@@ -69,6 +69,11 @@ button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
 .fl input{font:inherit;font-size:14px;padding:5px 7px;border:1px solid #b9c4c8;border-radius:7px;flex:1;min-width:0}
 .mins button{padding:3px 8px;font-size:13px}
 .mins button.sel{background:#e08a00;border-color:#e08a00;color:#fff}
+.mins{display:grid!important;grid-template-columns:auto repeat(6,1fr);gap:4px}
+.mins>span{grid-row:span 2;align-self:center}
+.mins button{padding:6px 0;font-size:14px;font-weight:700}
+.vets button{font-size:18px;font-weight:800;padding:4px 12px;min-width:52px}
+.vets button.sel{background:#e08a00;border-color:#e08a00;color:#fff}
 
 /* 17時以降 */
 .eve{border-top:2px solid #1f2a2e}
@@ -328,32 +333,34 @@ function drawAlerts(){
 }
 
 /* 追加フォーム */
-var formOpen=false,ftype='',fmin=0;
+var formOpen=false,ftype='',fmin=0,fvet='',VETS=['伊','蒲','榮','柿'];
 $('addBtn').addEventListener('click',function(){formOpen=!formOpen;ftype='';fmin=0;drawForm()});
 function drawForm(){
   var F=$('form');F.classList.toggle('hide',!formOpen);$('addBtn').textContent=formOpen?'やめる':'＋ 表示を追加';
   if(!formOpen)return;F.innerHTML='';
   var g=el('div','types');
-  Object.keys(L.TYPES).forEach(function(t){var b=btn(ICON[t]+' '+SHORT[t],function(){ftype=t;fmin=0;drawForm();var i=F.querySelector('input');if(i)i.focus()},ftype===t?'sel':'');b.style.background=COLOR[t];g.appendChild(b)});
+  Object.keys(L.TYPES).forEach(function(t){var b=btn(ICON[t]+' '+SHORT[t],function(){ftype=t;fmin=0;fvet='';drawForm();var i=F.querySelector('input');if(i)i.focus()},ftype===t?'sel':'');b.style.background=COLOR[t];g.appendChild(b)});
   F.appendChild(g);
   if(!ftype)return;
-  var frame=null;
+  /* 診察の押し：獣医師を1文字で選び、分数を押せばすぐ表示（入力なし） */
   if(ftype==='delay'){
-    var f1=el('div','fl');f1.appendChild(el('span','','枠：'));
-    frame=el('input');frame.placeholder='例：蒲原枠';frame.setAttribute('list','frames');
-    var dl=el('datalist');dl.id='frames';JSON.parse(localStorage.getItem(LS+'frames')||'[]').forEach(function(x){dl.appendChild(new Option(x))});
-    f1.appendChild(frame);f1.appendChild(dl);F.appendChild(f1);
-    var f2=el('div','fl mins');f2.appendChild(el('span','','押し：'));
-    [5,10,15,20,30,45,60].forEach(function(n){f2.appendChild(btn(n+'分',function(){fmin=n;f2.querySelectorAll('button').forEach(function(x){x.classList.toggle('sel',x.textContent===n+'分')})}))});
-    F.appendChild(f2);
+    var f1=el('div','fl vets');f1.appendChild(el('span','','誰の枠：'));
+    VETS.forEach(function(v){var cur=S&&S.alerts.filter(function(a){return a.type==='delay'&&a.frame===v})[0];
+      f1.appendChild(btn(v+(cur?' '+cur.min+'分':''),function(){fvet=v;drawForm()},fvet===v?'sel':''))});
+    F.appendChild(f1);
+    if(fvet){
+      var f2=el('div','fl mins');f2.appendChild(el('span','',fvet+'：'));
+      for(var n=5;n<=60;n+=5)(function(n){f2.appendChild(btn(n+'分',function(){
+        act({action:'addAlert',type:'delay',frame:fvet,min:n}).then(function(ok){if(ok){formOpen=false;fvet='';drawForm();if(POP&&FOCUS==='add')setTimeout(function(){window.close()},400)}})}))})(n);
+      F.appendChild(f2);
+      F.appendChild(el('div','fl',(S&&S.alerts.some(function(a){return a.type==='delay'&&a.frame===fvet})?'押した分数に置きかわります。押しが解消したら表示の「解決」で消す。':'分数を押すとすぐ全PCに出ます。')));
+    }
+    return;
   }
   var f3=el('div','fl'),tx=el('input');tx.placeholder=HINT[ftype];tx.maxLength=120;f3.appendChild(tx);
   var send=function(){
     var p={action:'addAlert',type:ftype,text:tx.value};
-    if(frame){p.frame=frame.value.trim();p.min=fmin}
-    act(p).then(function(ok){if(!ok)return;
-      if(frame&&p.frame){var fs=JSON.parse(localStorage.getItem(LS+'frames')||'[]').filter(function(x){return x!==p.frame});fs.unshift(p.frame);localStorage.setItem(LS+'frames',JSON.stringify(fs.slice(0,10)))}
-      formOpen=false;drawForm()});
+    act(p).then(function(ok){if(!ok)return;formOpen=false;drawForm()});
   };
   tx.addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.isComposing)send()});
   f3.appendChild(btn('表示する',send,'pri'));F.appendChild(f3);

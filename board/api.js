@@ -20,12 +20,12 @@
     try { s = JSON.parse(localStorage.getItem(MK)); } catch (e) { s = null; }
     s = BoardLogic.normalize(s, now);
     if (p.action === 'state') {
-      if (p.v && Number(p.v) === s.v) return { ok: true, same: true, v: s.v, now: now };
+      if (p.v && String(p.v) === s.sig) return { ok: true, same: true, now: now };
       return { ok: true, s: s, now: now };
     }
     var err = BoardLogic.apply(s, p, now);
     if (err) return { ok: false, err: err };
-    s.v = (s.v || 0) + 1;
+    BoardLogic.commit(s);
     localStorage.setItem(MK, JSON.stringify(s));
     return { ok: true, s: s, now: now };
   }

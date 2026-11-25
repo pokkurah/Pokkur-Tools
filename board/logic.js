@@ -1,6 +1,6 @@
 /* ポックル 院内ボード 共通ルール
  * このファイルはブラウザ（試験モード）と Apps Script（本番）の両方で同じものを使う。
- * 直したら Apps Script 側の「logic.gs」にも同じ内容を貼り直すこと。 */
+ * 直したら Apps Script 側の「logic.gs」にも同じ内容を貼り直して、新バージョンでデプロイすること。 */
 var BoardLogic = (function () {
   var AREAS = ['看護師', '助手', '受付', '検査台・入院舎', 'オペ室', '診察室1', '診察室2', '診察室3', '診察室4', '診察室5'];
   var STEPS = [
@@ -18,6 +18,9 @@ var BoardLogic = (function () {
     phone: '留守電設定中',
     note: '申し送り'
   };
+  var TOGGLES = ['emer', 'phone', 'quiet', 'claim'];   /* 文字なし・1つだけ・押して点ける/消す */
+  var VETS = ['伊', '蒲', '榮', '柿'];
+  var PLACES = ['ICU', '犬舎', '猫舎', 'エキゾ舎'];      /* 赤札・黄札の場所（患者名は持たない） */
   /* 夕方（PM）の項目。紙のチェックリスト（2026-11-25時点）から。「■」で始まる行は見出し（チェックしない）
      画面の「項目を編集」で変えた内容はサーバーに保存され、こちらより優先される */
   function room(n, pc, extra) {
@@ -59,56 +62,90 @@ var BoardLogic = (function () {
     '診察室5': room('5', 'PC電源、換気扇オフ（18時VTに聞く）')
   };
   function isHead(t) { return String(t).charAt(0) === '■'; }
-  var MAX_ALERTS = 20, MAX_TEXT = 120;
+  var MAX_ALERTS = 30, MAX_TEXT = 120, H = 3600e3;
 
   /* 日付は朝4時で切り替わる（日本時間） */
-  function today(now) { return new Date(now + 9 * 3600e3 - 4 * 3600e3).toISOString().slice(0, 10); }
+  function today(now) { return new Date(now + 9 * H - 4 * H).toISOString().slice(0, 10); }
+  function dow(date) { return new Date(date + 'T00:00:00Z').getUTCDay(); }
   function newDay(now) { return { date: today(now), steps: {}, exam: null, ff: null, checks: {} }; }
-  function blank(now) {
-    var tpl = {}; AREAS.forEach(function (a) { tpl[a] = DEFAULT_TPL[a].slice(); });
-    return { v: 1, alerts: [], red: 0, yellow: 0, tpl: tpl, tplEdited: {}, day: newDay(now) };
-  }
-  function normalize(s, now) {
-    if (!s || typeof s !== 'object') s = blank(now);
-    if (!s.tpl) s.tpl = {};
-    if (!s.tplEdited) s.tplEdited = {};
-    /* 場所の一覧が変わったら古い場所は消し、新しい場所は既定の項目で始める */
-    Object.keys(s.tpl).forEach(function (a) { if (AREAS.indexOf(a) < 0) { delete s.tpl[a]; delete s.tplEdited[a]; } });
-    AREAS.forEach(function (a) { if (!s.tpl[a]) s.tpl[a] = DEFAULT_TPL[a].slice(); });
-    if (!s.day || s.day.date !== today(now)) s.day = newDay(now);
-    return s;
-  }
+  function blank(now) { return { v: 1, alerts: [], tagp: { red: {}, yellow: {} }, tpl: {}, tplEdited: {}, day: newDay(now) }; }
   function str(x, n) { return String(x == null ? '' : x).replace(/[\r\n\t]+/g, ' ').trim().slice(0, n); }
   function rid() { return Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-5); }
   function ckey(area, text) { return area + '|' + text; }
+  function sum(o) { var n = 0; for (var k in o) n += o[k] || 0; return n; }
+  function sig(s) { return s.v + '|' + s.day.date + '|' + (s.day.phoneAuto ? 1 : 0); }
+  function commit(s) { s.v = (s.v || 0) + 1; s.sig = sig(s); }
 
-  /* 進み具合 */
+  /* チェック項目のきまり：「（水曜）」＝その曜日だけ数える／「月1・週1・月末」＝任意（％に数えない） */
+  function rule(text) {
+    var m = /（([日月火水木金土])曜）/.exec(text);
+    return { head: isHead(text), day: m ? '日月火水木金土'.indexOf(m[1]) : null, opt: /月1|週1|月末/.test(text) };
+  }
+  function counted(text, date) { var r = rule(text); return !r.head && !r.opt && (r.day === null || r.day === dow(date)); }
+
+  function normalize(s, now) {
+    if (!s || typeof s !== 'object') s = blank(now);
+    if (!s.alerts) s.alerts = [];
+    if (!s.tpl) s.tpl = {};
+    if (!s.tplEdited) s.tplEdited = {};
+    Object.keys(s.tpl).forEach(function (a) { if (AREAS.indexOf(a) < 0) { delete s.tpl[a]; delete s.tplEdited[a]; } });
+    AREAS.forEach(function (a) { if (!s.tpl[a]) s.tpl[a] = DEFAULT_TPL[a].slice(); });
+    /* 札：以前は数だけだった → 場所なし（?）として引き継ぐ */
+    if (!s.tagp) { s.tagp = { red: {}, yellow: {} }; if (s.red > 0) s.tagp.red['?'] = s.red; if (s.yellow > 0) s.tagp.yellow['?'] = s.yellow; }
+    /* 朝4時：段取り・チェックをリセットし、表示もすべて消す（札は残す） */
+    if (!s.day || s.day.date !== today(now)) { s.day = newDay(now); s.alerts = []; }
+    /* 17時（電話OFF）に「留守電設定中」を自動で点ける。1日1回だけ（消したらその日は出ない） */
+    var h = new Date(now + 9 * H).getUTCHours();
+    if ((h >= 17 || h < 4) && !s.day.phoneAuto) {
+      s.day.phoneAuto = 1;
+      if (!s.alerts.some(function (a) { return a.type === 'phone'; }))
+        s.alerts.push({ id: 'ap' + s.day.date, type: 'phone', text: '', frame: '', min: 0, at: Date.parse(s.day.date + 'T17:00:00+09:00'), auto: 1 });
+    }
+    s.red = sum(s.tagp.red); s.yellow = sum(s.tagp.yellow);
+    s.sig = sig(s);
+    return s;
+  }
+
+  /* 進み具合：その日に数える項目だけ。「対象外」(2) にした項目は分母から外す */
   function progress(s) {
     var per = {}, done = 0, all = 0;
     AREAS.forEach(function (a) {
-      var items = s.tpl[a] || [], d = 0;
-      items = items.filter(function (t) { return !isHead(t); });
-      items.forEach(function (t) { if (s.day.checks[ckey(a, t)]) d++; });
-      per[a] = { done: d, all: items.length };
-      done += d; all += items.length;
+      var d = 0, n = 0;
+      (s.tpl[a] || []).forEach(function (t) {
+        if (!counted(t, s.day.date)) return;
+        var c = s.day.checks[ckey(a, t)];
+        if (c === 2) return;
+        n++; if (c) d++;
+      });
+      per[a] = { done: d, all: n }; done += d; all += n;
     });
     return { per: per, done: done, all: all, pct: all ? Math.round(done * 100 / all) : 0 };
   }
 
+  function yes(v) { return v === true || v === 'true'; }
   /* 操作。成功なら null、だめなら理由を返す */
   function apply(s, p, now) {
     var i, a;
     switch (p.action) {
+      case 'set':
+        if (TOGGLES.indexOf(p.type) < 0) return '種類が不明です';
+        s.alerts = s.alerts.filter(function (x) { return x.type !== p.type; });
+        if (yes(p.on)) s.alerts.push({ id: rid(), type: p.type, text: '', frame: '', min: 0, at: now });
+        return null;
       case 'addAlert':
         if (!TYPES[p.type]) return '種類が不明です';
         var text = str(p.text, MAX_TEXT), frame = str(p.frame, 20), min = Math.max(0, Math.min(180, Math.round(Number(p.min) || 0)));
+        if (TOGGLES.indexOf(p.type) >= 0) {
+          if (!s.alerts.some(function (x) { return x.type === p.type; })) s.alerts.push({ id: rid(), type: p.type, text: text, frame: '', min: 0, at: now });
+          return null;
+        }
         if (p.type === 'note' && !text) return '申し送りの内容を入れてください';
         if (p.type === 'delay') {
-          if (!frame) return '何の枠か入れてください';
+          if (!frame) return '誰の枠か選んでください';
           if (!min) return '何分押しか選んでください';
           for (i = 0; i < s.alerts.length; i++) {
             a = s.alerts[i];
-            if (a.type === 'delay' && a.frame === frame) { a.min = min; a.text = text || a.text; a.at = now; return null; }
+            if (a.type === 'delay' && a.frame === frame) { a.min = min; a.at = now; return null; }
           }
         }
         if (s.alerts.length >= MAX_ALERTS) return '表示が多すぎます。済んだものを消してください';
@@ -119,32 +156,40 @@ var BoardLogic = (function () {
         return null;
       case 'tag':
         if (p.color !== 'red' && p.color !== 'yellow') return '札の色が不明です';
-        s[p.color] = Math.max(0, Math.min(20, (s[p.color] || 0) + (Number(p.delta) > 0 ? 1 : -1)));
+        var pl = p.place == null || p.place === '' ? '?' : String(p.place);
+        if (pl !== '?' && PLACES.indexOf(pl) < 0) return '場所が不明です';
+        var t = s.tagp[p.color], n = Math.max(0, Math.min(20, (t[pl] || 0) + (Number(p.delta) > 0 ? 1 : -1)));
+        if (n) t[pl] = n; else delete t[pl];
+        s.red = sum(s.tagp.red); s.yellow = sum(s.tagp.yellow);
         return null;
       case 'step':
         if (!STEPS.some(function (x) { return x.id === p.id; })) return '項目が不明です';
         if (p.state === 'done' || p.state === 'skip') s.day.steps[p.id] = p.state; else delete s.day.steps[p.id];
+        /* 外来が終わったら枠押しは消す */
+        if (p.id === 'gairai' && p.state === 'done') s.alerts = s.alerts.filter(function (x) { return x.type !== 'delay'; });
         return null;
       case 'flag':
         if (p.name !== 'exam' && p.name !== 'ff') return '項目が不明です';
-        s.day[p.name] = p.val === true || p.val === 'true' ? true : p.val === false || p.val === 'false' ? false : null;
+        s.day[p.name] = yes(p.val) ? true : p.val === false || p.val === 'false' ? false : null;
         return null;
       case 'check':
         if (AREAS.indexOf(p.area) < 0) return '場所が不明です';
         if (isHead(p.text) || (s.tpl[p.area] || []).indexOf(p.text) < 0) return 'チェック項目が見つかりません（項目が編集された可能性）';
-        if (p.on === true || p.on === 'true') s.day.checks[ckey(p.area, p.text)] = 1; else delete s.day.checks[ckey(p.area, p.text)];
+        if (p.on === 'na') s.day.checks[ckey(p.area, p.text)] = 2;
+        else if (yes(p.on)) s.day.checks[ckey(p.area, p.text)] = 1;
+        else delete s.day.checks[ckey(p.area, p.text)];
         return null;
       case 'setTpl':
         if (AREAS.indexOf(p.area) < 0) return '場所が不明です';
         var items = String(p.items || '').split(/\n/).map(function (x) { return str(x, 60); }).filter(Boolean);
         var seen = {}; items = items.filter(function (x) { if (seen[x]) return false; seen[x] = 1; return true; }).slice(0, 60);
         s.tpl[p.area] = items;
-        s.tplEdited = s.tplEdited || {}; s.tplEdited[p.area] = 1;
+        s.tplEdited[p.area] = 1;
         return null;
     }
     return '操作が不明です';
   }
 
-  return { AREAS: AREAS, STEPS: STEPS, TYPES: TYPES, today: today, blank: blank, normalize: normalize,
-    apply: apply, progress: progress, ckey: ckey, isHead: isHead };
+  return { AREAS: AREAS, STEPS: STEPS, TYPES: TYPES, TOGGLES: TOGGLES, VETS: VETS, PLACES: PLACES, today: today, normalize: normalize,
+    apply: apply, commit: commit, progress: progress, ckey: ckey, isHead: isHead, rule: rule, counted: counted };
 })();

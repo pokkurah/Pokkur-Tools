@@ -9,7 +9,7 @@
 body{margin:0;background:#f5f7f8;color:#1f2a2e;font-family:"Meiryo UI","Yu Gothic UI",-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;font-size:15px}
 button{font:inherit;border:1px solid #b9c4c8;background:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;color:#1f2a2e}
 button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
-.hd{background:#1f2a2e;color:#fff;padding:10px 12px}
+.hd{background:#1f2a2e;color:#fff;padding:10px 12px;position:sticky;top:0;z-index:2}
 .hd .t{display:flex;align-items:center;gap:8px}
 .hd h1{font-size:20px;margin:0}
 .hd select{font:inherit;font-size:14px;padding:3px 6px;margin-left:auto}
@@ -18,12 +18,16 @@ button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
 .bar i{display:block;height:100%;background:#4fd1a5;transition:width .3s}
 .me{display:flex;align-items:center;gap:8px;padding:10px 12px;font-size:16px;font-weight:700;background:#fff;border-bottom:1px solid #e3e8ea}
 .me .bar{background:#e3e8ea}.me .bar i{background:#1f8670}
-.it{display:flex;gap:12px;align-items:center;padding:14px 14px;background:#fff;border-bottom:1px solid #eef1f2;cursor:pointer;user-select:none;font-size:17px}
-.it:hover{background:#f3faf7}
 .sec{background:#e8eef0;color:#46555b;font-size:13px;font-weight:700;padding:5px 14px}
+.it{display:flex;gap:12px;align-items:center;padding:12px 10px 12px 14px;background:#fff;border-bottom:1px solid #eef1f2;cursor:pointer;user-select:none;font-size:17px}
+.it:hover{background:#f3faf7}
 .it .b{width:28px;height:28px;border:2px solid #9aa6aa;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
-.it.on{color:#9aa6aa;text-decoration:line-through}
+.it .tx{flex:1}
+.it .na{font-size:11px;padding:3px 6px;color:#6b7a80;flex-shrink:0}
+.it .tag{font-size:11px;background:#eef1f2;color:#6b7a80;border-radius:10px;padding:1px 7px;margin-left:6px;white-space:nowrap;text-decoration:none;display:inline-block}
+.it.on{color:#9aa6aa}.it.on .tx{text-decoration:line-through}
 .it.on .b{background:#1f8670;border-color:#1f8670}
+.it.off{color:#b0bbbf;background:#f7f9f9;cursor:default}.it.off .b{border-style:dashed;border-color:#cfd8db}
 .it.wait{opacity:.5}
 .done{margin:16px;padding:18px;background:#1f8670;color:#fff;border-radius:12px;text-align:center;font-size:20px;font-weight:800}
 .foot{display:flex;gap:8px;padding:12px;flex-wrap:wrap}
@@ -40,8 +44,8 @@ textarea{width:100%;font:inherit;font-size:15px;line-height:1.6;padding:8px;bord
 <div class="tot">全体<div class="bar"><i id="totBar"></i></div><span id="totTxt"></span></div></div>
 <div class="me"><span id="meTxt"></span><div class="bar"><i id="meBar"></i></div></div>
 <div id="list"></div>
-<div class="done hide" id="done">✓ この場所は完了です</div>
-<div class="ed hide" id="ed"><p>1行に1項目。「■」で始めた行は見出し（チェックしない）。保存すると全PCの項目が変わります（その日のチェックは、名前が同じ項目だけ残ります）。</p>
+<div class="done hide" id="done">✓ ここは完了です</div>
+<div class="ed hide" id="ed"><p>1行に1項目。保存すると全PCの項目が変わります。<br>「■」で始めた行は見出し。「（水曜）」のように曜日を入れるとその曜日だけ数えます。「月1」「週1」「月末」を含む行は任意（％に数えない）。</p>
 <textarea id="tx"></textarea>
 <div class="foot"><button id="edCancel">やめる</button><span class="sp"></span><button class="pri" id="edSave">保存</button></div></div>
 <div class="err hide" id="err"></div>
@@ -53,18 +57,20 @@ textarea{width:100%;font:inherit;font-size:15px;line-height:1.6;padding:8px;bord
 <script>
 (function(){
 var L=BoardLogic,$=function(id){return document.getElementById(id)},KEY=BOARD.key();
-if(!KEY)setTimeout(function(){err('このPCは院内キーが未登録です。院内ボードで院内キーを入れてください。')},0);
 var S=null,busy=false,pend={},editing=false,closing=null;
 if(BOARD.isMock)$('mockbar').classList.remove('hide');
 var q=new URLSearchParams(location.search),area=q.get('area');
-if(L.AREAS.indexOf(area)<0)area=localStorage.getItem('pbd_place')||L.AREAS[0];
+if(L.AREAS.indexOf(area)<0)area=localStorage.getItem('pbd_place');
+if(L.AREAS.indexOf(area)<0)area=L.AREAS[0];
 L.AREAS.forEach(function(a){$('area').appendChild(new Option(a,a))});$('area').value=area;
 $('area').addEventListener('change',function(){area=$('area').value;history.replaceState(null,'','?area='+encodeURIComponent(area));draw()});
 function err(t){$('err').textContent=t;$('err').classList.remove('hide');setTimeout(function(){$('err').classList.add('hide')},6000)}
+if(!KEY)err('このPCは院内キーが未登録です。院内ボードで院内キーを入れてください。');
+function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
 
 function load(){
   if(busy||!KEY)return;busy=true;
-  BOARD.state(KEY,S&&S.v).then(function(r){if(!r.ok)throw new Error(r.err);if(!r.same){S=r.s;draw()}})
+  BOARD.state(KEY,S&&S.sig).then(function(r){if(!r.ok)throw new Error(r.err);if(!r.same){S=r.s;draw()}})
   .catch(function(e){err('更新できません：'+(e.message||e))}).then(function(){busy=false});
 }
 function act(p){return BOARD.act(KEY,p).then(function(r){if(!r.ok){err('できませんでした：'+r.err);return false}S=r.s;draw();try{window.opener&&window.opener.__pbdLoad&&window.opener.__pbdLoad()}catch(e){}return true}).catch(function(e){err('通信できませんでした：'+(e.message||e));return false})}
@@ -74,21 +80,27 @@ function draw(){
   $('ttl').textContent=area;document.title=area+' チェックリスト';
   var P=L.progress(S),me=P.per[area];
   $('totBar').style.width=P.pct+'%';$('totTxt').textContent=P.done+'/'+P.all+'（'+P.pct+'%）';
-  $('meTxt').textContent=me.done+'/'+me.all;$('meBar').style.width=(me.all?me.done*100/me.all:0)+'%';
+  $('meTxt').textContent=me.done+'/'+me.all;$('meBar').style.width=(me.all?me.done*100/me.all:100)+'%';
   var Lst=$('list');Lst.innerHTML='';
   (S.tpl[area]||[]).forEach(function(t){
-    if(L.isHead(t)){var hd=document.createElement('div');hd.className='sec';hd.textContent=t.slice(1);Lst.appendChild(hd);return}
-    var k=L.ckey(area,t),on=pend[k]!=null?pend[k]:!!S.day.checks[k];
-    var r=document.createElement('div');r.className='it'+(on?' on':'')+(pend[k]!=null?' wait':'');
-    var b=document.createElement('span');b.className='b';b.textContent=on?'✓':'';r.appendChild(b);
-    r.appendChild(document.createTextNode(t));
-    r.addEventListener('click',function(){
-      if(pend[k]!=null)return;pend[k]=!on;draw();
-      act({action:'check',area:area,text:t,on:!on}).then(function(){delete pend[k];draw()});
-    });
+    if(L.isHead(t)){Lst.appendChild(el('div','sec',t.slice(1)));return}
+    var k=L.ckey(area,t),rl=L.rule(t),cnt=L.counted(t,S.day.date),c=pend[k]!=null?pend[k]:(S.day.checks[k]||0);
+    var r=el('div','it'),b=el('span','b'),tx=el('span','tx',t);r.appendChild(b);r.appendChild(tx);
+    function send(v){if(pend[k]!=null)return;pend[k]=v;draw();act({action:'check',area:area,text:t,on:v===2?'na':v===1}).then(function(){delete pend[k];draw()})}
+    if(!rl.opt&&!cnt){r.className='it off';tx.appendChild(el('span','tag','今日は対象外'));Lst.appendChild(r);return}
+    if(rl.opt)tx.appendChild(el('span','tag','任意'));
+    if(c===2){
+      r.className='it off';tx.appendChild(el('span','tag','対象外'));
+      var u=el('button','na','戻す');u.addEventListener('click',function(e){e.stopPropagation();send(0)});r.appendChild(u);
+    }else{
+      if(c===1){r.classList.add('on');b.textContent='✓'}
+      r.addEventListener('click',function(){send(c===1?0:1)});
+      if(!rl.opt&&c!==1){var n=el('button','na','今日は対象外');n.addEventListener('click',function(e){e.stopPropagation();send(2)});r.appendChild(n)}
+    }
+    if(pend[k]!=null)r.classList.add('wait');
     Lst.appendChild(r);
   });
-  var full=me.all&&me.done===me.all&&!Object.keys(pend).length;
+  var full=me.done===me.all&&!Object.keys(pend).length;
   $('done').classList.toggle('hide',!full||editing);
   /* 全部埋まったら自動で閉じる（ボードから開いた窓のとき） */
   if(full&&!editing&&window.opener&&!closing){closing=setTimeout(function(){window.close()},2500)}
@@ -100,7 +112,7 @@ function endEdit(){editing=false;$('ed').classList.add('hide');$('list').classLi
 $('edCancel').addEventListener('click',endEdit);
 $('edSave').addEventListener('click',function(){act({action:'setTpl',area:area,items:$('tx').value}).then(function(ok){if(ok)endEdit()})});
 window.addEventListener('storage',function(e){if(e.key==='pbd_mock_db')load()});
-load();setInterval(load,BOARD.isMock?2000:4000);
+load();setInterval(load,BOARD.isMock?2000:5000);
 })();
 </script>
 </body></html>

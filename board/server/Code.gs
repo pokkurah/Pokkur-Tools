@@ -2,7 +2,7 @@
  *
  * 役割：院内ボード（緊急表示・申し送り・赤札/黄札の数・17時以降の進み具合・チェックリスト）を全PCで共有する。
  *       患者データは持たない（札は数だけ、申し送りに飼い主名は書かない運用）。
- *       17時以降の進み具合とチェックは朝4時に自動でリセット。緊急表示・申し送りは「解決」で消えるまで残る。
+ *       朝4時に、17時以降の進み具合・チェック・すべての表示を自動で消す（札の数は残す）。17時に「留守電設定中」を自動で点ける。
  *       保存先はスクリプト プロパティ（シート・トリガー不要）。
  *
  * 設置手順：
@@ -12,7 +12,7 @@
  *   4. デプロイ → 新しいデプロイ → 種類「ウェブアプリ」、実行＝自分、アクセス＝全員 → URL をコピー
  *   5. Pokkur-Tools の board/config.js の API_URL にその URL を入れる
  *   コードを直したら「デプロイを管理」→ 編集 → 新バージョン（URLは変わらない）
- *   logic.js を直したときは logic.gs にも貼り直すこと
+ *   logic.js を直したときは logic.gs にも貼り直すこと（Code.gs と logic.gs は必ず同じ版にそろえる）
  */
 var CHUNK = 2500;   /* プロパティ1つの上限（9KB）を超えないよう分割して保存 */
 
@@ -28,7 +28,7 @@ function handle_(p) {
   try {
     if (p.action === 'state') {
       var s = load_(props, now);
-      if (p.v && Number(p.v) === s.v) return out_({ ok: true, same: true, v: s.v, now: now });
+      if (p.v && String(p.v) === s.sig) return out_({ ok: true, same: true, now: now });
       return out_({ ok: true, s: s, now: now });
     }
     var lock = LockService.getScriptLock();
@@ -36,7 +36,7 @@ function handle_(p) {
     try {
       var st = load_(props, now), err = BoardLogic.apply(st, p, now);
       if (err) return out_({ ok: false, err: err });
-      st.v = (st.v || 0) + 1;
+      BoardLogic.commit(st);
       save_(props, st);
       return out_({ ok: true, s: st, now: now });
     } finally { lock.releaseLock(); }

@@ -49,7 +49,7 @@ button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
 .a-emer{background:#c62828}.a-emer b{animation:bl 1s infinite}
 @keyframes bl{50%{opacity:.55}}
 .a-delay{background:#e08a00}.a-claim{background:#6a3fb5}.a-quiet{background:#37474f}
-.a-ope{background:#1565c0}.a-iso{background:#2e7d32}.a-bite{background:#8d4e00}.a-equip{background:#546e7a}
+.a-phone{background:#00838f}.a-ope{background:#1565c0}.a-iso{background:#2e7d32}.a-bite{background:#8d4e00}.a-equip{background:#546e7a}
 .a-note{background:#fff8dc;color:#3a2e00}.a-note button{border-color:#b59a3a}
 .calm{padding:7px 10px;font-size:13px;color:#6b7a80;display:flex;gap:6px;align-items:center}
 .calm i{width:9px;height:9px;border-radius:50%;background:#9ccfc0;display:inline-block}
@@ -133,10 +133,10 @@ var L=BoardLogic,cache={};document.querySelectorAll('[id]').forEach(function(e){
 var $=function(id){return cache[id]||document.getElementById(id)||(pip&&pip.document.getElementById(id))};
 var KEY=BOARD.key(),LS='pbd_';
 var S=null,skew=0,busy=false,mine={},seen=null,notes={},pip=null,host=window,timer=null,mini=false;
-var ICON={emer:'🚨',delay:'⏱',claim:'⚠',quiet:'🤫',ope:'🔪',iso:'🦠',bite:'🦷',equip:'🔧',note:'📝'};
-var SHORT={emer:'エマ対応',delay:'枠押し',claim:'クレーム',quiet:'看取り・静かに',ope:'手術中',iso:'隔離対応',bite:'咬傷注意',equip:'機器トラブル',note:'申し送り'};
-var COLOR={emer:'#c62828',delay:'#e08a00',claim:'#6a3fb5',quiet:'#37474f',ope:'#1565c0',iso:'#2e7d32',bite:'#8d4e00',equip:'#546e7a',note:'#b59a3a'};
-var HINT={emer:'場所・内容（任意）',delay:'補足（任意）',claim:'場所・対応者（任意）',quiet:'診察室など（任意）',ope:'補足（任意）',iso:'場所・病名（任意）',bite:'場所・注意点（任意）',equip:'機器名・状態（任意）',note:'申し送りの内容（飼い主名は書かない）'};
+var ICON={phone:'📞',emer:'🚨',delay:'⏱',claim:'⚠',quiet:'🤫',ope:'🔪',iso:'🦠',bite:'🦷',equip:'🔧',note:'📝'};
+var SHORT={phone:'留守電設定中',emer:'エマ対応',delay:'枠押し',claim:'クレーム',quiet:'看取り・静かに',ope:'手術中',iso:'隔離対応',bite:'咬傷注意',equip:'機器トラブル',note:'申し送り'};
+var COLOR={phone:'#00838f',emer:'#c62828',delay:'#e08a00',claim:'#6a3fb5',quiet:'#37474f',ope:'#1565c0',iso:'#2e7d32',bite:'#8d4e00',equip:'#546e7a',note:'#b59a3a'};
+var HINT={phone:'補足（任意）',emer:'場所・内容（任意）',delay:'補足（任意）',claim:'場所・対応者（任意）',quiet:'診察室など（任意）',ope:'補足（任意）',iso:'場所・病名（任意）',bite:'場所・注意点（任意）',equip:'機器名・状態（任意）',note:'申し送りの内容（飼い主名は書かない）'};
 if(BOARD.isMock)$('mockbar').classList.remove('hide');
 $('shareBtn').addEventListener('click',function(){if(window.pokkurShare)pokkurShare()});
 /* 院内キー：未登録・無効なら入力欄を出す。通ったキーはこのPCに保存 */
@@ -238,7 +238,7 @@ function drawTags(){
 function drawAlerts(){
   var A=$('alerts');A.innerHTML='';
   if(!S.alerts.length){var c=el('div','calm');c.appendChild(el('i'));c.appendChild(document.createTextNode('平常　表示なし'));A.appendChild(c);return}
-  var order=['emer','claim','quiet','delay','ope','iso','bite','equip','note'];
+  var order=['emer','claim','quiet','delay','phone','ope','iso','bite','equip','note'];
   S.alerts.slice().sort(function(a,b){return order.indexOf(a.type)-order.indexOf(b.type)||a.at-b.at}).forEach(function(a){
     var r=el('div','al a-'+a.type),m=el('div','m');
     m.appendChild(el('b','',ICON[a.type]+' '+title(a)));

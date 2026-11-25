@@ -18,9 +18,9 @@ button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
 .bar i{display:block;height:100%;background:#4fd1a5;transition:width .3s}
 .me{display:flex;align-items:center;gap:8px;padding:10px 12px;font-size:16px;font-weight:700;background:#fff;border-bottom:1px solid #e3e8ea}
 .me .bar{background:#e3e8ea}.me .bar i{background:#1f8670}
-.draft{background:#fff4d6;color:#6b4a00;font-size:12px;padding:5px 12px}
 .it{display:flex;gap:12px;align-items:center;padding:14px 14px;background:#fff;border-bottom:1px solid #eef1f2;cursor:pointer;user-select:none;font-size:17px}
 .it:hover{background:#f3faf7}
+.sec{background:#e8eef0;color:#46555b;font-size:13px;font-weight:700;padding:5px 14px}
 .it .b{width:28px;height:28px;border:2px solid #9aa6aa;border-radius:7px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800}
 .it.on{color:#9aa6aa;text-decoration:line-through}
 .it.on .b{background:#1f8670;border-color:#1f8670}
@@ -39,10 +39,9 @@ textarea{width:100%;font:inherit;font-size:15px;line-height:1.6;padding:8px;bord
 <div class="hd"><div class="t"><h1 id="ttl">チェックリスト</h1><select id="area"></select></div>
 <div class="tot">全体<div class="bar"><i id="totBar"></i></div><span id="totTxt"></span></div></div>
 <div class="me"><span id="meTxt"></span><div class="bar"><i id="meBar"></i></div></div>
-<div class="draft hide" id="draft">この場所の項目は仮です。下の「項目を編集」で紙のチェックリストに合わせてください。</div>
 <div id="list"></div>
 <div class="done hide" id="done">✓ この場所は完了です</div>
-<div class="ed hide" id="ed"><p>1行に1項目。保存すると全PCの項目が変わります（その日のチェックは、名前が同じ項目だけ残ります）。</p>
+<div class="ed hide" id="ed"><p>1行に1項目。「■」で始めた行は見出し（チェックしない）。保存すると全PCの項目が変わります（その日のチェックは、名前が同じ項目だけ残ります）。</p>
 <textarea id="tx"></textarea>
 <div class="foot"><button id="edCancel">やめる</button><span class="sp"></span><button class="pri" id="edSave">保存</button></div></div>
 <div class="err hide" id="err"></div>
@@ -75,9 +74,9 @@ function draw(){
   var P=L.progress(S),me=P.per[area];
   $('totBar').style.width=P.pct+'%';$('totTxt').textContent=P.done+'/'+P.all+'（'+P.pct+'%）';
   $('meTxt').textContent=me.done+'/'+me.all;$('meBar').style.width=(me.all?me.done*100/me.all:0)+'%';
-  $('draft').classList.toggle('hide',!!(S.tplEdited&&S.tplEdited[area]));
   var Lst=$('list');Lst.innerHTML='';
   (S.tpl[area]||[]).forEach(function(t){
+    if(L.isHead(t)){var hd=document.createElement('div');hd.className='sec';hd.textContent=t.slice(1);Lst.appendChild(hd);return}
     var k=L.ckey(area,t),on=pend[k]!=null?pend[k]:!!S.day.checks[k];
     var r=document.createElement('div');r.className='it'+(on?' on':'')+(pend[k]!=null?' wait':'');
     var b=document.createElement('span');b.className='b';b.textContent=on?'✓':'';r.appendChild(b);

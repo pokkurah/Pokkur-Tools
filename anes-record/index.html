@@ -132,6 +132,25 @@ body.disp.bigt{--tz:15vh}
 .dmsg{grid-column:1/3;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;font-size:22px;color:#9fb3b9}
 .dmsg button{font-size:20px;padding:14px 22px;border-radius:12px;border:1px solid #2fa88e;background:#152126;color:#e8eef0;min-width:420px;text-align:left}
 .dmsg input{font-size:22px;padding:10px;border-radius:10px;border:1px solid #2fa88e;background:#152126;color:#fff;text-align:center}
+#S{display:none}
+body.split #D{display:none}
+body.split #S{display:grid;grid-template-columns:1fr 1fr;gap:4px;height:100vh;background:#26363c}
+#S iframe{width:100%;height:100%;border:0;display:block;background:#0d1417}
+body.slot #D{grid-template-columns:1fr 250px;padding:8px 10px;gap:8px}
+body.slot{--tz:5vh} body.slot.bigt{--tz:8.5vh}
+body.slot .dh{flex-wrap:wrap;gap:8px}
+body.slot .dh .who{font-size:22px} body.slot .dh .who small{font-size:15px}
+body.slot .tmr{gap:8px} body.slot .tb{padding:4px 12px 6px}
+body.slot .dv{flex-wrap:wrap;gap:6px}
+body.slot .dv .vt{flex:1 1 118px;padding:4px 8px 6px}
+body.slot .dv .vt .l{font-size:13px}
+body.slot .dv .vt .v{font-size:clamp(22px,3.9vh,42px)}
+body.slot .dv .vt .v small{display:none}
+body.slot .dv .vt .l{overflow:hidden;text-overflow:ellipsis}
+body.slot .dh .ctl{flex-wrap:wrap;gap:6px}
+body.slot .dh .ctl button{white-space:nowrap}
+body.slot .dlog{font-size:15px}
+body.slot .dnext b{font-size:20px}
 .dwarn{position:fixed;left:16px;bottom:16px;background:#4a1714;color:#ffb3aa;padding:8px 18px;border-radius:10px;font-size:18px;display:none}
 </style>
 </head>
@@ -949,9 +968,12 @@ function drawTrend(ctx,r,opt){
     ctx.fillStyle=C.ax; ctx.fillText(hm(t),x,H-bot+fs*0.35);
   }
   /* イベント線 */
-  var evs=r.ev.slice().sort(function(a,b){return a.t-b.t;}), lastX=-1e9, row=0;
+  var evs=r.ev.slice().sort(function(a,b){return a.t-b.t;}), rowEnd=[-1e9,-1e9,-1e9];
   evs.forEach(function(e){ var x=X(e.t); ctx.strokeStyle=C.ev; ctx.setLineDash([4,4]); ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(x,top-(opt.labels?fs*0.2:0)); ctx.lineTo(x,H-bot); ctx.stroke(); ctx.setLineDash([]);
-    if(opt.labels){ row=x-lastX<fs*7?(row+1)%3:0; lastX=x; ctx.fillStyle=C.ev; ctx.textAlign="left"; ctx.textBaseline="top"; ctx.font="bold "+fs*0.95+"px sans-serif"; ctx.fillText(e.k==="その他"?(e.txt||"").slice(0,8):e.k.replace("（伏臥位）",""),x+3,row*fs*1.25); } });
+    if(opt.labels){ ctx.font="bold "+fs*0.95+"px sans-serif"; var lb=e.k==="その他"?(e.txt||"").slice(0,8):e.k.replace("（伏臥位）",""), tw=ctx.measureText(lb).width;
+      /* 文字が重ならない段を選ぶ（3段まで） */
+      var row=0; while(row<3&&rowEnd[row]>x) row++; if(row>2) return; /* 空きがなければ名前は省く（線と右・下の経過一覧には残る） */
+      rowEnd[row]=x+3+tw+fs*0.4; ctx.fillStyle=C.ev; ctx.textAlign="left"; ctx.textBaseline="top"; ctx.fillText(lb,x+3,row*fs*1.25); } });
   r.dr.forEach(function(d){ var x=X(d.t); ctx.fillStyle=C.dr; ctx.beginPath(); ctx.moveTo(x,top-2); ctx.lineTo(x-fs*0.4,top-fs*0.75); ctx.lineTo(x+fs*0.4,top-fs*0.75); ctx.fill(); });
   var yc=top, mTop=0;
   ps.forEach(function(p){
@@ -973,17 +995,20 @@ function drawTrend(ctx,r,opt){
       var maxT=Math.max(2,Math.floor((y1-gy0)/(fs*1.5))), st=n.st; while((n.hi-n.lo)/st>maxT) st*=2;
       ctx.font=fs*0.9+"px sans-serif"; ctx.textBaseline="middle"; ctx.textAlign="right";
       for(var v=n.lo;v<=n.hi+1e-9;v+=st){ var yy=Y(v); ctx.strokeStyle=C.grid; ctx.beginPath(); ctx.moveTo(L,yy); ctx.lineTo(W-Rm,yy); ctx.stroke(); ctx.fillStyle=C.ax; ctx.fillText(+v.toFixed(2),L-4,yy); }
-      if(p.area){ /* 吸入ダイヤルは塗りつぶし、EtISOの線の下は背景色で塗り戻す → ダイヤルとEtの差が色の帯で見える（院長指定） */
+      if(p.area){ /* 吸入ダイヤルだけ塗りつぶし、EtISOは線のみ（院長指定 2026-11-25） */
         if(ks.indexOf("agent")>=0) area("agent",Y,y1,hexA(IT.agent.c,dark?0.5:0.35));
-        if(ks.indexOf("etag")>=0) area("etag",Y,y1,C.bg);
         if(ks.indexOf("agent")>=0) area("agent",Y,y1,null);
         if(ks.indexOf("etag")>=0) area("etag",Y,y1,null); }
       else {
         if(ks.indexOf("sys")>=0||ks.indexOf("dia")>=0){ /* 収縮〜拡張のバー＋平均 */
-          r.vit.forEach(function(x){ var s=x.v.sys,d=x.v.dia,X0=X(x.t);
-            if(s!=null&&d!=null){ ctx.strokeStyle=hexA(IT.sys.c,0.55); ctx.lineWidth=fs*0.35; ctx.beginPath(); ctx.moveTo(X0,Y(+s)); ctx.lineTo(X0,Y(+d)); ctx.stroke(); }
-            ctx.fillStyle=IT.sys.c; if(s!=null){ ctx.beginPath(); ctx.moveTo(X0-fs*0.45,Y(+s)-fs*0.45); ctx.lineTo(X0+fs*0.45,Y(+s)-fs*0.45); ctx.lineTo(X0,Y(+s)); ctx.fill(); }
-            if(d!=null){ ctx.fillStyle=IT.dia.c; ctx.beginPath(); ctx.moveTo(X0-fs*0.45,Y(+d)+fs*0.45); ctx.lineTo(X0+fs*0.45,Y(+d)+fs*0.45); ctx.lineTo(X0,Y(+d)); ctx.fill(); }
+          if(!(grpOf(r)==="rp"||grpOf(r)==="am")){ /* MAP 65 の目安線 */
+            var y65=Y(65); ctx.strokeStyle=hexA("#e5484d",0.6); ctx.lineWidth=1.2; ctx.setLineDash([fs*0.6,fs*0.4]); ctx.beginPath(); ctx.moveTo(L,y65); ctx.lineTo(W-Rm,y65); ctx.stroke(); ctx.setLineDash([]);
+            ctx.font="bold "+fs*0.72+"px sans-serif"; ctx.fillStyle=hexA("#e5484d",0.85); ctx.textAlign="right"; ctx.textBaseline="bottom"; ctx.fillText("MAP 65",W-Rm-4,y65-2); }
+          r.vit.forEach(function(x){ var s=x.v.sys,d=x.v.dia,X0=X(x.t), low=(s!=null&&alertOf(r,"sys",+s)==="r")||(x.v.map!=null&&alertOf(r,"map",+x.v.map)==="r");
+            if(low){ /* 低血圧の時点：赤い帯で目立たせる */ ctx.fillStyle=hexA("#e5484d",dark?0.28:0.16); ctx.fillRect(X0-fs*0.9,gy0,fs*1.8,y1-gy0); }
+            if(s!=null&&d!=null){ ctx.strokeStyle=low?"#e5484d":hexA(IT.sys.c,0.55); ctx.lineWidth=fs*0.35; ctx.beginPath(); ctx.moveTo(X0,Y(+s)); ctx.lineTo(X0,Y(+d)); ctx.stroke(); }
+            ctx.fillStyle=low?"#e5484d":IT.sys.c; if(s!=null){ ctx.beginPath(); ctx.moveTo(X0-fs*0.45,Y(+s)-fs*0.45); ctx.lineTo(X0+fs*0.45,Y(+s)-fs*0.45); ctx.lineTo(X0,Y(+s)); ctx.fill(); }
+            if(d!=null){ ctx.fillStyle=low?"#e5484d":IT.dia.c; ctx.beginPath(); ctx.moveTo(X0-fs*0.45,Y(+d)+fs*0.45); ctx.lineTo(X0+fs*0.45,Y(+d)+fs*0.45); ctx.lineTo(X0,Y(+d)); ctx.fill(); }
           });
         }
         ks.forEach(function(k){ if(k==="sys"||k==="dia") return; line(k,Y,k==="dop"); });
@@ -1023,8 +1048,9 @@ function alertOf(r,k,v){
   if(v==null) return ""; var g=grpOf(r), ecto=g==="rp"||g==="am";
   if(k==="spo2") return v<90?"r":v<95?"y":"";
   if(k==="etco2"&&!ecto) return v>60?"r":(v>50||v<30)?"y":"";
-  if(k==="map"&&!ecto) return v<60?"r":v<70?"y":"";
-  if((k==="sys"||k==="dop")&&!ecto) return v<80?"r":v<90?"y":"";
+  /* 血圧：MAP<65・収縮期<90は赤で目立たせる（院長指定 2026-11-25） */
+  if(k==="map"&&!ecto) return v<65?"r":v<70?"y":"";
+  if((k==="sys"||k==="dop")&&!ecto) return v<90?"r":v<100?"y":"";
   if(k==="temp"&&!ecto){ var lo=g==="bd"?38:37; return v<lo-1?"r":v<lo?"y":""; }
   if(k==="hr"||k==="rr"){ if(v===0) return "r"; var b=baseline(r,k); if(!b) return ""; var c=Math.abs(v-b)/b; return c>=0.4?"r":c>=0.2?"y":""; }
   return "";
@@ -1239,7 +1265,7 @@ function pages(){
   if(R.memo){ if(y>PH-PM-160){ ctx=page(); y=PM; } ctx.font=pf(28,700); ctx.fillStyle="#1f2a2e"; ctx.fillText("メモ・合併症",PM,y); y+=40; ctx.font=pf(24,400); y=wrap(ctx,R.memo,PM,y,PW-PM*2,34); }
   /* フッター */
   out.forEach(function(c,i){ var x=c.getContext("2d"); x.font=pf(20,400); x.fillStyle="#8a979c"; x.textBaseline="top";
-    x.fillText("色付きの値は目安の警告（赤：SpO₂<90・MAP<60など／黄：心拍・呼吸が導入時から20%以上変化など）。作成 "+ymd()+" "+hm(Date.now()),PM,PH-PM+20);
+    x.fillText("色付きの値は目安の警告（赤：SpO₂<90・MAP<65・収縮期<90など／黄：心拍・呼吸が導入時から20%以上変化など）。作成 "+ymd()+" "+hm(Date.now()),PM,PH-PM+20);
     x.textAlign="right"; x.fillText((i+1)+" / "+out.length,PW-PM,PH-PM+20); x.textAlign="left";
     x.font=pf(22,500); x.fillStyle="#1f2a2e"; x.textAlign="right"; x.fillText(R.recBy?"麻酔記録 担当："+staffText():"麻酔記録 担当：＿＿＿＿＿＿＿＿",PW-PM,PH-PM-24); x.textAlign="left"; });
   return out;
@@ -1294,8 +1320,21 @@ function printPages(){
 }
 
 /* ====== 大画面表示 ====== */
-var DS={id:lsGet("anrec_disp_id"),r:null,rev:-1,lastOk:0,err:"",list:null,timer:null,lock:null};
+/* 2画面モード：親ページが ?slot=1 / ?slot=2 の大画面を左右に並べる（院長指定 2026-11-25） */
+var SLOT=(location.search.match(/[?&]slot=([12])/)||[])[1]||"", DKEY="anrec_disp_id"+(SLOT?"_"+SLOT:"");
+window.__dsId=function(){ return DS.id; };
+function otherId(){ if(!SLOT) return null; try{ var f=window.parent.frames[SLOT==="1"?1:0]; return f.__dsId?f.__dsId():null; }catch(e){ return null; } }
+function startSplit(){
+  document.body.classList.add("disp","split"); document.title="麻酔記録 大画面（2画面）";
+  try{ if(navigator.wakeLock) navigator.wakeLock.request("screen").catch(function(){}); }catch(e){}
+  document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible"&&navigator.wakeLock) navigator.wakeLock.request("screen").catch(function(){}); });
+  var S=h("div",{id:"S"}); ["1","2"].forEach(function(n){ S.appendChild(h("iframe",{src:location.pathname+"?slot="+n+"#display",allow:"autoplay; screen-wake-lock"})); });
+  document.body.appendChild(S);
+}
+var DS={id:lsGet(DKEY),r:null,rev:-1,lastOk:0,err:"",list:null,timer:null,lock:null};
 function startDisplay(){
+  if(!SLOT&&lsGet("anrec_disp_split")){ startSplit(); return; }
+  if(SLOT) document.body.classList.add("slot");
   document.body.classList.add("disp"); if(lsGet("anrec_disp_big")) document.body.classList.add("bigt");
   document.title="麻酔記録 大画面";
   try{ if(navigator.wakeLock) navigator.wakeLock.request("screen").then(function(l){DS.lock=l;}).catch(function(){}); }catch(e){}
@@ -1303,7 +1342,7 @@ function startDisplay(){
   try{ if(window.BroadcastChannel) new BroadcastChannel("anrec").onmessage=function(){ if(!REC_API) dPoll(); }; }catch(e){}
   window.addEventListener("storage",function(){ if(!REC_API) dPoll(); });
   window.addEventListener("resize",dPaint);
-  dPoll(); setInterval(dPoll,4000); setInterval(dClock,1000);
+  setTimeout(function(){ dPoll(); setInterval(dPoll,4000); },SLOT==="2"?1500:0); setInterval(dClock,1000);
 }
 function dFetchList(){
   if(!REC_API) return Promise.resolve(localIds().map(function(id){return lsGet("anrec_r_"+id);}).filter(Boolean).map(meta));
@@ -1318,14 +1357,14 @@ function dPoll(){
   if(REC_API&&!apiKey()){ dKey(); return; }
   if(!DS.id){
     dFetchList().then(function(rows){ DS.lastOk=Date.now(); DS.err="";
-      var live=rows.filter(function(x){return x.status==="live"&&Date.now()-x.updated<12*3600e3;}).sort(function(a,b){return b.updated-a.updated;});
+      var oid=otherId(), live=rows.filter(function(x){return x.status==="live"&&Date.now()-x.updated<12*3600e3&&x.id!==oid;}).sort(function(a,b){return b.updated-a.updated;});
       DS.list=rows.filter(function(x){return Date.now()-x.updated<24*3600e3;});
-      if(live.length===1){ DS.id=live[0].id; DS.auto=true; dPoll(); return; }
+      if(live.length===1||(SLOT&&live.length&&!DS.picked)){ DS.id=live[0].id; DS.auto=true; DS.picked=1; dPoll(); return; }
       dPaint(); }).catch(function(e){ DS.err=String(e.message||e); if(DS.authErr){ dKey(DS.err); return; } dPaint(); });
     return;
   }
   dFetch(DS.id,DS.r?DS.r.rev:-1).then(function(x){ DS.lastOk=Date.now(); DS.err="";
-    if(x.gone){ DS.id=null; DS.r=null; lsDel("anrec_disp_id"); dPaint(); return; }
+    if(x.gone){ DS.id=null; DS.r=null; lsDel(DKEY); dPaint(); return; }
     if(x.r){ DS.r=x.r; dPaint(); }
     /* 記録が終わったら次の症例を待つ（自動選択のとき） */
     if(DS.r&&DS.r.status==="done"&&DS.auto&&Date.now()-DS.r.updated>10*60000){ DS.id=null; DS.r=null; dPaint(); }
@@ -1393,9 +1432,10 @@ function dPaint(){
   var r=DS.r;
   if(!r){
     var box=h("div",{class:"dmsg"},h("div",{style:"font-size:30px;color:#e8eef0",text:"麻酔記録 大画面"}),h("div",{text:REC_API?"記録中の症例を待っています…":"試験モード：この端末で記録中の症例を表示します"}),h("div",{id:"dclk",style:"font-size:40px;font-variant-numeric:tabular-nums"}));
-    (DS.list||[]).forEach(function(x){ box.appendChild(h("button",{onclick:function(){ DS.id=x.id; DS.auto=false; lsSet("anrec_disp_id",x.id); DS.r=null; dPoll(); }},(x.status==="live"?"● ":"○ ")+(x.name||"名前なし")+"　"+x.sp+"　"+(x.proc||"")+"　"+(x.status==="live"?"記録中":x.status==="done"?"終了":"準備中"))); });
+    (DS.list||[]).forEach(function(x){ box.appendChild(h("button",{onclick:function(){ DS.id=x.id; DS.auto=false; lsSet(DKEY,x.id); DS.r=null; dPoll(); }},(x.status==="live"?"● ":"○ ")+(x.name||"名前なし")+"　"+x.sp+"　"+(x.proc||"")+"　"+(x.status==="live"?"記録中":x.status==="done"?"終了":"準備中"))); });
     if(DS.err) box.appendChild(h("div",{style:"color:#ff7466",text:DS.err}));
     if(REC_API) box.appendChild(h("button",{style:"min-width:0;text-align:center;font-size:15px;padding:8px 14px",text:"院内キーを入れ直す",onclick:function(){ dKey(); }}));
+    box.appendChild(h("button",{style:"min-width:0;text-align:center;font-size:15px;padding:8px 14px",text:SLOT?"1画面に戻す":"2画面（並行麻酔を左右に表示）",onclick:function(){ if(SLOT){ lsDel("anrec_disp_split"); window.top.location.reload(); } else { lsSet("anrec_disp_split",1); location.reload(); } }}));
     D.appendChild(box); dClock(); return;
   }
   var P=r.pt;
@@ -1406,7 +1446,8 @@ function dPaint(){
         sndBtn("background:none;border:1px solid #26363c;border-radius:8px;font-size:20px;padding:0 8px"),
         h("button",{style:cbs,text:document.body.classList.contains("bigt")?"タイマー：特大":"タイマー：大",onclick:function(e){ var on=document.body.classList.toggle("bigt"); lsSet("anrec_disp_big",on); dPaint(); }}),
         h("button",{style:cbs+";color:#ffcc4d;border-color:#5a4a1a",text:"✎ 臨時入力",title:"iPhoneが使えないときに、この画面から入力する",onclick:function(){ openEmergency(r.id); }}),
-        h("button",{style:cbs,text:"症例切替",onclick:function(){ DS.id=null; DS.r=null; lsDel("anrec_disp_id"); DS.auto=false; dPoll(); }}))),
+        h("button",{style:cbs+";color:#8fe3cf;border-color:#2b5a50",text:SLOT?"1画面に戻す":"2画面",title:"並行して2件の麻酔をかけているとき、左右に並べて表示する",onclick:function(){ if(SLOT){ lsDel("anrec_disp_split"); window.top.location.reload(); } else { lsSet("anrec_disp_split",1); location.reload(); } }}),
+        h("button",{style:cbs,text:"症例切替",onclick:function(){ DS.id=null; DS.r=null; lsDel(DKEY); DS.auto=false; dPoll(); }}))),
     h("div",{class:"tmr"},
       h("div",{class:"tb an",id:"tA"},h("div",{class:"lb"},h("span",null,"麻酔開始から"),h("small",{id:"tAs"})),h("div",{class:"tv",id:"tAv",text:"--:--"})),
       h("div",{class:"tb cut",id:"tC"},h("div",{class:"lb"},h("span",null,"手術開始から"),h("small",{id:"tCs"})),h("div",{class:"tv",id:"tCv",text:"--:--"})))));

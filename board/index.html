@@ -128,7 +128,9 @@ button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
 <script src="api.js"></script>
 <script>
 (function(){
-var L=BoardLogic,$=function(id){return document.getElementById(id)};
+/* 部品は最初に覚えておく（最前面の小窓へ移した後も同じ部品を操作するため） */
+var L=BoardLogic,cache={};document.querySelectorAll('[id]').forEach(function(e){cache[e.id]=e});
+var $=function(id){return cache[id]||document.getElementById(id)||(pip&&pip.document.getElementById(id))};
 var KEY=BOARD.key(),LS='pbd_';
 var S=null,skew=0,busy=false,mine={},seen=null,notes={},pip=null,host=window,timer=null,mini=false;
 var ICON={emer:'🚨',delay:'⏱',claim:'⚠',quiet:'🤫',ope:'🔪',iso:'🦠',bite:'🦷',equip:'🔧',note:'📝'};

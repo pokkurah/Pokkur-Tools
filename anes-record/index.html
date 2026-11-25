@@ -46,13 +46,17 @@ textarea{min-height:60px}
 .vrow input.val{flex:1;min-width:0;text-align:center;font-size:24px;font-weight:700;height:46px;padding:0}
 .vrow input.val.empty{color:#b9c3c7}
 .vrow input.val.act{outline:3px solid var(--mint);background:var(--mint-l)}
-.kp{position:sticky;bottom:-14px;background:#fff;border-top:1px solid var(--line);margin:8px -14px -14px;padding:8px 10px calc(10px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(4,1fr);gap:6px;z-index:2}
-.kp button{height:48px;border-radius:10px;border:1px solid var(--line);background:#f7f9fa;font-size:22px;font-weight:600;color:var(--ink)}
-.kp button.ent{grid-column:1/5;background:var(--mint-d);color:#fff;font-size:17px;border-color:var(--mint-d)}
+.kp{position:sticky;bottom:-14px;background:#fff;border-top:1px solid var(--line);margin:8px -14px -14px;padding:6px 10px calc(8px + env(safe-area-inset-bottom));display:grid;grid-template-columns:repeat(3,1fr) 1.15fr;gap:5px;z-index:2}
+.kp button{height:42px;border-radius:10px;border:1px solid var(--line);background:#f7f9fa;font-size:22px;font-weight:600;color:var(--ink)}
+.kp button.ent{grid-column:4;grid-row:2/6;height:auto;background:var(--mint-d);color:#fff;font-size:15px;padding:0 4px;border-color:var(--mint-d);line-height:1.3}
 .kp .kl{grid-column:1/5;font-size:12px;color:var(--sub);text-align:center}
 .vrow .same{font-size:11px;padding:4px 6px;border-radius:8px;border:1px dashed var(--mint);background:#fff;color:var(--mint-d);white-space:nowrap}
 .vrow .seg{flex:1} .vrow .seg button{padding:7px 8px;font-size:13px;min-height:40px}
 .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pct{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;margin-top:8px}
+.pct button{height:40px;border:1px solid var(--line);background:#fff;border-radius:9px;font-size:16px;font-weight:600;color:var(--ink);padding:0}
+.pct button.on{background:var(--mint-d);border-color:var(--mint-d);color:#fff}
+.tubesel{flex:1;min-width:0;font-size:18px;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:#fff}
 .grid button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:10px 4px;font-size:14px;min-height:52px;color:var(--ink);line-height:1.2}
 .grid button small{display:block;font-size:11px;color:var(--mint-d);font-weight:700}
 .grid button.done{background:var(--mint-l);border-color:var(--mint)}
@@ -594,11 +598,28 @@ function renderLive(){
     if(DENTAL_EV.indexOf(e)>=0){ g.appendChild(h("button",{class:isV?"done":"",style:"border-color:#93c5fd;color:#1d4ed8",onclick:function(){ addEvent(e); }},e,isV?h("small",null,"実施中 "+hm(d.t)):d&&/終了$/.test(e)?h("small",null,hm(d.t)):null)); return; }
     g.appendChild(h("button",{class:(d&&EV_ONCE.indexOf(e)>=0)||isV?"done":"",onclick:function(){ addEvent(e); }},e,d&&EV_ONCE.indexOf(e)>=0?h("small",null,hm(d.t)):isV?h("small",null,"実施中 "+hm(d.t)):null)); });
   ce.appendChild(g); M.appendChild(ce);
-  /* 気管チューブ（途中でも入力可。PDFの最上段に載る） */
-  var tubeIn=h("input",{type:"text",inputmode:"decimal",placeholder:"内径 mm",value:R.tube||"",style:"width:110px",onchange:function(e){ var v=tnum(e.target.value); R.tube=v==null?"":String(v); touch(); render(); }});
-  M.appendChild(h("div",{class:"card"},h("h2",{text:"気管チューブ"+(R.tube?"：内径 "+R.tube+" mm":"")}),
-    h("div",{class:"seg",style:"margin-bottom:6px"},["2.0","2.5","3.0","3.5","4.0","4.5","5.0","5.5","6.0","6.5","7.0","7.5","8.0","9.0","10.0"].map(function(v){ return h("button",{class:R.tube===String(+v)?"on":"",text:v,onclick:function(){ R.tube=R.tube===String(+v)?"":String(+v); touch(); render(); }}); })),
-    h("div",{style:"display:flex;gap:6px;align-items:center"},tubeIn,h("span",{class:"note",text:"mm（一覧にない径は直接入力）"}))));
+  /* 吸入開始の濃度：吸入開始を押したときだけ出る。1〜5%・0.25刻み */
+  var ie=inhStartEv();
+  if(ie){
+    var ip=inhStart(), open=ip==null||V.inhEdit;
+    var ci=h("div",{class:"card"},h("div",{style:"display:flex;align-items:center;gap:8px"},
+      h("h2",{style:"margin:0;flex:1",text:"吸入開始の濃度"+(ip!=null?"："+ip+" %":"")+"（"+hm(ie.t)+"）"}),
+      ip!=null?h("button",{class:"btn sm ghost",text:open?"閉じる":"変更",onclick:function(){ V.inhEdit=!V.inhEdit; render(); }}):null));
+    if(open) ci.appendChild(h("div",{class:"pct"},INH_PCT.map(function(v){ return h("button",{class:ip===v?"on":"",text:String(v),onclick:function(){
+      var e=inhStartEv(); if(!e) return; e.txt=String(v)+"%"; V.inhEdit=false; touch(); toast("吸入開始 "+e.txt); render(); }}); })));
+    M.appendChild(ci);
+  }
+  /* 気管チューブ（途中でも入力可。PDFの最上段に載る）：スクロールで選ぶ（院長指定 2026-11-25） */
+  var TUBES=[]; for(var _t=1;_t<=14.0001;_t+=0.5) TUBES.push((Math.round(_t*10)/10).toFixed(1));
+  var tsel=h("select",{class:"tubesel",onchange:function(e){ var v=e.target.value;
+      if(v==="other"){ var w=prompt("気管チューブの内径（mm）",R.tube||""); if(w==null){ render(); return; } var n=tnum(w); R.tube=n==null?"":String(n); }
+      else R.tube=v===""?"":String(+v);
+      touch(); render(); }},
+    h("option",{value:"",text:"— 未選択"}),
+    TUBES.map(function(v){ return h("option",{value:v,text:v+" mm",selected:R.tube!==""&&R.tube!=null&&+R.tube===+v}); }),
+    R.tube&&TUBES.every(function(v){ return +v!==+R.tube; })?h("option",{value:R.tube,text:R.tube+" mm",selected:true}):null,
+    h("option",{value:"other",text:"その他（直接入力）"}));
+  M.appendChild(h("div",{class:"card",style:"display:flex;align-items:center;gap:10px"},h("h2",{style:"margin:0;white-space:nowrap",text:"気管チューブ 内径"}),tsel));
   /* 投与 */
   var cd=h("div",{class:"card"},h("h2",{text:"投与（タップで記録）"}));
   if(R.plan.length){ cd.appendChild(h("label",{class:"f",text:"指示の薬"}));
@@ -735,7 +756,11 @@ function openDrug(d){
 }
 
 /* バイタル入力 */
-function lastVal(k){ for(var i=R.vit.length-1;i>=0;i--){ var v=R.vit[i].v[k]; if(v!=null&&v!=="") return v; } return null; }
+function lastVal(k){ for(var i=R.vit.length-1;i>=0;i--){ var v=R.vit[i].v[k]; if(v!=null&&v!=="") return v; } return k==="agent"?inhStart():null; }
+/* 吸入開始の濃度（院長指定 2026-11-25）：吸入開始イベントの txt に「2.5%」で持つ。最初のバイタル入力の前回値にも使う */
+function inhStartEv(){ return R.ev.filter(function(x){return x.k==="吸入開始";})[0]||null; }
+function inhStart(){ var e=inhStartEv(), m=e&&/^([\d.]+)%$/.exec(e.txt||""); return m?+m[1]:null; }
+var INH_PCT=[]; for(var _p=1;_p<=5.0001;_p+=0.25) INH_PCT.push(Math.round(_p*100)/100);
 /* バイタル入力は途中で元の画面に戻れる（入力は保持。院長指定 2026-11-24） */
 var ENTRY=null;
 function visibleModal(){ return [].slice.call(document.querySelectorAll(".modal")).some(function(m){ return m.style.display!=="none"; }); }
@@ -825,7 +850,8 @@ function openEntry(){
     h("button",{class:"btn ghost",style:"flex:1",text:"やめる",onclick:function(){ if(Object.keys(vals).length&&!confirm("入力を破棄しますか？")) return; close(); }}),
     h("button",{class:"btn",style:"flex:2",text:"保存",onclick:save})));
   var kp=h("div",{class:"kp"},h("div",{class:"kl",id:"kplb"}));
-  ["7","8","9","⌫","4","5","6",".","1","2","3","0"].forEach(function(c){ kp.appendChild(h("button",{text:c,onclick:function(){ press(c); }})); });
+  /* iPhoneの数字キーと同じ並び（院長指定 2026-11-25）：1 2 3／4 5 6／7 8 9／. 0 ⌫、右に縦長の⏎ */
+  ["1","2","3","4","5","6","7","8","9",".","0","⌫"].forEach(function(c){ kp.appendChild(h("button",{text:c,onclick:function(){ press(c); }})); });
   kp.appendChild(h("button",{class:"ent",id:"kpent",text:"⏎ 次へ",onclick:function(){ press("⏎"); }}));
   sh.appendChild(kp);
   md.appendChild(sh); document.body.appendChild(md);

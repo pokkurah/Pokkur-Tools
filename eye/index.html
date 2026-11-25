@@ -88,6 +88,27 @@ table.st input[type=number]{width:58px;border:1px solid var(--line);border-radiu
 table.st input[type=text]{width:100%;border:1px solid var(--line);border-radius:8px;padding:6px;font-size:13px}
 .hint{font-size:12px;color:var(--sub);margin:6px 2px 0}
 .hide{display:none!important}
+/* 点眼 */
+.dchips{display:flex;flex-wrap:wrap;gap:6px}
+.dchips button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 12px;font-size:15px;font-weight:700;min-height:44px}
+.dchips button.on{background:var(--mint);border-color:var(--mint);color:#fff}
+.drop{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:8px}
+.drop.miss{border-color:var(--warn)}
+.dtop{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.dno{width:30px;height:30px;border-radius:50%;background:var(--mint);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+.dname{flex:1;font-weight:800;font-size:16px}
+.dbtn{border:1px solid var(--line);background:#fff;border-radius:10px;width:42px;height:40px;font-size:17px;font-weight:800;flex:none}
+.dbtn:disabled{opacity:.3}
+.dbtn.x{color:var(--warn)}
+.drow{display:flex;align-items:center;gap:6px;margin-top:6px;flex-wrap:wrap}
+.drow .lb{font-size:12px;color:var(--sub);font-weight:700;width:34px;flex:none}
+.drow .seg{flex:1}
+.drow .seg button{min-height:40px;padding:0 11px;font-size:14px}
+.drow select{border:1px solid var(--line);border-radius:10px;min-height:40px;padding:0 8px;font-size:15px;font-weight:700;background:#fff}
+.drow select.on{background:var(--mint);border-color:var(--mint);color:#fff}
+.modeseg{display:flex;gap:6px}
+.modeseg button{flex:1;border:1px solid var(--line);background:#fff;border-radius:12px;min-height:52px;font-weight:800;font-size:15px}
+.modeseg button.on{background:var(--mint);border-color:var(--mint);color:#fff}
 </style>
 </head>
 <body>
@@ -98,7 +119,8 @@ table.st input[type=text]{width:100%;border:1px solid var(--line);border-radius:
   <div class="steps" id="steps">
     <button data-v="pt">① 患者情報</button>
     <button data-v="ex">② 検査入力</button>
-    <button data-v="out">③ PDF</button>
+    <button data-v="drop">③ 点眼</button>
+    <button data-v="out">④ PDF</button>
   </div>
   <div class="colhead" id="colhead"><div>右眼 OD</div><div class="bar"></div><div>左眼 OS</div></div>
 </header>
@@ -175,6 +197,21 @@ var VETS = ["伊村","伊村晶子","蒲原","榮藤","柿本","山田"];
 var TRI = ["+","±","−"];
 var EYES = ["OD","OS"];
 var COMMENT_LIMIT = 150;
+/* 点眼薬（院長指定 2026-11-25、50音順）。g:true＝眼軟膏（最後に使う） */
+var DROPS = [
+  {n:"エコリシン眼軟膏", g:true}, {n:"オフロキサシン"}, {n:"ガチフロ"}, {n:"血清点眼"},
+  {n:"ゲンタマイシン"}, {n:"ジクアス"}, {n:"ステロップ"}, {n:"タリビッド眼軟膏", g:true},
+  {n:"ティアローズ"}, {n:"ヒアルロン酸0.1%PF"}, {n:"ヒアレインミニ"}, {n:"フルオロメトロン"},
+  {n:"ベストロン"}, {n:"ワンクリーン"}
+];
+var DEYES = [["OD","右眼"],["OS","左眼"],["OU","両眼"]];
+var DFREQ = [["1","1回"],["2","2回"],["3","3回"],["4","4回"],["5","5回"],["6","6回"],["q2","2時間毎"],["prn","必要時"]];
+var MAXDAYS = 60;
+function isOint(n){ for(var i=0;i<DROPS.length;i++) if(DROPS[i].n===n) return !!DROPS[i].g; return /軟膏/.test(n); }
+function dEyeText(k){ for(var i=0;i<DEYES.length;i++) if(DEYES[i][0]===k) return DEYES[i][1]; return ""; }
+function dFreqText(k){ if(!k) return ""; if(k==="q2") return "2時間毎"; if(k==="prn") return "必要時"; return "1日"+k+"回"; }
+function dDurText(d){ if(d.dur==="rv") return "再診まで"; if(d.dur==="days"&&d.days) return d.days+"日間"; return ""; }
+function dropMissing(d){ var m=[]; if(!d.eye) m.push("眼"); if(!d.f) m.push("回数"); if(!dDurText(d)) m.push("期間"); return m; }
 
 /* ===================== 保存 ===================== */
 function lsGet(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
@@ -187,10 +224,13 @@ function today(){
 }
 function blankState(){
   return {pt:{date:today(), no:"", name:"", owner:"", sp:"dog", spOther:"", vet:(lsGet("eye_vet")||"")},
-          tearMethod:"stt", e:{OD:{},OS:{}}, comment:""};
+          tearMethod:"stt", e:{OD:{},OS:{}}, comment:"", mode:"exam", drops:[]};
 }
 var S = lsGet("eye_draft") || blankState();
 if(!S.e) S = blankState();
+if(!S.drops) S.drops=[];
+if(!S.mode) S.mode="exam";
+function dropOnly(){ return S.mode==="drop"; }
 var REFS = DEFAULT_REFS; // 基準値は全端末共通（変更はこのファイルのDEFAULT_REFSを編集）
 try{ localStorage.removeItem("eye_refs"); }catch(e){}
 var view = "pt";
@@ -233,6 +273,7 @@ function spLabel(){
 function h(tag, attrs){
   var el=document.createElement(tag);
   if(attrs) for(var a in attrs){
+    if(attrs[a]==null||attrs[a]===false) continue;
     if(a==="class") el.className=attrs[a];
     else if(a==="text") el.textContent=attrs[a];
     else if(a.slice(0,2)==="on") el.addEventListener(a.slice(2), attrs[a]);
@@ -278,16 +319,24 @@ function viewPt(){
     vetSeg.appendChild(h("button",{class:p.vet===v?"on":"",text:v,onclick:function(){ p.vet=v; lsSet("eye_vet",v); persist(); render(); }}));
   });
   var other = p.sp==="other" ? [h("label",{class:"f",text:"動物種（例：フェレット、セキセイインコ）"}), inp("spOther","動物種名")] : null;
+  var modeSeg=h("div",{class:"modeseg"});
+  [["exam","眼科検査＋点眼"],["drop","点眼表のみ"]].forEach(function(o){
+    modeSeg.appendChild(h("button",{class:S.mode===o[0]?"on":"",text:o[1],onclick:function(){ S.mode=o[0]; persist(); render(); }}));
+  });
   return h("div",null,
     h("div",{class:"card"},
+      h("h2",{text:"作成するもの"}), modeSeg,
+      h("p",{class:"hint",text:dropOnly()?"検査なしで点眼指示書（A5）だけを作ります。":"検査記録（A5）に点眼表も載せます。点眼がなければ空欄のままでOK。"})
+    ),
+    h("div",{class:"card"},
       h("h2",{text:"患者情報"}),
-      h("label",{class:"f",text:"検査日"}), inp("date","","date"),
+      h("label",{class:"f",text:dropOnly()?"日付":"検査日"}), inp("date","","date"),
       h("label",{class:"f",text:"カルテ番号"}), inp("no","例：012345","text","numeric"),
       h("label",{class:"f",text:"動物名"}), inp("name","例：もも"),
       h("label",{class:"f",text:"飼い主名（任意）"}), inp("owner","例：山田"),
       h("label",{class:"f",text:"動物種"}), spSeg, other,
       h("p",{class:"hint",text:"基準値：犬・猫・兎は種別の値で自動判定（兎の涙液量は参考値のみ）。その他の種は記録のみ。"}),
-      h("label",{class:"f",text:"検査担当獣医師"}), vetSeg
+      h("label",{class:"f",text:dropOnly()?"担当獣医師":"検査担当獣医師"}), vetSeg
     )
   );
 }
@@ -420,6 +469,80 @@ function viewEx(){
   return wrap;
 }
 
+/* ===================== 画面③ 点眼 ===================== */
+function dropIndex(n){ for(var i=0;i<S.drops.length;i++) if(S.drops[i].d===n) return i; return -1; }
+function viewDrop(){
+  var wrap=h("div");
+  var chips=h("div",{class:"dchips"});
+  DROPS.forEach(function(dr){
+    var on=dropIndex(dr.n)>=0;
+    chips.appendChild(h("button",{class:on?"on":"",text:dr.n,onclick:function(){
+      var ix=dropIndex(dr.n);
+      if(ix>=0) S.drops.splice(ix,1);
+      else S.drops.push({d:dr.n, eye:"", f:"", dur:"", days:""});
+      persist(); render();
+    }}));
+  });
+  wrap.appendChild(h("div",{class:"card"},
+    h("h2",{text:"点眼薬を選ぶ（タップした順に並びます）"}), chips,
+    h("p",{class:"hint",text:"もう一度タップで外せます。順番は下の ↑↓ で入れ替え。"})));
+
+  wrap.appendChild(h("div",{class:"sec",text:"点眼の順番と指示"+(S.drops.length?"（"+S.drops.length+"種）":"")}));
+  if(!S.drops.length) wrap.appendChild(h("p",{class:"hint",text:"まだ選ばれていません。"}));
+  S.drops.forEach(function(d,i){
+    function seg(list, key){
+      var s=h("div",{class:"seg"});
+      list.forEach(function(o){
+        s.appendChild(h("button",{class:d[key]===o[0]?"on":"",text:o[1],onclick:function(){ d[key]=(d[key]===o[0]?"":o[0]); persist(); render(); }}));
+      });
+      return s;
+    }
+    var sel=h("select",{class:d.dur==="days"&&d.days?"on":""});
+    sel.appendChild(h("option",{value:"",text:"〜日"}));
+    for(var n=1;n<=MAXDAYS;n++){ var op=h("option",{value:String(n),text:n+"日間"}); if(d.dur==="days"&&String(d.days)===String(n)) op.selected=true; sel.appendChild(op); }
+    sel.addEventListener("change",function(){ if(sel.value){ d.dur="days"; d.days=+sel.value; } else { d.dur=""; d.days=""; } persist(); render(); });
+    var durSeg=h("div",{class:"seg"}, sel,
+      h("button",{class:d.dur==="rv"?"on":"",text:"再診まで",onclick:function(){ if(d.dur==="rv"){ d.dur=""; } else { d.dur="rv"; d.days=""; } persist(); render(); }}));
+    var miss=dropMissing(d);
+    wrap.appendChild(h("div",{class:"drop"+(miss.length?" miss":"")},
+      h("div",{class:"dtop"},
+        h("div",{class:"dno",text:String(i+1)}),
+        h("div",{class:"dname"}, d.d, miss.length?h("div",{class:"judge b",text:"未選択："+miss.join("・")}):null),
+        h("button",{class:"dbtn",text:"↑",disabled:i===0?"disabled":null,onclick:function(){ if(i>0){ var t=S.drops[i-1]; S.drops[i-1]=d; S.drops[i]=t; persist(); render(); } }}),
+        h("button",{class:"dbtn",text:"↓",disabled:i===S.drops.length-1?"disabled":null,onclick:function(){ if(i<S.drops.length-1){ var t=S.drops[i+1]; S.drops[i+1]=d; S.drops[i]=t; persist(); render(); } }}),
+        h("button",{class:"dbtn x",text:"×",onclick:function(){ S.drops.splice(i,1); persist(); render(); }})
+      ),
+      h("div",{class:"drow"}, h("span",{class:"lb",text:"眼"}), seg(DEYES,"eye")),
+      h("div",{class:"drow"}, h("span",{class:"lb",text:"回数"}), seg(DFREQ,"f")),
+      h("div",{class:"drow"}, h("span",{class:"lb",text:"期間"}), durSeg)
+    ));
+  });
+  if(dropOrderWarn()) wrap.appendChild(h("div",{class:"msg ng",text:"眼軟膏の後に点眼液があります。眼軟膏は最後にするのが基本です（↑↓で並べ替え）。"}));
+  var g=dropGapNote();
+  if(g) wrap.appendChild(h("p",{class:"hint",text:"印刷される注意："+g}));
+  if(dropOnly()){
+    var ta=h("textarea",{class:"t",rows:"3",placeholder:"補足（任意）：例）エリザベスカラーを外さない"});
+    ta.value=S.comment||"";
+    ta.addEventListener("input",function(){ S.comment=ta.value; persist(); });
+    wrap.appendChild(h("div",{class:"sec",text:"補足"}));
+    wrap.appendChild(h("div",{class:"card"},ta));
+  }
+  return wrap;
+}
+function dropGapNote(){
+  if(S.drops.length<2) return "";
+  var t="点眼の間は5分以上あけ、上の番号順に使ってください。";
+  var oint=S.drops.some(function(d){ return isOint(d.d); });
+  if(oint) t+="眼軟膏は最後に。";
+  return t;
+}
+function dropOrderWarn(){
+  // 眼軟膏より後に点眼液がある
+  var seen=false;
+  for(var i=0;i<S.drops.length;i++){ if(isOint(S.drops[i].d)) seen=true; else if(seen) return true; }
+  return false;
+}
+
 /* ===================== 表示テキスト（PDF用） ===================== */
 function cellText(it, eye){
   if(it.t==="tri"){ var v=get(eye,it.k); return v?{t:v, bad:v!=="+"}:{t:"—"}; }
@@ -473,14 +596,16 @@ function renderPages(){
     ctx.textBaseline="top"; pages.push(c); pageNo++;
     y=M;
     // ヘッダー
-    ctx.fillStyle="#1f2a2e"; ctx.font=fnt(40,700); ctx.fillText("眼科検査記録",M,y);
-    ctx.font=fnt(20,500); ctx.fillStyle="#6b7a80"; ctx.fillText("Ophthalmic Examination",M+262,y+16);
+    var ttl=dropOnly()?"点眼指示書":"眼科検査記録", sub=dropOnly()?"Eye Drop Instructions":"Ophthalmic Examination";
+    ctx.fillStyle="#1f2a2e"; ctx.font=fnt(40,700); ctx.fillText(ttl,M,y);
+    var tw=ctx.measureText(ttl).width;
+    ctx.font=fnt(20,500); ctx.fillStyle="#6b7a80"; ctx.fillText(sub,M+tw+22,y+16);
     ctx.textAlign="right"; ctx.font=fnt(24,700); ctx.fillStyle="#1f8670"; ctx.fillText("ポックル動物病院",PW-M,y+8);
     ctx.textAlign="left"; y+=58;
     ctx.fillStyle="#2fa88e"; ctx.fillRect(M,y,PW-2*M,4); y+=16;
     // 患者情報
     var p=S.pt, d=(p.date||"").replace(/-/g,"/");
-    var info1=[["検査日",d],["カルテNo",p.no||"—"],["担当医",p.vet||"—"]];
+    var info1=[[dropOnly()?"日付":"検査日",d],["カルテNo",p.no||"—"],["担当医",p.vet||"—"]];
     var info2=[["動物名",p.name||"—"],["種",spLabel()],["飼い主",p.owner||"—"]];
     [info1,info2].forEach(function(row){
       var x=M, w=(PW-2*M)/3;
@@ -508,7 +633,8 @@ function renderPages(){
     y+=40;
   }
   var BOTTOM=PH-M-40;
-  newPage(); tableHead();
+  newPage();
+  if(!dropOnly()){ tableHead();
 
   ITEMS.forEach(function(it){
     if(it.sec){
@@ -538,30 +664,74 @@ function renderPages(){
     // 縦線
     ctx.fillRect(colX[1],y-hgt,2,hgt); ctx.fillRect(colX[2],y-hgt,2,hgt);
   });
+  }
+
+  // 点眼表
+  if(S.drops.length){
+    var big=dropOnly(), fs=big?30:23, rh=big?58:38, hh=big?44:34, hfs=big?21:18;
+    var dw=[big?70:56, 0, big?140:120, big?210:180, big?210:180];
+    dw[1]=PW-2*M-dw[0]-dw[2]-dw[3]-dw[4];
+    var dx=[M]; for(var q=1;q<5;q++) dx[q]=dx[q-1]+dw[q-1];
+    var dHead=function(){
+      ctx.fillStyle="#e6f5f1"; ctx.fillRect(M,y,PW-2*M,hh);
+      ctx.font=fnt(hfs,700); ctx.fillStyle="#1f8670";
+      ["順","点眼薬","眼","回数","期間"].forEach(function(t,k){ ctx.fillText(t,dx[k]+12,y+(hh-hfs)/2); });
+      y+=hh;
+    };
+    y+= big?6:18;
+    if(y+32+hh+rh>BOTTOM) newPage();
+    ctx.font=fnt(big?24:20,800); ctx.fillStyle="#1f8670"; ctx.fillText(big?"点眼の順番と回数":"点眼指示",M,y); y+=big?38:32;
+    dHead();
+    S.drops.forEach(function(d,i){
+      if(y+rh>BOTTOM){ newPage(); dHead(); }
+      var ty=y+(rh-fs)/2;
+      var vals=[String(i+1), d.d, dEyeText(d.eye), dFreqText(d.f), dDurText(d)];
+      vals.forEach(function(v,k){
+        var miss=!v;
+        ctx.font=fnt(miss?Math.round(fs*0.8):fs, (k<=1||miss)?700:500);
+        ctx.fillStyle=miss?"#b0261a":(k===0?"#1f8670":"#1f2a2e");
+        var t=miss?"未記入":v, mw=dw[k]-20;
+        while(ctx.measureText(t).width>mw && t.length>1) t=t.slice(0,-1);
+        ctx.fillText(t,dx[k]+12,miss?y+(rh-Math.round(fs*0.8))/2:ty);
+      });
+      y+=rh;
+      ctx.fillStyle="#e3e8ea"; ctx.fillRect(M,y,PW-2*M,2);
+      for(var q=1;q<5;q++) ctx.fillRect(dx[q],y-rh,2,rh);
+    });
+    var gn=dropGapNote();
+    if(gn){
+      ctx.font=fnt(big?24:18,600); ctx.fillStyle="#1f2a2e";
+      wrap(ctx,"※ "+gn,PW-2*M).forEach(function(l){ if(y+(big?34:26)>BOTTOM) newPage(); y+=big?10:6; ctx.fillText(l,M,y); y+=big?26:20; });
+    }
+  }
 
   // コメント
   y+=18;
   var com=(S.comment||"").trim();
+  var comLab=dropOnly()?"補足":"コメント";
+  if(!(dropOnly()&&!com)){
   ctx.font=fnt(24,400);
   var cl=com?wrap(ctx,com,PW-2*M-28):["—"];
   if(y+40+30>BOTTOM){ newPage(); }
-  ctx.font=fnt(20,800); ctx.fillStyle="#1f8670"; ctx.fillText("コメント",M,y); y+=32;
+  ctx.font=fnt(20,800); ctx.fillStyle="#1f8670"; ctx.fillText(comLab,M,y); y+=32;
   var boxTop=y; ctx.font=fnt(24,400); ctx.fillStyle="#1f2a2e"; y+=12;
   cl.forEach(function(l){
     if(y+32>BOTTOM){
       ctx.strokeStyle="#cfd8db"; ctx.lineWidth=2; ctx.strokeRect(M,boxTop,PW-2*M,y-boxTop+8);
-      newPage(); ctx.font=fnt(20,800); ctx.fillStyle="#1f8670"; ctx.fillText("コメント（続き）",M,y); y+=32; boxTop=y; y+=12;
+      newPage(); ctx.font=fnt(20,800); ctx.fillStyle="#1f8670"; ctx.fillText(comLab+"（続き）",M,y); y+=32; boxTop=y; y+=12;
       ctx.font=fnt(24,400); ctx.fillStyle="#1f2a2e";
     }
     ctx.fillText(l,M+14,y); y+=32;
   });
   ctx.strokeStyle="#cfd8db"; ctx.lineWidth=2; ctx.strokeRect(M,boxTop,PW-2*M,Math.max(y-boxTop+8, 90));
+  }
 
   // フッター（全ページ）
   pages.forEach(function(c,i){
     var g=c.getContext("2d"); g.textBaseline="top";
     g.font=fnt(16,500); g.fillStyle="#8a979c";
-    g.fillText("+ 正常 / ± 減弱 / − 消失　赤字＝異常・基準外　基準値は院内設定値（ティアQ＝ストリップメニスコメトリー）",M,PH-M-8);
+    if(!dropOnly()) g.fillText("+ 正常 / ± 減弱 / − 消失　赤字＝異常・基準外　基準値は院内設定値（ティアQ＝ストリップメニスコメトリー）",M,PH-M-8);
+    else g.fillText("ご不明な点は病院までお問い合わせください。",M,PH-M-8);
     g.textAlign="right"; g.fillText((i+1)+" / "+pages.length,PW-M,PH-M-8); g.textAlign="left";
   });
   return pages;
@@ -603,7 +773,7 @@ function buildPdf(canvases){
 
 function fileName(){
   var p=S.pt, d=(p.date||today()).replace(/-/g,"");
-  var parts=[d, p.no||"番号なし", p.name||"名前なし", "眼科"];
+  var parts=[d, p.no||"番号なし", p.name||"名前なし", dropOnly()?"点眼":"眼科"];
   return parts.join("_").replace(/[\\\/:*?"<>|\s]/g,"")+".pdf";
 }
 
@@ -669,10 +839,14 @@ function viewOut(){
   var warn=[];
   if(!S.pt.no) warn.push("カルテ番号");
   if(!S.pt.name) warn.push("動物名");
+  var dmiss=S.drops.filter(function(d){ return dropMissing(d).length; }).map(function(d){ return d.d; });
+  if(dropOnly()&&!S.drops.length) dmiss=["点眼薬が未選択"];
   var msg=h("div",{class:"msg hide"});
   outMsgEl=msg;
   return h("div",null,
     warn.length?h("div",{class:"msg ng",text:"未入力："+warn.join("・")+"（ファイル名に使われます）"}):null,
+    dmiss.length?h("div",{class:"msg ng",text:"点眼の指示が未記入："+dmiss.join("・")}):null,
+    dropOrderWarn()?h("div",{class:"msg ng",text:"眼軟膏の後に点眼液が並んでいます。順番を確認してください。"}):null,
     msg,
     h("div",{class:"fname",text:"ファイル名："+fileName()+"（A5・"+pages.length+"ページ）"}),
     prev,
@@ -682,26 +856,30 @@ function viewOut(){
 var outMsgEl=null;
 
 /* ===================== ルーティング ===================== */
-function go(v){ view=v; render(); window.scrollTo(0,0); }
+function go(v){ if(v==="ex"&&dropOnly()) v="drop"; view=v; render(); window.scrollTo(0,0); }
 document.getElementById("steps").addEventListener("click",function(e){ var b=e.target.closest("button"); if(b) go(b.getAttribute("data-v")); });
 
 function render(){
-  Array.prototype.forEach.call(document.querySelectorAll("#steps button"),function(b){ b.classList.toggle("on", b.getAttribute("data-v")===view); });
+  Array.prototype.forEach.call(document.querySelectorAll("#steps button"),function(b){ b.classList.toggle("on", b.getAttribute("data-v")===view); b.classList.toggle("hide", dropOnly()&&b.getAttribute("data-v")==="ex"); });
   document.getElementById("colhead").classList.toggle("show", view==="ex");
   $main.innerHTML=""; $foot.innerHTML="";
   if(view==="pt"){
     $main.appendChild(viewPt());
-    $foot.appendChild(h("button",{text:"新しい検査",onclick:function(){
-      confirmBox("入力中の内容をすべて消去して、新しい検査を始めます。","消去して開始",function(){ S=blankState(); persist(); go("pt"); });
+    $foot.appendChild(h("button",{text:"新規作成",onclick:function(){
+      confirmBox("入力中の内容（検査・点眼）をすべて消去して、新しく始めます。","消去して開始",function(){ var md=S.mode; S=blankState(); S.mode=md; persist(); go("pt"); });
     }}));
-    $foot.appendChild(h("button",{class:"pri",text:"検査入力へ →",onclick:function(){ go("ex"); }}));
+    $foot.appendChild(h("button",{class:"pri",text:dropOnly()?"点眼入力へ →":"検査入力へ →",onclick:function(){ go(dropOnly()?"drop":"ex"); }}));
   }else if(view==="ex"){
     $main.appendChild(viewEx());
     $foot.appendChild(h("button",{text:"← 患者情報",onclick:function(){ go("pt"); }}));
+    $foot.appendChild(h("button",{class:"pri",text:"点眼へ →",onclick:function(){ go("drop"); }}));
+  }else if(view==="drop"){
+    $main.appendChild(viewDrop());
+    $foot.appendChild(h("button",{text:dropOnly()?"← 患者情報":"← 検査入力",onclick:function(){ go(dropOnly()?"pt":"ex"); }}));
     $foot.appendChild(h("button",{class:"pri",text:"完了・PDFへ →",onclick:function(){ go("out"); }}));
   }else if(view==="out"){
     $main.appendChild(viewOut());
-    $foot.appendChild(h("button",{text:"← 修正",onclick:function(){ go("ex"); }}));
+    $foot.appendChild(h("button",{text:"← 修正",onclick:function(){ go("drop"); }}));
     if(IS_PC){
       $foot.appendChild(h("button",{text:"PDFをダウンロード",onclick:function(){ savePdf(outMsgEl); }}));
       $foot.appendChild(h("button",{class:"pri",text:"🖨 印刷する",onclick:function(){ printPages(outMsgEl); }}));

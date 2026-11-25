@@ -168,6 +168,10 @@ var BoardLogic = (function () {
         /* 外来が終わったら枠押しは消す */
         if (p.id === 'gairai' && p.state === 'done') s.alerts = s.alerts.filter(function (x) { return x.type !== 'delay'; });
         return null;
+      case 'ack':   /* 時刻のお知らせ（16:00退勤）を消す。その日だけ */
+        if (p.name !== 'out16') return '項目が不明です';
+        s.day.out16 = 1;
+        return null;
       case 'flag':
         if (p.name !== 'exam' && p.name !== 'ff') return '項目が不明です';
         s.day[p.name] = yes(p.val) ? true : p.val === false || p.val === 'false' ? false : null;

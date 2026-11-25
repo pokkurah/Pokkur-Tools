@@ -53,6 +53,8 @@ body.inpip #panel{border:0;border-radius:0}
 .chip.done{background:#1f8670;color:#fff;border-color:#1f8670}
 .chip.skip{background:#dfe5e8;color:#9aa6aa;border-color:#dfe5e8;text-decoration:line-through}
 .chip.now{background:#ff6d00;color:#fff;border-color:#fff}
+#bar .out16{background:#ff6d00;color:#fff;border-color:#fff;font-weight:800;font-size:13px;animation:o16 .8s infinite}
+@keyframes o16{50%{background:#fff;color:#ff6d00;border-color:#ff6d00}}
 #bar .x{margin-left:auto;background:rgba(255,255,255,.85)}
 .pipOnly{display:none!important}
 body.inpip .pipOnly{display:inline-block!important}
@@ -100,6 +102,7 @@ body.inpip .pipOnly{display:inline-block!important}
 <li><b>📝</b>：申し送り（文字）。済んだら「解決」</li>
 <li><b>札</b>：赤札・黄札を場所ごとに増減</li>
 <li><b>17時以降</b>：外来・ホテル・MTG は押すと完了（もう一度で戻す）。入院は検査・FFを選べる。チェックはチェックリストが開く</li>
+<li>16:00〜16:05 に「16:00退勤」が点滅します。押すと全PCから消えます</li>
 <li>表示は毎朝4時にすべて消えます（札は残ります）。留守電は17時に自動で点きます</li>
 </ul></details>
 <details class="set" style="display:block"><summary style="cursor:pointer">タスクバーに置く（さっと出す・しまう）</summary>
@@ -128,7 +131,7 @@ var L=BoardLogic,cache={};document.querySelectorAll('[id]').forEach(function(e){
 var $=function(id){return cache[id]};
 var KEY=BOARD.key(),LS='pbd_';
 var S=null,skew=0,busy=false,mine={},seen=null,notes={},pip=null,host=window,timer=null;
-var sub='',fvet='',noteDraft='',lastOk=0,fail=false;
+var sub='',fvet='',noteDraft='',lastOk=0,fail=false,rang16='';
 var ICON={emer:'🚨',phone:'📞',quiet:'🤫',claim:'⚠',delay:'⏱',note:'📝'};
 var SHORT={emer:'エマ',phone:'留守電',quiet:'看取り',claim:'クレーム'};
 var SP={'ICU':'ICU','犬舎':'犬','猫舎':'猫','エキゾ舎':'エキゾ','?':'場所?'};
@@ -220,6 +223,12 @@ function drawBar(){
   if(!KEY)B.appendChild(el('span','warn','🔑 院内キー未登録（ボードの画面で入力）'));
   else if(fail||(lastOk&&Date.now()-lastOk>35000))B.appendChild(el('span','warn','⚠ 更新できていません'));
   if(!S){if(KEY&&!fail)B.appendChild(el('span','','読み込み中…'));return}
+  /* 16:00〜16:05 だけ「16:00退勤」を点滅表示。押すと全PCから消える */
+  var tj=jst(now()),m16=tj.getUTCHours()*60+tj.getUTCMinutes()-16*60;
+  if(m16>=0&&m16<5&&!S.day.out16){
+    B.appendChild(btn('🕓 16:00退勤',function(){act({action:'ack',name:'out16'})},'out16','押すと消える'));
+    if(rang16!==S.day.date){rang16=S.day.date;beep(false)}
+  }
   /* 札（場所つき） */
   var any=false;
   [['red','r','赤'],['yellow','y','黄']].forEach(function(c){

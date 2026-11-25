@@ -3,12 +3,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex,nofollow">
 <title>院内ボード | ポックル院内ツール</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1f8670">
+<link rel="icon" href="icon-192.png">
 <script src="../gate.js"></script>
 <style id="bstyle">
 *{box-sizing:border-box}
 body{margin:0;background:#f5f7f8;color:#1f2a2e;font-family:"Meiryo UI","Yu Gothic UI",-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;font-size:14px}
 .wrap{max-width:560px;margin:0 auto;padding:14px}
 .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.tip{font-size:12px;color:#6b7a80;margin:-4px 0 8px}
 .top h1{font-size:18px;margin:0;color:#1f8670}
 .sp{flex:1}
 button{font:inherit;border:1px solid #b9c4c8;background:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;color:#1f2a2e}
@@ -98,10 +102,26 @@ button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
 .places button.mine{border:2px solid #1f8670;font-weight:700}
 .st button.arm{background:#c62828!important;color:#fff!important;border-color:#c62828!important}
 .mini .hideMini{display:none!important}
+/* 横長の最小表示（浮かせたとき） */
+#minibar{display:none}
+.mini>#minibar{display:flex}
+.mini>*:not(#minibar){display:none!important}
+#minibar{align-items:center;gap:6px;height:52px;padding:0 6px;background:#eef3f4;color:#1f2a2e;font-size:14px;cursor:pointer;overflow:hidden;white-space:nowrap}
+#minibar .tg b{font-size:15px;padding:2px 7px}
+#minibar .sum{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;font-weight:700}
+#minibar .cd2{font-weight:800;font-variant-numeric:tabular-nums;background:#1f2a2e;color:#ffd54f;border-radius:6px;padding:2px 6px}
+#minibar .cd2.over{background:#b71c1c;color:#fff}
+#minibar .stp{font-weight:700;color:#ff6d00}
+#minibar button{padding:3px 8px;font-size:14px;flex-shrink:0;background:rgba(255,255,255,.85)}
+#minibar.alert{color:#fff}#minibar.alert .stp{color:#ffe0b2}
+#minibar.blink{animation:bl 1s infinite}
+.pipOnly{display:none!important}
+body.inpip .pipOnly{display:inline-block!important}
 </style></head><body>
 <div class="wrap">
 <div class="top"><h1>院内ボード</h1><span class="sp"></span>
 <button id="pipBtn" class="pri">最前面に浮かせる</button></div>
+<div class="tip" id="tip">この画面で Enter キーを押しても浮かせられます。タスクバーに置く方法は下の「タスクバーに置く」へ。</div>
 <div class="set">
 <label>このPCのチェックリスト：<select id="place"></select></label>
 <label><input type="checkbox" id="eveForce"> 17時前でも夕方モードを表示</label>
@@ -109,14 +129,21 @@ button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
 <button id="shareBtn">他のPCを登録</button>
 </div>
 
+<details class="set" style="display:block"><summary style="cursor:pointer">タスクバーに置く（さっと出す・しまう）</summary>
+<ol style="margin:6px 0 0;padding-left:20px;line-height:1.7">
+<li>Chromeの右上「︙」→「キャスト、保存、共有」→「ページをアプリとしてインストール」（または「ショートカットを作成」で「ウィンドウとして開く」に✓）</li>
+<li>できた「院内ボード」のアイコンをタスクバーで右クリック →「タスクバーにピン留めする」</li>
+<li>使い方：タスクバーのアイコンを押す → Enter（または「最前面に浮かせる」）で小窓 → 元の窓は「最小化」。しまうときは小窓の ✕</li>
+</ol></details>
 <div id="panel">
+<div id="minibar" title="押すと広げる"></div>
 <div class="mock hide" id="mockbar">試験モード（このPC内だけのデータ）</div>
 <form class="keybox hide" id="keybox"><b>院内キーを入力</b><span id="keyMsg">受付ボードと同じ院内キーです。1回入れればこのPCに保存され、次からは入力不要です。</span>
 <div class="kr"><input type="password" id="keyIn" autocomplete="off" placeholder="院内キー"><button class="pri" id="keyGo">登録</button></div><span class="ke" id="keyErr"></span></form>
 <div class="tags" id="tags"></div>
 <div id="alerts"></div>
 <div class="form hide hideMini" id="form"></div>
-<div class="addrow hideMini" id="addrow"><button id="addBtn">＋ 表示を追加</button><span class="sp"></span><button id="miniBtn" title="縮める／広げる">縮める</button></div>
+<div class="addrow hideMini" id="addrow"><button id="addBtn">＋ 表示を追加</button><span class="sp"></span><button id="miniBtn" title="横長の最小表示にする">縮める</button><button id="hideBtn" class="pipOnly" title="小窓を閉じる（ボードの画面からまた浮かせられます）">隠す</button></div>
 <div class="eve hide" id="eve"></div>
 <div class="err hide" id="err"></div>
 </div>
@@ -220,8 +247,30 @@ function draw(force){
   if(!S)return;
   var sig=JSON.stringify([S.v,Math.floor(now()/1000),mini,formOpen,ftype,placesOpen]);
   if(!force&&sig===lastSig)return;lastSig=sig;
-  drawTags();drawAlerts();drawEve();
+  drawTags();drawAlerts();drawEve();if(mini)drawMini();
 }
+/* 横長の最小表示：札の数・一番大事な表示・17時以降の残り時間と今やること */
+function drawMini(){
+  var M=$('minibar');M.innerHTML='';M.className='';M.style.background='';
+  [['red','r','赤'],['yellow','y','黄']].forEach(function(c){var n=S[c[0]]||0;if(n){var g=el('div','tg '+c[1]);g.appendChild(el('b','',c[2]+n));M.appendChild(g)}});
+  var order=['emer','claim','quiet','delay','phone','note'],al=S.alerts.slice().sort(function(a,b){return order.indexOf(a.type)-order.indexOf(b.type)||a.at-b.at});
+  var sum=el('span','sum');
+  if(al.length){var a=al[0];sum.textContent=ICON[a.type]+' '+title(a)+(al.length>1?'　ほか'+(al.length-1)+'件':'');M.style.background=COLOR[a.type];M.className='alert'+(a.type==='emer'?' blink':'')}
+  else sum.textContent=S.red||S.yellow?'':'平常';
+  M.appendChild(sum);
+  if(isEve()){
+    var prog=L.progress(S),cur=current(prog),t=jst(now()),sod=t.getUTCHours()*3600+t.getUTCMinutes()*60+t.getUTCSeconds();if(t.getUTCHours()<4)sod+=86400;
+    var sec=19*3600-sod;
+    if(cur){
+      M.appendChild(el('span','cd2'+(sec<0?' over':''),sec>=0?Math.floor(sec/3600)+':'+('0'+Math.floor(sec%3600/60)).slice(-2):'超過'+Math.floor(-sec/60)+'分'));
+      var stp=L.STEPS.filter(function(x){return x.id===cur})[0];M.appendChild(el('span','stp','▶'+stp.label+(cur==='check'?' '+prog.pct+'%':'')));
+    }else M.appendChild(el('span','stp','✓ 終了'));
+  }
+  M.appendChild(btn('⤢',function(){setMini(false)}));
+  if(pip)M.appendChild(btn('✕',function(){pip.close()}));
+}
+$('minibar').addEventListener('click',function(){setMini(false)});
+$('hideBtn').addEventListener('click',function(){if(pip)pip.close()});
 var editTags=false;
 function drawTags(){
   var T=$('tags');T.innerHTML='';T.classList.toggle('editTags',editTags);
@@ -346,7 +395,7 @@ function openCheck(a){
 }
 
 /* 最前面（Document Picture-in-Picture） */
-var FULL={w:340,h:520},MINI={w:340,h:110};
+var FULL={w:360,h:560},MINI={w:440,h:52};
 function setMini(v,auto){
   mini=v;$('panel').classList.toggle('mini',mini);$('miniBtn').textContent=mini?'広げる':'縮める';
   if(pip&&!auto){try{pip.resizeTo(mini?MINI.w:FULL.w,mini?MINI.h:FULL.h)}catch(e){}}
@@ -358,16 +407,22 @@ $('pipBtn').addEventListener('click',function(){
   if(pip){pip.close();return}
   if(!('documentPictureInPicture' in window)){showErr('このブラウザでは最前面表示が使えません。ChromeかEdgeを最新版にしてください。');return}
   if('Notification' in window&&Notification.permission==='default')Notification.requestPermission().then(updNoti);
-  documentPictureInPicture.requestWindow({width:FULL.w,height:FULL.h}).then(function(w){
-    pip=w;w.document.title='院内ボード';
+  /* 浮かせるときは横長の最小表示で開く（広げる・縮めるはボタンで） */
+  documentPictureInPicture.requestWindow({width:MINI.w,height:MINI.h,preferInitialWindowPlacement:true}).then(function(w){
+    pip=w;w.document.title='院内ボード';w.document.body.classList.add('inpip');
     var st=w.document.createElement('style');st.textContent=$('bstyle').textContent+'body{background:#fff}#panel{border:0;border-radius:0}';
     w.document.head.appendChild(st);w.document.body.appendChild($('panel'));
     w.document.addEventListener('click',unlockAudio);
-    $('pipBtn').textContent='ボードを元に戻す';host=w;schedule();
+    $('pipBtn').textContent='ボードを元に戻す';host=w;setMini(true,true);schedule();
     w.addEventListener('pagehide',function(){document.querySelector('.wrap').appendChild($('panel'));pip=null;host=window;setMini(false,true);$('pipBtn').textContent='最前面に浮かせる';schedule()});
   }).catch(function(e){showErr('最前面にできませんでした：'+e.message)});
 });
 
+/* この画面で Enter を押しても浮かせる（入力欄では無効） */
+document.addEventListener('keydown',function(e){
+  if(e.key!=='Enter'||pip||e.isComposing)return;var t=e.target&&e.target.tagName;if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||t==='BUTTON')return;
+  e.preventDefault();$('pipBtn').click();
+});
 /* 更新：見えているとき・浮かせているときは5秒、隠れているときは30秒 */
 function schedule(){
   if(timer){try{timer.w.clearInterval(timer.id);timer.w.clearInterval(timer.tick)}catch(e){}}

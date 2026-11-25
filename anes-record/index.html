@@ -416,13 +416,41 @@ function keyShare(){
     h("h2",{text:"院内キーを渡す",style:"margin:0 0 4px"}),
     h("div",{class:"note",text:"登録したいiPhoneのカメラで読み取り → 出てきたリンクを開く（Safari）"}),qr,
     h("div",{class:"note",style:"text-align:left;margin:6px 0",text:"手術室PC：下のリンクをコピーして大画面のブックマークにすると、開くたびにキーが入り直します。"}),
-    h("div",{style:"display:flex;gap:6px;justify-content:center"},
+    h("div",{style:"display:flex;gap:6px;justify-content:center;flex-wrap:wrap"},
+      h("button",{class:"btn sm ghost",text:"🖨 壁に貼る用紙（A5）",onclick:function(){ printKeySheet(url); }}),
       h("button",{class:"btn sm ghost",text:"PC用リンクをコピー",onclick:function(){ copy(pc); }}),
       h("button",{class:"btn sm",text:"閉じる",onclick:close})),
     h("div",{class:"note",style:"margin-top:8px;color:var(--warn)",text:"院外の人に見せない・送らないでください"})));
   document.body.appendChild(ov);
-  function draw(){ try{ var q=qrcode(0,"M"); q.addData(url); q.make(); qr.innerHTML=q.createSvgTag({cellSize:4,margin:4,scalable:true}); var sv=qr.querySelector("svg"); if(sv){ sv.style.width="100%"; sv.style.height="100%"; } }catch(e){ qr.textContent="QRを作れませんでした"; } }
-  if(window.qrcode) draw(); else { var sc=document.createElement("script"); sc.src="qrcode.js"; sc.onload=draw; sc.onerror=function(){ qr.textContent="QRを読み込めませんでした（通信を確認）"; }; document.head.appendChild(sc); }
+  qrSvg(url,function(svg){ if(!svg){ qr.textContent="QRを作れませんでした（通信を確認）"; return; } qr.innerHTML=svg; var sv=qr.querySelector("svg"); if(sv){ sv.style.width="100%"; sv.style.height="100%"; } });
+}
+function qrSvg(text,cb){
+  function draw(){ try{ var q=qrcode(0,"M"); q.addData(text); q.make(); cb(q.createSvgTag({cellSize:4,margin:4,scalable:true})); }catch(e){ cb(""); } }
+  if(window.qrcode) draw(); else { var sc=document.createElement("script"); sc.src="qrcode.js"; sc.onload=draw; sc.onerror=function(){ cb(""); }; document.head.appendChild(sc); }
+}
+/* 手術室の壁に貼る引き継ぎ用紙（A5縦）。この端末のキーでQRを作るので、キーはどこにも書き出さない */
+function printKeySheet(url){
+  qrSvg(url,function(svg){
+    if(!svg){ toast("QRを作れませんでした"); return; }
+    var old=document.getElementById("pf"); if(old) old.remove();
+    var f=h("iframe",{id:"pf",style:"position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden"}); document.body.appendChild(f);
+    var d=f.contentWindow.document, t=new Date(), ds=t.getFullYear()+"/"+(t.getMonth()+1)+"/"+t.getDate();
+    d.open(); d.write('<!DOCTYPE html><html><head><meta charset="utf-8"><title>麻酔ツール 引き継ぎQR</title><style>'+
+      '@page{size:A5 portrait;margin:8mm}html,body{margin:0;font-family:-apple-system,"Hiragino Sans","Meiryo UI","Noto Sans JP",sans-serif;color:#1d2a2e}'+
+      '.w{height:190mm;display:flex;flex-direction:column;align-items:center;text-align:center}'+
+      '.hd{width:100%;background:#1f8670;color:#fff;border-radius:3mm;padding:3mm 0;-webkit-print-color-adjust:exact;print-color-adjust:exact}'+
+      '.hd b{display:block;font-size:20pt}.hd span{font-size:11pt}'+
+      '.qr{width:88mm;height:88mm;margin:5mm 0 3mm}.qr svg{width:100%;height:100%}'+
+      'ol{text-align:left;font-size:13pt;line-height:1.55;margin:0 0 3mm;padding-left:8mm}ol b{color:#1f8670}'+
+      '.n{font-size:9.5pt;color:#55666b;text-align:left;width:100%;border-top:1px solid #c9d2d6;padding-top:2mm;margin-top:auto}'+
+      '</style></head><body><div class="w">'+
+      '<div class="hd"><b>📷 麻酔ツール 引き継ぎQR</b><span>麻酔記録・麻酔薬計算をこのiPhoneで使えるようにする</span></div>'+
+      '<div class="qr">'+svg+'</div>'+
+      '<ol><li>iPhoneの<b>カメラ</b>でQRを写す</li><li>出てきた<b>リンクをタップ</b>（Safariで開く）</li><li>初めての端末だけ<b>院内パスコード（4桁）</b>を入れる</li><li>麻酔記録が開けば完了。<b>院内キーの入力は不要</b></li></ol>'+
+      '<div class="n">・院内キーを聞かれたら、もう一度このQRを写してください（ブラウザがデータを消すことがあります）<br>・院外の人が見える場所・写真に写る場所には貼らないでください<br>・院内キーを変えたら、この用紙は作り直して貼り替えてください（麻酔記録ホーム →「他の端末へ渡す」）<br>作成 '+ds+'</div>'+
+      '</div></body></html>'); d.close();
+    setTimeout(function(){ f.contentWindow.focus(); f.contentWindow.print(); },300);
+  });
 }
 function keyBox(msg){
   var ki=h("input",{type:"text",placeholder:"院内キー（受付ボードと同じ）",value:""});

@@ -188,6 +188,8 @@ var ITEMS=[
  {k:"peep",l:"PEEP",u:"cmH₂O",t:"num",st:1,dp:0,c:"#c026d3",ventOnly:1}
 ];
 var IT={}; ITEMS.forEach(function(x){ IT[x.k]=x; });
+/* グラフ専用：酸素と空気の流量から計算したFiO₂の理論値（新鮮ガス。回路内の再呼吸は考えない） */
+IT.fio2c={k:"fio2c",l:"FiO₂（理論値）",u:"%",t:"num",dp:0,c:"#16a34a",calc:1};
 /* EtISO はセボフルランのとき EtSEV と表示 */
 function curRec(){ return (typeof R!=="undefined"&&R)||(typeof DS!=="undefined"&&DS.r)||null; }
 function isSevo(){ var r=curRec(); return !!(r&&r.agent==="セボフルラン"); }
@@ -884,7 +886,7 @@ function entries(){
   R.dr.forEach(function(x){ a.push({t:x.t,kind:"dr",id:x.id,txt:x.name+" "+(x.amt||"")+" "+(x.route||"")}); });
   return a.sort(function(p,q){return p.t-q.t;});
 }
-function shortL(k){ return {hr:"HR",rr:"RR",spo2:"SpO₂",etco2:"EtCO₂",sys:"SYS",map:"MAP",dia:"DIA",dop:"Dop",temp:"体温",agent:"吸入",o2:"O₂",pip:"内圧",peep:"PEEP",air:"Air",fio2:"FiO₂",etag:isSevo()?"EtSEV":"EtISO",fluid:"輸液",ecg:"ECG",reflex:"反射",jaw:"顎",mm:"粘膜",crt:"CRT",vent:"換気"}[k]||k; }
+function shortL(k){ return {hr:"HR",rr:"RR",spo2:"SpO₂",etco2:"EtCO₂",sys:"SYS",map:"MAP",dia:"DIA",dop:"Dop",temp:"体温",agent:"吸入",o2:"O₂",pip:"内圧",peep:"PEEP",air:"Air",fio2:"FiO₂",etag:isSevo()?"EtSEV":"EtISO",fluid:"輸液",fio2c:"FiO₂(理論)",ecg:"ECG",reflex:"反射",jaw:"顎",mm:"粘膜",crt:"CRT",vent:"換気"}[k]||k; }
 function timeline(edit){
   var d=h("div",{class:"tl"}), a=entries().reverse();
   if(!a.length) d.appendChild(h("div",{class:"note",text:"まだ記録がありません"}));
@@ -904,15 +906,15 @@ function timeline(edit){
 var PANELS=[
  {l:"主要バイタル",ks:["hr","rr","spo2","etco2","sys","map","dia","dop"],main:1,w:4.2},
  {l:"体温",ks:["temp"],w:1.1},
- {l:"吸入濃度",ks:["agent"],area:1,w:1},
- {l:"EtISO",ks:["etag"],area:1,w:1},
- {l:"酸素流量",ks:["o2"],area:1,w:1},
- {l:"空気流量",ks:["air"],area:1,w:1},
+ {l:"吸入濃度・EtISO",ks:["agent","etag"],area:1,w:1.6},
+ {l:"FiO₂（理論値）",ks:["fio2c"],src:["o2","air"],w:1},
  {l:"気道内圧・PEEP",ks:["pip","peep"],w:1.2}
 ];
-function activePanels(r){ return PANELS.filter(function(p){ return p.ks.some(function(k){ return r.items.indexOf(k)>=0||r.vit.some(function(x){return x.v[k]!=null;}); }); }); }
+function activePanels(r){ return PANELS.filter(function(p){ return (p.src||p.ks).some(function(k){ return r.items.indexOf(k)>=0||r.vit.some(function(x){return x.v[k]!=null;}); }); }); }
 function panelW(r){ return activePanels(r).reduce(function(a,p){ return a+p.w; },0)||1; }
-function series(r,k){ return r.vit.filter(function(x){return x.v[k]!=null&&x.v[k]!=="";}).map(function(x){return {t:x.t,v:+x.v[k]};}); }
+function fio2Of(v){ var o=v.o2!=null&&v.o2!==""?+v.o2:null, a=v.air!=null&&v.air!==""?+v.air:null; if(o==null&&a==null) return null; o=o||0; a=a||0; if(o+a<=0) return null; return Math.round((o*100+a*21)/(o+a)); }
+function series(r,k){ if(k==="fio2c") return r.vit.map(function(x){ return {t:x.t,v:fio2Of(x.v)}; }).filter(function(p){ return p.v!=null; });
+  return r.vit.filter(function(x){return x.v[k]!=null&&x.v[k]!=="";}).map(function(x){return {t:x.t,v:+x.v[k]};}); }
 /* 面積グラフ用：吸入濃度は「吸入開始の濃度」から始め、吸入終了で0に落とす（syn＝点を打たない補助点） */
 function areaSeries(r,k){
   var s=series(r,k);
@@ -951,26 +953,31 @@ function drawTrend(ctx,r,opt){
   evs.forEach(function(e){ var x=X(e.t); ctx.strokeStyle=C.ev; ctx.setLineDash([4,4]); ctx.lineWidth=1.2; ctx.beginPath(); ctx.moveTo(x,top-(opt.labels?fs*0.2:0)); ctx.lineTo(x,H-bot); ctx.stroke(); ctx.setLineDash([]);
     if(opt.labels){ row=x-lastX<fs*7?(row+1)%3:0; lastX=x; ctx.fillStyle=C.ev; ctx.textAlign="left"; ctx.textBaseline="top"; ctx.font="bold "+fs*0.95+"px sans-serif"; ctx.fillText(e.k==="その他"?(e.txt||"").slice(0,8):e.k.replace("（伏臥位）",""),x+3,row*fs*1.25); } });
   r.dr.forEach(function(d){ var x=X(d.t); ctx.fillStyle=C.dr; ctx.beginPath(); ctx.moveTo(x,top-2); ctx.lineTo(x-fs*0.4,top-fs*0.75); ctx.lineTo(x+fs*0.4,top-fs*0.75); ctx.fill(); });
-  var yc=top;
+  var yc=top, mTop=0;
   ps.forEach(function(p){
     var ph=unit*p.w, y0=yc+fs*0.3, y1=yc+ph-fs*0.3; yc+=ph;
     ctx.strokeStyle=C.grid; ctx.lineWidth=1; ctx.strokeRect(L,y0,W-L-Rm,y1-y0);
-    var ks=p.ks.filter(function(k){ return r.items.indexOf(k)>=0||series(r,k).length; });
+    var ks=p.src?p.ks:p.ks.filter(function(k){ return r.items.indexOf(k)>=0||series(r,k).length; });
     /* 凡例（先に高さを決める。主要バイタルは折り返す） */
     ctx.font="bold "+fs*0.95+"px sans-serif"; var lw=[], lrows=1, lxx=L+6;
-    ks.forEach(function(k){ var s=series(r,k), last=s.length?s[s.length-1].v:null, tx=shortL(k)+(last!=null?" "+fv(k,last)+(p.area&&IT[k].u?" "+IT[k].u:""):"");
+    ks.forEach(function(k){ var s=series(r,k), last=s.length?s[s.length-1].v:null, tx=shortL(k)+(last!=null?" "+fv(k,last)+((p.area||k==="fio2c")&&IT[k].u?" "+IT[k].u:""):"");
+      if(k==="fio2c"){ var lv=r.vit.length?r.vit[r.vit.length-1].v:{}; if(lv.o2!=null||lv.air!=null) tx+="（O₂ "+(lv.o2!=null?fv("o2",lv.o2):"0")+"＋Air "+(lv.air!=null?fv("air",lv.air):"0")+" L/分）"; }
       var w=ctx.measureText(tx).width+fs*1.9; if(lxx+w>W-Rm-4&&lxx>L+6){ lrows++; lxx=L+6; } lw.push({k:k,tx:tx,x:lxx,row:lrows-1}); lxx+=w; });
-    var legH=lrows*fs*1.25+fs*0.3, gy0=y0+legH;
+    var legH=lrows*fs*1.25+fs*0.3, gy0=y0+legH; mTop=gy0;
     var rg=range(r,ks.concat(p.area?[]:[])); 
     if(p.area){ var mx=0; ks.forEach(function(k){ areaSeries(r,k).forEach(function(q){ if(q.v>mx) mx=q.v; }); }); rg=mx>0?[0,mx]:null; }
     if(rg){
-      var n=p.main?nice(0,Math.max(rg[1],100)):p.area?nice(0,rg[1]):nice(rg[0],rg[1]);
+      var n=p.main?nice(0,Math.max(rg[1],100)):p.area?nice(0,rg[1]):p.src?{lo:0,hi:100,st:25}:nice(rg[0],rg[1]);
       if(p.main||p.area){ n.lo=0; }
       var Y=function(v){ return y1-(v-n.lo)/(n.hi-n.lo)*(y1-gy0); };
       var maxT=Math.max(2,Math.floor((y1-gy0)/(fs*1.5))), st=n.st; while((n.hi-n.lo)/st>maxT) st*=2;
       ctx.font=fs*0.9+"px sans-serif"; ctx.textBaseline="middle"; ctx.textAlign="right";
       for(var v=n.lo;v<=n.hi+1e-9;v+=st){ var yy=Y(v); ctx.strokeStyle=C.grid; ctx.beginPath(); ctx.moveTo(L,yy); ctx.lineTo(W-Rm,yy); ctx.stroke(); ctx.fillStyle=C.ax; ctx.fillText(+v.toFixed(2),L-4,yy); }
-      if(p.area) ks.forEach(function(k){ area(k,Y,y1); });
+      if(p.area){ /* 吸入ダイヤルは塗りつぶし、EtISOの線の下は背景色で塗り戻す → ダイヤルとEtの差が色の帯で見える（院長指定） */
+        if(ks.indexOf("agent")>=0) area("agent",Y,y1,hexA(IT.agent.c,dark?0.5:0.35));
+        if(ks.indexOf("etag")>=0) area("etag",Y,y1,C.bg);
+        if(ks.indexOf("agent")>=0) area("agent",Y,y1,null);
+        if(ks.indexOf("etag")>=0) area("etag",Y,y1,null); }
       else {
         if(ks.indexOf("sys")>=0||ks.indexOf("dia")>=0){ /* 収縮〜拡張のバー＋平均 */
           r.vit.forEach(function(x){ var s=x.v.sys,d=x.v.dia,X0=X(x.t);
@@ -980,6 +987,7 @@ function drawTrend(ctx,r,opt){
           });
         }
         ks.forEach(function(k){ if(k==="sys"||k==="dia") return; line(k,Y,k==="dop"); });
+        ks.forEach(function(k){ if(k==="sys"||k==="dia") return; mark(series(r,k),Y,k); });
       }
     }
     /* 凡例を描く */
@@ -989,9 +997,16 @@ function drawTrend(ctx,r,opt){
   function line(k,Y,dash){ var s=series(r,k); if(!s.length) return; ctx.strokeStyle=IT[k].c; ctx.fillStyle=IT[k].c; ctx.lineWidth=Math.max(2,fs*0.18);
     if(dash) ctx.setLineDash([fs*0.5,fs*0.3]); ctx.beginPath(); s.forEach(function(p,j){ var x=X(p.t),y=Y(p.v); if(j) ctx.lineTo(x,y); else ctx.moveTo(x,y); }); ctx.stroke(); ctx.setLineDash([]);
     s.forEach(function(p){ ctx.beginPath(); ctx.arc(X(p.t),Y(p.v),Math.max(2.5,fs*0.25),0,7); ctx.fill(); }); }
-  function area(k,Y,yb){ var s=areaSeries(r,k); if(!s.length) return; var c=IT[k].c;
-    ctx.beginPath(); ctx.moveTo(X(s[0].t),yb); s.forEach(function(p){ ctx.lineTo(X(p.t),Y(p.v)); }); ctx.lineTo(X(s[s.length-1].t),yb); ctx.closePath();
-    ctx.fillStyle=hexA(c,dark?0.45:0.3); ctx.fill();
+  /* 最高値・最低値を小さく書く（院長指定 2026-11-25） */
+  function mark(s,Y,k){ s=s.filter(function(p){return !p.syn;}); if(s.length<2) return; var hi=s[0],lo=s[0];
+    s.forEach(function(p){ if(p.v>hi.v) hi=p; if(p.v<lo.v) lo=p; }); if(hi.v===lo.v) return;
+    ctx.font="bold "+fs*0.72+"px sans-serif"; ctx.textAlign="center"; ctx.fillStyle=IT[k].c;
+    var hy=Y(hi.v); if(hy-fs*1.1<mTop){ ctx.textBaseline="top"; ctx.fillText(fv(k,hi.v),X(hi.t),hy+fs*0.35); } else { ctx.textBaseline="bottom"; ctx.fillText(fv(k,hi.v),X(hi.t),hy-fs*0.35); }
+    ctx.textBaseline="top"; ctx.fillText(fv(k,lo.v),X(lo.t),Y(lo.v)+fs*0.35); }
+  function area(k,Y,yb,fill){ var s=areaSeries(r,k); if(!s.length) return; var c=IT[k].c;
+    if(fill){ ctx.beginPath(); ctx.moveTo(X(s[0].t),yb); s.forEach(function(p){ ctx.lineTo(X(p.t),Y(p.v)); }); ctx.lineTo(X(s[s.length-1].t),yb); ctx.closePath();
+      ctx.fillStyle=fill; ctx.fill(); return; }
+    mark(s,Y,k);
     ctx.strokeStyle=c; ctx.lineWidth=Math.max(2,fs*0.16); ctx.beginPath(); s.forEach(function(p,j){ var x=X(p.t),y=Y(p.v); if(j) ctx.lineTo(x,y); else ctx.moveTo(x,y); }); ctx.stroke();
     ctx.fillStyle=c; s.forEach(function(p){ if(!p.syn){ ctx.beginPath(); ctx.arc(X(p.t),Y(p.v),Math.max(2.5,fs*0.22),0,7); ctx.fill(); } }); }
 }

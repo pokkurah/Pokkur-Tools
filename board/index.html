@@ -101,6 +101,7 @@ button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
 <label>このPCの場所：<select id="place"></select></label>
 <label><input type="checkbox" id="eveForce"> 17時前でも夕方モードを表示</label>
 <button id="notiBtn" class="hide">通知を許可</button>
+<button id="shareBtn">他のPCを登録</button>
 </div>
 
 <div id="panel">
@@ -114,6 +115,7 @@ button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
 </div>
 </div>
 
+<script src="../share.js"></script>
 <script src="logic.js"></script>
 <script src="config.js"></script>
 <script src="api.js"></script>
@@ -127,6 +129,7 @@ var SHORT={emer:'エマ対応',delay:'枠押し',claim:'クレーム',quiet:'看
 var COLOR={emer:'#c62828',delay:'#e08a00',claim:'#6a3fb5',quiet:'#37474f',ope:'#1565c0',iso:'#2e7d32',bite:'#8d4e00',equip:'#546e7a',note:'#b59a3a'};
 var HINT={emer:'場所・内容（任意）',delay:'補足（任意）',claim:'場所・対応者（任意）',quiet:'診察室など（任意）',ope:'補足（任意）',iso:'場所・病名（任意）',bite:'場所・注意点（任意）',equip:'機器名・状態（任意）',note:'申し送りの内容（飼い主名は書かない）'};
 if(BOARD.isMock)$('mockbar').classList.remove('hide');
+$('shareBtn').addEventListener('click',function(){if(window.pokkurShare)pokkurShare()});
 if(!KEY)showErr('このPCはまだ登録されていません。院長から受け取った登録用URLで開いてください。',true);
 
 /* 場所 */

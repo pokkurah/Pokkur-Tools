@@ -55,10 +55,11 @@
     }
     box.appendChild(el('div', 'font-size:13px;color:#6b7a80', '登録したいiPhoneのカメラで読み取り → 出てきたリンクを開く（Safari）'));
     var qr = el('div', 'width:240px;height:240px;margin:6px auto;font-size:13px;color:#6b7a80', 'QRを作成中…'); box.appendChild(qr);
-    box.appendChild(el('div', 'font-size:12px;color:#6b7a80;text-align:left;margin:6px 0', '手術室PC：「大画面PC用リンクをコピー」でブックマークを作ると、開くたびに登録し直されます。'));
+    box.appendChild(el('div', 'font-size:12px;color:#6b7a80;text-align:left;margin:6px 0', '手術室PC：「大画面PC用リンクをコピー」でブックマークを作ると、開くたびに登録し直されます。院内ボードのPCは「院内ボード用リンクをコピー」を同じように使います。'));
     var row = el('div', 'display:flex;gap:6px;justify-content:center;flex-wrap:wrap');
     row.appendChild(btn('🖨 壁に貼る用紙（A5）', false, printSheet));
     row.appendChild(btn('大画面PC用リンクをコピー', false, function () { copy(link('anes-record/', 'display')); }));
+    row.appendChild(btn('院内ボード用リンクをコピー', false, function () { copy(link('board/')); }));
     row.appendChild(btn('閉じる', true, close));
     box.appendChild(row);
     box.appendChild(el('div', 'font-size:12px;color:#c62828;margin-top:8px', '院外の人に見せない・送らないでください'));

@@ -21,6 +21,11 @@ button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
 .mock{background:#333;color:#fff;font-size:11px;text-align:center;padding:2px}
 .err{padding:6px 10px;color:#c62828;font-size:12px;background:#fff3f3}
 .hide{display:none!important}
+.keybox{display:block;padding:12px;background:#fff8e1;border-bottom:1px solid #f0d58a;font-size:13px;color:#46555b}
+.keybox b{display:block;font-size:15px;color:#1f2a2e;margin-bottom:2px}
+.keybox .kr{display:flex;gap:6px;margin-top:8px}
+.keybox input{flex:1;min-width:0;font:inherit;font-size:16px;padding:6px 8px;border:1px solid #b9c4c8;border-radius:8px;letter-spacing:2px}
+.keybox .ke{display:block;color:#c62828;margin-top:4px;min-height:1em}
 
 /* 赤札・黄札 */
 .tags{display:flex;gap:6px;padding:6px 8px;border-bottom:1px solid #e3e8ea;align-items:center;font-size:12px;color:#6b7a80}
@@ -106,6 +111,8 @@ button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
 
 <div id="panel">
 <div class="mock hide" id="mockbar">試験モード（このPC内だけのデータ）</div>
+<form class="keybox hide" id="keybox"><b>院内キーを入力</b><span id="keyMsg">受付ボードと同じ院内キーです。1回入れればこのPCに保存され、次からは入力不要です。</span>
+<div class="kr"><input type="password" id="keyIn" autocomplete="off" placeholder="院内キー"><button class="pri" id="keyGo">登録</button></div><span class="ke" id="keyErr"></span></form>
 <div class="tags" id="tags"></div>
 <div id="alerts"></div>
 <div class="form hide hideMini" id="form"></div>
@@ -130,7 +137,17 @@ var COLOR={emer:'#c62828',delay:'#e08a00',claim:'#6a3fb5',quiet:'#37474f',ope:'#
 var HINT={emer:'場所・内容（任意）',delay:'補足（任意）',claim:'場所・対応者（任意）',quiet:'診察室など（任意）',ope:'補足（任意）',iso:'場所・病名（任意）',bite:'場所・注意点（任意）',equip:'機器名・状態（任意）',note:'申し送りの内容（飼い主名は書かない）'};
 if(BOARD.isMock)$('mockbar').classList.remove('hide');
 $('shareBtn').addEventListener('click',function(){if(window.pokkurShare)pokkurShare()});
-if(!KEY)showErr('このPCはまだ登録されていません。院長から受け取った登録用URLで開いてください。',true);
+/* 院内キー：未登録・無効なら入力欄を出す。通ったキーはこのPCに保存 */
+function showKey(msg){$('keybox').classList.remove('hide');if(msg)$('keyMsg').textContent=msg;$('err').classList.add('hide');setTimeout(function(){try{$('keyIn').focus()}catch(e){}},50)}
+$('keybox').addEventListener('submit',function(e){
+  e.preventDefault();var v=$('keyIn').value.trim();if(!v)return;
+  $('keyGo').disabled=true;$('keyErr').textContent='確認中…';
+  BOARD.state(v).then(function(r){
+    if(r.ok){BOARD.saveKey(v);KEY=v;$('keyIn').value='';$('keybox').classList.add('hide');$('keyErr').textContent='';skew=(r.now||Date.now())-Date.now();if(r.s)take(r.s);load()}
+    else $('keyErr').textContent=r.err==='auth'?'キーが違います。もう一度入れてください':r.err==='nokey'?'サーバーに院内キーが未設定です':'確認できませんでした：'+r.err;
+  }).catch(function(e){$('keyErr').textContent='通信できませんでした：'+(e.message||e)}).then(function(){$('keyGo').disabled=false});
+});
+if(!KEY)showKey();
 
 /* 場所 */
 var ps=$('place');ps.appendChild(new Option('なし',''));L.AREAS.forEach(function(a){ps.appendChild(new Option(a,a))});
@@ -171,7 +188,8 @@ function notify(a){
 function load(){
   if(busy||!KEY)return;busy=true;
   BOARD.state(KEY,S&&S.v).then(function(r){
-    if(!r.ok)throw new Error(r.err==='auth'?'このPCの登録が無効です（院内キーを確認）':r.err==='nokey'?'サーバーに院内キーが未設定です':r.err);
+    if(!r.ok&&r.err==='auth'){showKey('このPCに保存された院内キーが使えません（キーが変わった可能性）。新しい院内キーを入れてください。');return}
+    if(!r.ok)throw new Error(r.err==='nokey'?'サーバーに院内キーが未設定です':r.err);
     skew=(r.now||Date.now())-Date.now();
     if(!r.same)take(r.s);
     $('err').classList.add('hide');
@@ -187,7 +205,7 @@ function take(s){
 }
 function act(p){
   return BOARD.act(KEY,p).then(function(r){
-    if(!r.ok){showErr(r.err==='auth'?'このPCの登録が無効です':'できませんでした：'+r.err);return false}
+    if(!r.ok){if(r.err==='auth')showKey('院内キーが使えません。新しい院内キーを入れてください。');else showErr('できませんでした：'+r.err);return false}
     var before={};(S?S.alerts:[]).forEach(function(a){before[a.id]=1});
     r.s.alerts.forEach(function(a){if(!before[a.id])mine[a.id]=1});
     take(r.s);return true;

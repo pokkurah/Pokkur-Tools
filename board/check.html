@@ -53,6 +53,7 @@ textarea{width:100%;font:inherit;font-size:15px;line-height:1.6;padding:8px;bord
 <script>
 (function(){
 var L=BoardLogic,$=function(id){return document.getElementById(id)},KEY=BOARD.key();
+if(!KEY)setTimeout(function(){err('このPCは院内キーが未登録です。院内ボードで院内キーを入れてください。')},0);
 var S=null,busy=false,pend={},editing=false,closing=null;
 if(BOARD.isMock)$('mockbar').classList.remove('hide');
 var q=new URLSearchParams(location.search),area=q.get('area');

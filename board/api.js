@@ -38,6 +38,11 @@
       /* 到着ボードで登録済みのPCはそのキーを使う（同じ院内キー） */
       return localStorage.getItem('pbd_key') || localStorage.getItem('rcb_key') || (MOCK ? 'test' : '');
     },
+    /* 一度認証できたキーはこのPCに保存（院内ツール共通の保存場所にも入れる）。ブラウザに消されにくくする */
+    saveKey: function (k) {
+      localStorage.setItem('pbd_key', k); localStorage.setItem('rcb_key', k); localStorage.setItem('anes_key', k);
+      try { if (navigator.storage && navigator.storage.persist) navigator.storage.persist(); } catch (e) {}
+    },
     state: function (k, v) { return MOCK ? Promise.resolve(mock({ action: 'state', v: v })) : remote('GET', { action: 'state', k: k, v: v || '' }); },
     act: function (k, p) { p.k = k; return MOCK ? Promise.resolve(mock(p)) : remote('POST', p); }
   };

@@ -67,7 +67,7 @@ function load(){
   BOARD.state(KEY,S&&S.v).then(function(r){if(!r.ok)throw new Error(r.err);if(!r.same){S=r.s;draw()}})
   .catch(function(e){err('更新できません：'+(e.message||e))}).then(function(){busy=false});
 }
-function act(p){return BOARD.act(KEY,p).then(function(r){if(!r.ok){err('できませんでした：'+r.err);return false}S=r.s;draw();return true}).catch(function(e){err('通信できませんでした：'+(e.message||e));return false})}
+function act(p){return BOARD.act(KEY,p).then(function(r){if(!r.ok){err('できませんでした：'+r.err);return false}S=r.s;draw();try{window.opener&&window.opener.__pbdLoad&&window.opener.__pbdLoad()}catch(e){}return true}).catch(function(e){err('通信できませんでした：'+(e.message||e));return false})}
 
 function draw(){
   if(!S)return;

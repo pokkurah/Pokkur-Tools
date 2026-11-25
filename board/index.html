@@ -122,8 +122,17 @@ button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
 #minibar.alert{color:#fff}#minibar.alert .stp{color:#ffe0b2}
 #minibar.blink{animation:bl 1s infinite}
 .pipOnly{display:none!important}
+#minibar .chip,#minibar .tg,#minibar .sum{cursor:pointer}
+#minibar .chip:hover,#minibar .tg:hover{outline:2px solid #1f2a2e}
+.popbar{display:none}
+.popmode .popbar{display:flex;align-items:center;gap:8px;padding:8px 10px;background:#1f2a2e;color:#fff;font-weight:700;position:sticky;top:0;z-index:5}
+.popmode .popbar .sp{flex:1}
+.popmode .wrap{padding:0}
+.popmode .top,.popmode .tip,.popmode .set,.popmode details.set,.popmode #miniBtn{display:none!important}
+.st.focus{outline:3px solid #1565c0;outline-offset:-3px}
 body.inpip .pipOnly{display:inline-block!important}
 </style></head><body>
+<div class="popbar"><span>院内ボード 操作</span><span class="sp"></span><button id="popClose">閉じる</button></div>
 <div class="wrap">
 <div class="top"><h1>院内ボード</h1><span class="sp"></span>
 <button id="pipBtn" class="pri">最前面に浮かせる</button></div>
@@ -165,6 +174,9 @@ body.inpip .pipOnly{display:inline-block!important}
 var L=BoardLogic,cache={};document.querySelectorAll('[id]').forEach(function(e){cache[e.id]=e});
 var $=function(id){return cache[id]||document.getElementById(id)||(pip&&pip.document.getElementById(id))};
 var KEY=BOARD.key(),LS='pbd_';
+/* 操作用の別ウィンドウ（最小表示から開く）。?pop=1&f=<step id|tags|add|alerts> */
+var QS=new URLSearchParams(location.search),POP=QS.get('pop')==='1',FOCUS=QS.get('f')||'';
+if(POP)document.body.classList.add('popmode');
 var S=null,skew=0,busy=false,mine={},seen=null,notes={},pip=null,host=window,timer=null,mini=false;
 var ICON={phone:'📞',emer:'🚨',delay:'⏱',claim:'⚠',quiet:'🤫',ope:'🔪',iso:'🦠',bite:'🦷',equip:'🔧',note:'📝'};
 var SHORT={phone:'留守電設定中',emer:'エマ対応',delay:'枠押し',claim:'クレーム',quiet:'看取り・静かに',ope:'手術中',iso:'隔離対応',bite:'咬傷注意',equip:'機器トラブル',note:'申し送り'};
@@ -214,6 +226,7 @@ function updNoti(){$('notiBtn').classList.toggle('hide',!('Notification' in wind
 $('notiBtn').addEventListener('click',function(){Notification.requestPermission().then(updNoti)});updNoti();
 function title(a){return a.type==='delay'?a.frame+' '+a.min+'分押し':L.TYPES[a.type]}
 function notify(a){
+  if(POP)return;
   if(!('Notification' in window)||Notification.permission!=='granted')return;
   try{var n=new Notification(ICON[a.type]+' '+title(a),{body:a.text||'院内ボード',tag:'pbd-'+a.id,requireInteraction:true,silent:a.type==='quiet'});
     n.onclick=function(){window.focus();n.close()};notes[a.id]=n}catch(e){}
@@ -234,8 +247,7 @@ function take(s){
   var ids={},fresh=[];
   s.alerts.forEach(function(a){ids[a.id]=1;if(seen&&!seen[a.id]&&!mine[a.id])fresh.push(a)});
   if(seen)Object.keys(notes).forEach(function(id){if(!ids[id]){try{notes[id].close()}catch(e){}delete notes[id]}});
-  if(fresh.length){beep(fresh.some(function(a){return a.type==='emer'}));fresh.forEach(notify);
-    if(mini&&fresh.some(function(a){return a.type!=='quiet'}))setMini(false,true)}
+  if(fresh.length&&!POP){beep(fresh.some(function(a){return a.type==='emer'}));fresh.forEach(notify)}
   seen=ids;S=s;draw(true);
 }
 function act(p){
@@ -243,7 +255,7 @@ function act(p){
     if(!r.ok){if(r.err==='auth')showKey('院内キーが使えません。新しい院内キーを入れてください。');else showErr('できませんでした：'+r.err);return false}
     var before={};(S?S.alerts:[]).forEach(function(a){before[a.id]=1});
     r.s.alerts.forEach(function(a){if(!before[a.id])mine[a.id]=1});
-    take(r.s);return true;
+    take(r.s);if(POP){try{window.opener&&window.opener.__pbdLoad&&window.opener.__pbdLoad()}catch(e){}}return true;
   }).catch(function(e){showErr('通信できませんでした：'+(e.message||e));return false});
 }
 
@@ -258,12 +270,13 @@ function draw(force){
 /* 横長の最小表示：札の数・一番大事な表示・17時以降の残り時間と今やること */
 function drawMini(){
   var M=$('minibar');M.innerHTML='';M.className='';M.style.background='';
-  [['red','r','赤'],['yellow','y','黄']].forEach(function(c){var n=S[c[0]]||0;if(n){var g=el('div','tg '+c[1]);g.appendChild(el('b','',c[2]+n));M.appendChild(g)}});
+  [['red','r','赤'],['yellow','y','黄']].forEach(function(c){var n=S[c[0]]||0;if(n){var g=el('div','tg '+c[1]);g.appendChild(el('b','',c[2]+n));g.title='札を増減';g.addEventListener('click',function(e){e.stopPropagation();openPop('tags')});M.appendChild(g)}});
   var order=['emer','claim','quiet','delay','phone','note'],al=S.alerts.slice().sort(function(a,b){return order.indexOf(a.type)-order.indexOf(b.type)||a.at-b.at});
   var sum=el('span','sum');
   var eve=isEve(),TINY={emer:'エマ',claim:'クレーム',quiet:'看取り',phone:'留守電',note:'申し送り'};
   if(al.length){var a=al[0];sum.textContent=ICON[a.type]+' '+title(a)+(al.length>1?'　ほか'+(al.length-1)+'件':'');M.style.background=COLOR[a.type];M.className='alert'+(a.type==='emer'?' blink':'')}
   else sum.textContent=eve?'平常（表示なし）':S.red||S.yellow?'':'平常';
+  sum.title='表示の追加・解決';sum.addEventListener('click',function(e){e.stopPropagation();openPop(S.alerts.length?'alerts':'add')});
   var mid=el('div','mid');mid.appendChild(sum);M.appendChild(mid);
   if(eve){
     var prog=L.progress(S),cur=current(prog),t=jst(now()),sod=t.getUTCHours()*3600+t.getUTCMinutes()*60+t.getUTCSeconds();if(t.getUTCHours()<4)sod+=86400;
@@ -275,14 +288,17 @@ function drawMini(){
     L.STEPS.forEach(function(x){
       var st=S.day.steps[x.id]||(x.id==='check'&&prog.all&&prog.done===prog.all?'done':'');
       var lb=SH[x.id]+(x.id==='check'&&st!=='done'&&st!=='skip'?prog.pct+'%':'');
-      cs.appendChild(el('span','chip '+(x.id===cur?'now':st||'todo'),(st==='done'?'✓':'')+lb));
+      var ch=el('span','chip '+(x.id===cur?'now':st||'todo'),(st==='done'?'✓':'')+lb);ch.title=x.label+'を操作';
+      ch.addEventListener('click',function(e){e.stopPropagation();if(x.id==='check'){var myP=ps.value;openCheck(myP||'')}else openPop(x.id)});
+      cs.appendChild(ch);
     });
     row.appendChild(cs);
   }
+  M.appendChild(btn('＋',function(){openPop('add')}));
   M.appendChild(btn('⤢',function(){setMini(false)}));
   if(pip)M.appendChild(btn('✕',function(){pip.close()}));
 }
-$('minibar').addEventListener('click',function(){setMini(false)});
+$('minibar').addEventListener('click',function(){openPop('')});
 $('hideBtn').addEventListener('click',function(){if(pip)pip.close()});
 var editTags=false;
 function drawTags(){
@@ -345,7 +361,7 @@ function drawForm(){
 
 /* 17時以降モード */
 var placesOpen=false;
-function isEve(){var h=jst(now()).getUTCHours();return $('eveForce').checked||h>=17||h<4}
+function isEve(){var h=jst(now()).getUTCHours();return $('eveForce').checked||h>=17||h<4||(POP&&L.STEPS.some(function(x){return x.id===FOCUS}))}
 function current(prog){
   for(var i=0;i<L.STEPS.length;i++){var id=L.STEPS[i].id,st=S.day.steps[id];
     if(id==='check'&&prog.all&&prog.done===prog.all)continue;
@@ -394,14 +410,25 @@ function drawEve(){
         pb.appendChild(document.createTextNode(a));pb.appendChild(el('small','',q.done+'/'+q.all));P.appendChild(pb)});
       r.appendChild(P);
     }
+    if(POP&&x.id===FOCUS)r.classList.add('focus');
     E.appendChild(r);
   });
+  if(POP&&FOCUS&&!scrolled){var f=E.querySelector('.focus');if(f){f.scrollIntoView({block:'center'});scrolled=true}}
+}
+var scrolled=false;
+/* 最小表示のまま操作する別ウィンドウ */
+var pw=null;
+function openPop(f){
+  var url=new URL('./',location.href);url.searchParams.set('pop','1');if(f)url.searchParams.set('f',f);
+  try{if(pw&&!pw.closed){pw.location.href=url.href;pw.focus();return}}catch(e){}
+  pw=window.open(url.href,'pbd_pop','width=400,height=680');
+  if(!pw)showErr('操作用の窓を開けませんでした。ポップアップを許可してください。');
 }
 /* チェックリストは別ウィンドウ（押したときだけ） */
 var cw=null;
 function openCheck(a){
   placesOpen=false;draw(true);
-  var url=new URL('check.html',location.href);url.searchParams.set('area',a);
+  var url=new URL('check.html',location.href);if(a)url.searchParams.set('area',a);
   try{if(cw&&!cw.closed){cw.location.href=url.href;cw.focus();return}}catch(e){}
   cw=window.open(url.href,'pbd_check','width=440,height=640');
   if(!cw)showErr('チェックリストの窓を開けませんでした。ポップアップを許可してください。');
@@ -444,6 +471,13 @@ function schedule(){
 }
 document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible')load();schedule()});
 window.addEventListener('storage',function(e){if(e.key==='pbd_mock_db')load()});
+window.__pbdLoad=function(){if(S)S.v=-1;load()};
+if(POP){
+  if(FOCUS==='tags')editTags=true;
+  if(FOCUS==='add'){formOpen=true;drawForm()}
+  if(FOCUS&&L.STEPS.some(function(x){return x.id===FOCUS})){$('eveForce').checked=true}
+  $('popClose').addEventListener('click',function(){window.close()});
+}
 load();schedule();
 })();
 </script>

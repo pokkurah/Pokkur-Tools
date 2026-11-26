@@ -8,22 +8,34 @@
 <title>ポックル院内ツール</title>
 <style>
 body{margin:0;background:#f5f7f8;color:#1f2a2e;font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP",sans-serif}
-main{max-width:520px;margin:0 auto;padding:28px 16px}
-h1{font-size:20px;margin:0 0 4px} p{color:#6b7a80;font-size:13px;margin:0 0 20px}
-a{display:block;background:#fff;border:1px solid #e3e8ea;border-radius:14px;padding:18px 16px;margin-bottom:12px;text-decoration:none;color:inherit}
-a b{display:block;font-size:17px;color:#1f8670} a span{font-size:13px;color:#6b7a80}
+main{max-width:760px;margin:0 auto;padding:24px 14px}
+h1{font-size:20px;margin:0 0 4px} p{color:#6b7a80;font-size:13px;margin:0 0 8px}
+h2{font-size:14px;color:#6b7a80;margin:18px 2px 8px;border-left:4px solid #2fa88e;padding-left:8px}
+.g{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+a{display:block;background:#fff;border:1px solid #e3e8ea;border-radius:14px;padding:14px 13px;text-decoration:none;color:inherit}
+a b{display:block;font-size:16px;color:#1f8670;margin-bottom:2px} a span{font-size:12px;color:#6b7a80;line-height:1.45;display:block}
 </style></head><body><main>
 <h1>ポックル院内ツール</h1><p>ポックル動物病院 スタッフ用</p>
-<a href="board/"><b>院内ボード β</b><span>緊急表示・申し送り・赤札/黄札・17時以降の段取り・チェックリスト</span></a>
-<a href="yoyu/"><b>余裕チェック β</b><span>毎日の余裕（緑・黄・赤）の記入と、週・月の集計</span></a>
-<a href="eye/"><b>眼科検査記録</b><span>検査・点眼指示 → A5 PDF → Googleドライブ</span></a>
-<a href="drug/"><b>エキゾ薬剤計算 β</b><span>錠数・mg/kg計算 → カルテ転記</span></a>
+<!-- ツールを足すときは、合うカテゴリの <div class="g"> の中に <a> を1行足す -->
+<h2>手術・麻酔</h2>
+<div class="g">
 <a href="anesthesia/"><b>麻酔薬計算 β</b><span>前投与・CRI・輸液・局麻上限・緊急薬・拮抗</span></a>
 <a href="anes-record/"><b>麻酔記録 β</b><span>iPhone入力 → 大画面トレンド → PDF・カルテ文</span></a>
-<a href="dental/"><b>歯科検査記録 β</b><span>iPadで歯周検査・X線所見・抜歯 → 院内記録・飼い主向け報告書（A4）</span></a>
 <a href="consent/"><b>同意書 β（試験中）</b><span>処置を選んで発行 → iPadで確認・指サイン → PDF（ウサギ・げっ歯類の歯科／犬猫スケーリング ほか）</span></a>
+</div>
+<h2>検査・診療</h2>
+<div class="g">
+<a href="dental/"><b>歯科検査記録 β</b><span>iPadで歯周検査・X線所見・抜歯 → 院内記録・飼い主向け報告書（A4）</span></a>
+<a href="eye/"><b>眼科検査記録</b><span>検査・点眼指示 → A5 PDF → Googleドライブ</span></a>
+<a href="drug/"><b>エキゾ薬剤計算 β</b><span>錠数・mg/kg計算 → カルテ転記</span></a>
+</div>
+<h2>院内の運営</h2>
+<div class="g">
+<a href="board/"><b>院内ボード β</b><span>緊急表示・申し送り・赤札/黄札・17時以降の段取り・チェックリスト</span></a>
+<a href="yoyu/"><b>余裕チェック β</b><span>毎日の余裕（緑・黄・赤）の記入と、週・月の集計</span></a>
 <a href="chorei/"><b>朝礼ルーレット</b><span>グッド＆ニューの発表者 → Do/Don't お題</span></a>
-<button id="share" style="width:100%;margin-top:8px;background:#fff;color:#1f8670;border:1px solid #1f8670;border-radius:14px;padding:14px;font-size:15px;cursor:pointer">📱 他の端末を登録（QR・壁に貼る用紙）</button>
+</div>
+<button id="share" style="width:100%;margin-top:20px;background:#fff;color:#1f8670;border:1px solid #1f8670;border-radius:14px;padding:14px;font-size:15px;cursor:pointer">📱 他の端末を登録（QR・壁に貼る用紙）</button>
 <div id="ok" style="display:none;margin-top:12px;background:#e6f4f0;color:#1f8670;border-radius:10px;padding:10px;font-size:14px;text-align:center">この端末を登録しました。各ツールでパスコード・院内キーの入力は不要です</div>
 </main>
 <script src="share.js"></script>

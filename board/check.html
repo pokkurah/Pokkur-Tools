@@ -57,13 +57,13 @@ textarea{width:100%;font:inherit;font-size:15px;line-height:1.6;padding:8px;bord
 <script>
 (function(){
 var L=BoardLogic,$=function(id){return document.getElementById(id)},KEY=BOARD.key();
-var S=null,busy=false,pend={},editing=false,closing=null;
+var S=null,busy=false,pend={},editing=false,closing=null,wasFull=true,myLast=0,first=true;
 if(BOARD.isMock)$('mockbar').classList.remove('hide');
 var q=new URLSearchParams(location.search),area=q.get('area');
 if(L.AREAS.indexOf(area)<0)area=localStorage.getItem('pbd_place');
 if(L.AREAS.indexOf(area)<0)area=L.AREAS[0];
 L.AREAS.forEach(function(a){$('area').appendChild(new Option(a,a))});$('area').value=area;
-$('area').addEventListener('change',function(){area=$('area').value;history.replaceState(null,'','?area='+encodeURIComponent(area));draw()});
+$('area').addEventListener('change',function(){wasFull=true;myLast=0;if(closing){clearTimeout(closing);closing=null}area=$('area').value;history.replaceState(null,'','?area='+encodeURIComponent(area));draw()});
 function err(t){$('err').textContent=t;$('err').classList.remove('hide');setTimeout(function(){$('err').classList.add('hide')},6000)}
 if(!KEY)err('このPCは院内キーが未登録です。院内ボードで院内キーを入れてください。');
 function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
@@ -86,7 +86,7 @@ function draw(){
     if(L.isHead(t)){Lst.appendChild(el('div','sec',t.slice(1)));return}
     var k=L.ckey(area,t),rl=L.rule(t),cnt=L.counted(t,S.day.date),c=pend[k]!=null?pend[k]:(S.day.checks[k]||0);
     var r=el('div','it'),b=el('span','b'),tx=el('span','tx',t);r.appendChild(b);r.appendChild(tx);
-    function send(v){if(pend[k]!=null)return;pend[k]=v;draw();act({action:'check',area:area,text:t,on:v===2?'na':v===1}).then(function(){delete pend[k];draw()})}
+    function send(v){if(pend[k]!=null)return;pend[k]=v;myLast=Date.now();draw();act({action:'check',area:area,text:t,on:v===2?'na':v===1}).then(function(ok){delete pend[k];if(ok)myLast=Date.now();draw()})}
     if(!rl.opt&&!cnt){r.className='it off';tx.appendChild(el('span','tag','今日は対象外'));Lst.appendChild(r);return}
     if(rl.opt)tx.appendChild(el('span','tag','任意'));
     if(c===2){
@@ -102,9 +102,11 @@ function draw(){
   });
   var full=me.done===me.all&&!Object.keys(pend).length;
   $('done').classList.toggle('hide',!full||editing);
-  /* 全部埋まったら自動で閉じる（ボードから開いた窓のとき） */
-  if(full&&!editing&&window.opener&&!closing){closing=setTimeout(function(){window.close()},2500)}
-  if(!full&&closing){clearTimeout(closing);closing=null}
+  /* 自動で閉じるのは「この窓で最後の1つを押して完了にした」ときだけ。
+     開いた時点で完了済み・他のPCが完了させた・0項目 のときは閉じない（勝手に消えるのを防ぐ） */
+  if(full&&!wasFull&&myLast&&Date.now()-myLast<4000&&!editing&&window.opener&&!closing){closing=setTimeout(function(){window.close()},2500);$('done').textContent='✓ ここは完了です（自動で閉じます）'}
+  if(!full){if(closing){clearTimeout(closing);closing=null}$('done').textContent='✓ ここは完了です'}
+  wasFull=full;
 }
 $('closeBtn').addEventListener('click',function(){window.close();setTimeout(function(){location.href='./'},300)});
 $('edBtn').addEventListener('click',function(){if(!S)return;editing=true;$('tx').value=(S.tpl[area]||[]).join('\n');$('ed').classList.remove('hide');$('list').classList.add('hide');$('foot').classList.add('hide');draw()});

@@ -42,6 +42,14 @@ td.late{color:#b23a2b;font-weight:800}
 .memo small{color:#6b7a80}
 .err{padding:8px 12px;color:#c62828;background:#fff3f3;border-radius:8px;margin-bottom:8px}
 .lg{font-size:11px;color:#6b7a80;margin-top:6px}
+.lb{font-weight:700;font-size:13px;margin:10px 0 4px}
+.sv{display:flex;gap:8px;align-items:center;margin-top:6px}
+.act{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,1fr) minmax(0,1fr) auto auto;gap:4px;margin-bottom:4px;align-items:center}
+.act input{font:inherit;font-size:14px;padding:5px 7px;border:1px solid #b9c4c8;border-radius:7px;min-width:0}
+.pk{display:flex;gap:2px}.pk button{padding:3px 6px;font-size:12px}
+.sq.y{color:#3a2e00}
+.dv{display:inline-block;margin:0 10px 0 0;white-space:nowrap}.dv.up{color:#1f8670;font-weight:700}.dv.dn{color:#b23a2b;font-weight:700}
+@media(max-width:640px){.act{grid-template-columns:1fr 1fr}.act .at{grid-column:1/-1}}
 @media print{.hd a,.bar0,.noprint{display:none!important}body{background:#fff}.card{break-inside:avoid}}
 </style></head><body>
 <div class="mock hide" id="mockbar">試験モード（このPC内だけのデータ）</div>
@@ -66,7 +74,7 @@ function mins(t){var m=/^(\d{1,2}):(\d{2})$/.exec(t||'');return m?Number(m[1])*6
 function hm(m){return Math.floor(m/60)+':'+('0'+Math.round(m%60)).slice(-2)}
 function pct(a,b){return b?Math.round(a*100/b):0}
 /* 1週間＝土曜〜金曜。土曜の朝に、前の日（金曜）までの1週間を振り返る */
-var today=jdate(Date.now()),from,to,mode='wk',ws,prevMemo=null;
+var today=jdate(Date.now()),from,to,mode='wk',ws,prevMemo=null,prevRecs=[],prevRec=null;
 function wlabel(w){return md(w)+'（土）〜'+md(shift(w,6))+'（金）'}
 function setWeek(w){mode='wk';ws=w;from=w;to=shift(w,6);drawBar();load()}
 function setMode(m){mode=m;
@@ -96,21 +104,65 @@ function load(){
   var f=from,t=to,wk=mode==='wk';$('out').textContent='読み込み中…';
   /* 週の表示では、前の週の振り返りも見せるので1週間前から読む */
   YOYU.range(KEY,wk?shift(f,-7):f,t).then(function(r){if(f!==from||t!==to)return;if(!r.ok)throw new Error(r.err);$('err').classList.add('hide');
-    var pw=wk?r.recs.filter(function(x){return x.date===shift(f,-7)})[0]:null;prevMemo=pw&&pw.meta&&pw.meta.weekMemo||'';
+    prevRecs=wk?r.recs.filter(function(x){return x.date<f}):[];prevRec=prevRecs.filter(function(x){return x.date===shift(f,-7)})[0]||null;prevMemo=prevRec&&prevRec.meta&&prevRec.meta.weekMemo||'';
     render(r.recs.filter(function(x){return x.date>=f}))})
   .catch(function(e){$('out').textContent='';$('err').textContent='読み込めません：'+(e.message||e);$('err').classList.remove('hide')});
 }
-/* 週の振り返り：土曜の朝に話したことを残す。あとからその週を開けばいつでも読める */
-function weekCard(memo){
+/* 対策の一覧（担当・いつまで・実施・効果）を編集する表 */
+function actsEditor(list,withResult){
+  var box=el('div'),rows=[];
+  function add(a){a=a||{};var r=el('div','act'),o={};
+    o.t=el('input');o.t.placeholder='対策（何をするか）';o.t.maxLength=120;o.t.value=a.t||'';o.t.className='at';
+    o.who=el('input');o.who.placeholder='担当';o.who.maxLength=20;o.who.value=a.who||'';
+    o.due=el('input');o.due.placeholder='いつまで';o.due.maxLength=20;o.due.value=a.due||'';
+    r.appendChild(o.t);r.appendChild(o.who);r.appendChild(o.due);
+    function pick(key,opts){var w=el('span','pk');o[key]=a[key]||'';Object.keys(opts).forEach(function(k){var b=el('button',o[key]===k?'on':'',opts[k]);b.type='button';
+      b.addEventListener('click',function(){o[key]=o[key]===k?'':k;w.querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b&&o[key]===k)})});w.appendChild(b)});return w}
+    if(withResult){r.appendChild(pick('done',L.DONE));r.appendChild(pick('eff',L.EFF))}else{o.done=a.done||'';o.eff=a.eff||''}
+    rows.push(o);box.appendChild(r)}
+  (list&&list.length?list:[{}]).forEach(add);
+  var ab=el('button','noprint','＋ 対策を足す');ab.type='button';ab.style.marginTop='4px';ab.addEventListener('click',function(){if(rows.length<12)add()});
+  var wrap=el('div');wrap.appendChild(box);wrap.appendChild(ab);
+  return {el:wrap,get:function(){return rows.map(function(o){return {t:o.t.value,who:o.who.value,due:o.due.value,done:o.done,eff:o.eff}})}};
+}
+/* 週の振り返り：土曜の朝に話したことと対策を残す。あとからその週を開けばいつでも読める */
+function weekCard(rec){
   var c=el('div','card');c.style.borderColor='#1f8670';c.appendChild(el('h2','','★ この週の振り返り（土曜の朝に記入）'));
-  var tx=el('textarea');tx.maxLength=1000;tx.value=memo||'';tx.placeholder='例：午後の赤は「押し」が中心。来週は◯◯先生の午後の最終枠を15分早く閉じる。担当：◯◯';
-  tx.style.cssText='width:100%;min-height:110px;font:inherit;font-size:15px;line-height:1.6;padding:8px;border:1px solid #b9c4c8;border-radius:8px';
-  var row=el('div'),sv=el('button','on noprint','保存'),msg=el('span','lg','');row.style.cssText='display:flex;gap:8px;align-items:center;margin-top:6px';
-  var w=ws;sv.addEventListener('click',function(){msg.textContent='保存中…';
-    YOYU.act(KEY,{action:'meta',date:w,m:'weekMemo',v:tx.value}).then(function(r){msg.textContent=r.ok?'保存しました ✓（この週を開けばいつでも読めます）':'保存できませんでした：'+r.err}).catch(function(){msg.textContent='通信できませんでした'})});
-  row.appendChild(sv);row.appendChild(msg);c.appendChild(tx);c.appendChild(row);
-  if(prevMemo){var pm=el('div','memo p');pm.style.marginTop='10px';pm.appendChild(el('small','','前の週（'+wlabel(shift(ws,-7))+'）の振り返り'));var d=el('div','',prevMemo);d.style.whiteSpace='pre-wrap';pm.appendChild(d);c.appendChild(pm)}
+  var w=ws,pw=shift(ws,-7);
+  /* 前の週に決めた対策：やったか・効いたかを付ける */
+  if(prevMemo||(prevRec&&prevRec.acts)){
+    var pb=el('div','memo p');pb.appendChild(el('small','','前の週（'+wlabel(pw)+'）に決めたこと'));
+    if(prevMemo){var d=el('div','',prevMemo);d.style.whiteSpace='pre-wrap';pb.appendChild(d)}
+    if(prevRec&&prevRec.acts){
+      pb.appendChild(el('div','lg','↓ 実施したか・効いたかを付けて保存'));
+      var pe=actsEditor(prevRec.acts,true);pb.appendChild(pe.el);
+      var pr=el('div','sv'),ps=el('button','on noprint','前の週の結果を保存'),pm=el('span','lg','');
+      ps.addEventListener('click',function(){pm.textContent='保存中…';YOYU.act(KEY,{action:'acts',date:pw,list:pe.get()}).then(function(r){pm.textContent=r.ok?'保存しました ✓':'保存できませんでした：'+r.err;if(r.ok)prevRec=r.rec}).catch(function(){pm.textContent='通信できませんでした'})});
+      pr.appendChild(ps);pr.appendChild(pm);pb.appendChild(pr);
+    }
+    c.appendChild(pb);
+  }
+  c.appendChild(el('div','lb','今週のまとめ'));
+  var tx=el('textarea');tx.maxLength=1000;tx.value=rec&&rec.meta.weekMemo||'';tx.placeholder='例：午後の赤は「押し」が中心。受付の黄は電話が原因。';
+  tx.style.cssText='width:100%;min-height:80px;font:inherit;font-size:15px;line-height:1.6;padding:8px;border:1px solid #b9c4c8;border-radius:8px';
+  c.appendChild(tx);
+  c.appendChild(el('div','lb','来週の対策（誰が・いつまでに）'));
+  var ed=actsEditor(rec&&rec.acts,false);c.appendChild(ed.el);
+  var row=el('div','sv'),sv=el('button','on noprint','保存'),msg=el('span','lg','');
+  sv.addEventListener('click',function(){msg.textContent='保存中…';
+    YOYU.act(KEY,{action:'meta',date:w,m:'weekMemo',v:tx.value}).then(function(r){if(!r.ok)throw new Error(r.err);return YOYU.act(KEY,{action:'acts',date:w,list:ed.get()})})
+    .then(function(r){msg.textContent=r.ok?'保存しました ✓（この週を開けばいつでも読めます）':'保存できませんでした：'+r.err}).catch(function(e){msg.textContent='保存できませんでした：'+(e.message||'通信')})});
+  row.appendChild(sv);row.appendChild(msg);c.appendChild(row);
   return c;
+}
+/* 期間のまとめ数字（前の週との比較にも使う） */
+function stats(recs){
+  var t=zero(),mt=[],pm=[],vis=[],out=[];
+  recs.forEach(function(r){Object.keys(r.cells||{}).forEach(function(k){t[r.cells[k].c]++});
+    var a=mins(r.meta.mtStart),b=mins(r.meta.pmEnd),o=mins(r.meta.lastOut),v=r.meta.visits;if(a!=null)mt.push(a);if(b!=null)pm.push(b);if(o!=null)out.push(o);if(v)vis.push(Number(v))});
+  function av(x){return x.length?x.reduce(function(s,v){return s+v},0)/x.length:null}
+  var n=t.g+t.y+t.r;
+  return {n:n,red:n?t.r*100/n:null,yel:n?t.y*100/n:null,mt:av(mt),pm:av(pm),out:av(out),vis:av(vis)};
 }
 function stack(c,h){var s=el('div','stk'),t=c.g+c.y+c.r;if(h)s.style.height=h+'px';
   ['g','y','r'].forEach(function(k){if(c[k]){var i=el('i',k);i.style.width=(c[k]*100/t)+'%';i.title=L.COLORS[k]+' '+c[k];s.appendChild(i)}});return s}
@@ -121,16 +173,18 @@ function render(recs){
   recs=recs.filter(function(r){return Object.keys(r.cells||{}).length||Object.keys(r.meta||{}).length});
   var days=[];for(var d=from;d<=to;d=shift(d,1))days.push(d);
   var by={};recs.forEach(function(r){by[r.date]=r});
-  var wm=mode==='wk'&&by[ws]&&by[ws].meta.weekMemo||'';
+  var wrec=mode==='wk'?by[ws]||null:null;
   recs=recs.filter(function(r){return Object.keys(r.cells||{}).length||Object.keys(r.meta||{}).some(function(k){return k!=='weekMemo'})});
-  if(!recs.length){O.appendChild(el('div','card','この期間の記録はありません。'));if(mode==='wk')O.appendChild(weekCard(wm));return}
+  if(!recs.length){O.appendChild(el('div','card','この期間の記録はありません。'));if(mode==='wk')O.appendChild(weekCard(wrec));return}
   /* 集計 */
-  var tot=zero(),blk={},per={},dowc={},cause={},redList=[];
+  var tot=zero(),blk={},per={},dowc={},cause={},ycause={},notes=[];
   L.BLOCKS.forEach(function(b){blk[b.id]=zero()});L.PEOPLE.forEach(function(p){per[p]=zero()});
   recs.forEach(function(r){var w=L.dow(r.date);dowc[w]=dowc[w]||zero();
     L.BLOCKS.forEach(function(b){L.PEOPLE.forEach(function(p){var c=r.cells[L.ckey(b.id,p)];if(!c)return;
       tot[c.c]++;blk[b.id][c.c]++;per[p][c.c]++;dowc[w][c.c]++;
-      if(c.c==='r'){var k=c.k||'（原因未記入）';cause[k]=(cause[k]||0)+1;redList.push(md(r.date)+' '+b.label+' '+p)}})})});
+      if(c.c==='r'){var k=c.k||'（原因未記入）';cause[k]=(cause[k]||0)+1}
+      if(c.c==='y'&&c.k)ycause[c.k]=(ycause[c.k]||0)+1;
+      if(c.n)notes.push([md(r.date)+' '+b.label+' '+p,c.c,c.k,c.n])})})});
   var n=tot.g+tot.y+tot.r;
   var mt=[],pm=[],am=[];recs.forEach(function(r){var a=mins(r.meta.mtStart),b=mins(r.meta.pmEnd),c=mins(r.meta.amEnd);if(a!=null)mt.push([r.date,a]);if(b!=null)pm.push([r.date,b]);if(c!=null)am.push([r.date,c])});
   function avg(x){return x.length?x.reduce(function(s,v){return s+v[1]},0)/x.length:null}
@@ -157,10 +211,32 @@ function render(recs){
   var late=mt.filter(function(x){return x[1]>19*60});
   if(mt.length)li('MT開始の平均は '+hm(avg(mt))+'。19:00を過ぎた日は '+late.length+'日／'+mt.length+'日'+(late.length?'（'+late.map(function(x){return md(x[0])+' '+hm(x[1])}).join('、')+'）':'')+'。',late.length?'bad':'ok');
   if(pm.length)li('午後の終了の平均は '+hm(avg(pm))+(am.length?'、午前の終了の平均は '+hm(avg(am)):'')+'。');
+  var T=L.TEIJI,lateEnd=recs.filter(function(r){var e=mins(r.meta.lastOut);if(e==null)e=mins(r.meta.pmEnd);return e!=null&&e>T});
+  var ends=recs.filter(function(r){return mins(r.meta.lastOut)!=null||mins(r.meta.pmEnd)!=null});
+  if(ends.length)li('定時（19:00）を過ぎた日は '+lateEnd.length+'日／'+ends.length+'日'+(lateEnd.length?'（'+lateEnd.map(function(r){var e=mins(r.meta.lastOut);if(e==null)e=mins(r.meta.pmEnd);return md(r.date)+' +'+(e-T)+'分'}).join('、')+'）':'')+'。',lateEnd.length?'bad':'ok');
+  /* 忙しさの量と赤の関係 */
+  var vd=recs.filter(function(r){return r.meta.visits});
+  if(vd.length){
+    var isRed=function(r){return Object.keys(r.cells).some(function(k){return r.cells[k].c==='r'})},av=function(x){return x.length?Math.round(x.reduce(function(s,r){return s+Number(r.meta.visits)},0)/x.length):null};
+    var ra=av(vd.filter(isRed)),na=av(vd.filter(function(r){return !isRed(r)}));
+    li('診察件数の平均は '+av(vd)+'件／日'+(ra!=null&&na!=null?'。赤が出た日は平均 '+ra+'件、出なかった日は '+na+'件'+(ra-na>=5?'（件数が多い日に赤が出ている）':ra-na<=-5?'（件数が少ない日にも赤が出ている＝量より段取りの可能性）':'（件数との関係ははっきりしない）'):'')+'。');
+  }
+  var yk=Object.keys(ycause).sort(function(a,b){return ycause[b]-ycause[a]});
+  if(yk.length)li('黄の原因（赤の一歩手前）：'+yk.slice(0,3).map(function(k){return k+' '+ycause[k]+'件'}).join('、')+'。');
+  /* 前の週との比較 */
+  if(mode==='wk'){
+    var cs0=stats(recs),ps0=stats(prevRecs.filter(function(r){return Object.keys(r.cells||{}).length||Object.keys(r.meta||{}).some(function(k){return k!=='weekMemo'})}));
+    if(ps0.n){
+      var dl=el('li','');dl.appendChild(document.createTextNode('前の週との比較：'));
+      [['red','赤',function(v){return Math.round(v)+'%'},3],['yel','黄',function(v){return Math.round(v)+'%'},3],['mt','MT開始',hm,5],['pm','午後終了',hm,5],['out','最終退勤',hm,5],['vis','診察件数',function(v){return Math.round(v)+'件'},0]].forEach(function(x){
+        var a=cs0[x[0]],b=ps0[x[0]];if(a==null||b==null)return;var d=a-b,same=Math.abs(d)<=x[3]*0.34,sp=el('span','dv '+(x[0]==='vis'?'':same?'':d<0?'up':'dn'),x[1]+' '+x[2](a)+'（前 '+x[2](b)+(x[0]==='vis'?'':same?' →':d<0?' ↓改善':' ↑悪化')+'）');dl.appendChild(sp)});
+      ul.appendChild(dl);
+    }else li('前の週の記録がないため、比較はまだ出ません。');
+  }
   var miss=days.filter(function(d){return !by[d]&&d<=today});
   if(miss.length)li('記録のない日：'+miss.map(function(d){return md(d)+'（'+L.dow(d)+'）'}).join('、')+'（休診日を含みます）。');
   c1.appendChild(ul);O.appendChild(c1);
-  if(mode==='wk')O.appendChild(weekCard(wm));
+  if(mode==='wk')O.appendChild(weekCard(wrec));
 
   /* ② 時間帯・人・原因 */
   var g=el('div','grid');
@@ -185,20 +261,21 @@ function render(recs){
   days.forEach(function(d){hr.appendChild(el('th','',md(d)+' '+L.dow(d)))});tb.appendChild(hr);
   L.PEOPLE.forEach(function(p){var tr=el('tr');tr.appendChild(el('td','nm',p));
     days.forEach(function(d){var td=el('td'),r=by[d];
-      if(r&&L.attend(r,p))L.BLOCKS.forEach(function(b){var c=r.cells[L.ckey(b.id,p)],s=el('span','sq '+(c?c.c:'n'),c&&c.c==='r'&&c.k?c.k.charAt(0):'');s.title=b.label+(c?' '+L.COLORS[c.c]+(c.k?'（'+c.k+'）':''):' 未記入');td.appendChild(s)});
+      if(r&&L.attend(r,p))L.BLOCKS.forEach(function(b){var c=r.cells[L.ckey(b.id,p)],s=el('span','sq '+(c?c.c:'n'),c&&c.k?c.k.charAt(0):'');s.title=b.label+(c?' '+L.COLORS[c.c]+(c.k?'（'+c.k+(c.n?'：'+c.n:'')+'）':''):' 未記入');td.appendChild(s)});
       else td.appendChild(el('span','','·'));
       tr.appendChild(td)});
     tb.appendChild(tr)});
-  [['amEnd','午前終了'],['pmEnd','午後終了'],['mtStart','MT開始'],['urgent','緊急枠'],['ope','オペ数']].forEach(function(m){var tr=el('tr');tr.appendChild(el('td','nm',m[1]));
-    days.forEach(function(d){var v=by[d]&&by[d].meta[m[0]]||'',td=el('td',m[0]==='mtStart'&&mins(v)>19*60?'late':'',v);tr.appendChild(td)});tb.appendChild(tr)});
+  [['amEnd','午前終了'],['pmEnd','午後終了'],['mtStart','MT開始'],['lastOut','最終退勤'],['visits','診察件数'],['walkin','予約外'],['calls','電話件数'],['urgent','緊急枠'],['ope','オペ数'],['nurseN','看護 人数'],['recN','受付 人数']].forEach(function(m){var tr=el('tr');tr.appendChild(el('td','nm',m[1]));
+    days.forEach(function(d){var v=by[d]&&by[d].meta[m[0]]||'',lt=(m[0]==='mtStart'||m[0]==='lastOut'||m[0]==='pmEnd')&&mins(v)>L.TEIJI,td=el('td',lt?'late':'',v);tr.appendChild(td)});tb.appendChild(tr)});
   tw.appendChild(tb);c6.appendChild(tw);
-  c6.appendChild(el('div','lg','四角は左から 午前・昼・午後。赤の中の文字は原因の頭文字（緊＝緊急枠、エ＝エマージェンシー、ト＝トラブル、押＝押し、人＝人手不足、電＝電話、他）。「·」は休み（未記入）。MT開始が19:00を過ぎた日は赤字。'));
+  c6.appendChild(el('div','lg','四角は左から 午前・昼・午後。赤の中の文字は原因の頭文字（緊＝緊急枠、エ＝エマージェンシー、ト＝トラブル、押＝押し、人＝人手不足、電＝電話、他）。「·」は休み（未記入）。黄にも原因があれば頭文字が入ります。19:00（定時）を過ぎた時刻は赤字。'));
   O.appendChild(c6);
 
   /* ⑦ メモ */
-  var c7=el('div','card');c7.appendChild(el('h2','','⑦ 赤の原因と対策のメモ'));var any=false;
+  var c7=el('div','card');c7.appendChild(el('h2','','⑦ 原因と対策のメモ（「トラブル」「他」の中身も）'));var any=false;
   recs.forEach(function(r){['causeMemo','planMemo'].forEach(function(k){if(!r.meta[k])return;any=true;
     var m=el('div','memo'+(k==='planMemo'?' p':''));m.appendChild(el('small','',md(r.date)+'（'+L.dow(r.date)+'）'+(k==='planMemo'?' 対策':' 原因')+(r.meta.writer?'　記入：'+r.meta.writer:'')));m.appendChild(el('div','',r.meta[k]));c7.appendChild(m)})});
+  notes.forEach(function(x){any=true;var m=el('div','memo');if(x[1]==='y')m.style.borderColor='#f5c400';m.appendChild(el('small','',x[0]+'　'+L.COLORS[x[1]]+'・'+x[2]));m.appendChild(el('div','',x[3]));c7.appendChild(m)});
   if(!any)c7.appendChild(el('div','','メモはありません。'));
   O.appendChild(c7);
 }

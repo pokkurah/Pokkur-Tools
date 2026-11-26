@@ -38,6 +38,9 @@ tr.off td.nm{color:#9aa6aa;font-weight:400}
 .k{font-size:12px;padding:2px 6px;border-radius:12px;border-color:#e6b0a8;color:#a8402f}
 .k.on{background:#e05a4a;border-color:#e05a4a;color:#fff;font-weight:700}
 .need{font-size:11px;color:#e05a4a;margin-top:3px}
+.hint{font-size:11px;color:#9aa6aa;margin-top:3px}
+.yk .k{border-color:#e3cf8a;color:#8a6d00}.yk .k.on{background:#f5c400;border-color:#f5c400;color:#3a2e00}
+.nt{width:100%;max-width:220px;font:inherit;font-size:13px;padding:4px 6px;border:1px solid #e6b0a8;border-radius:7px;margin-top:4px}
 .meta{background:#fff;border:1px solid #cfd8db;border-radius:10px;padding:10px;margin-top:10px;display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
 .meta label{display:block;font-size:12px;color:#46555b}
 .meta input,.meta textarea{width:100%;font:inherit;font-size:16px;padding:6px 8px;border:1px solid #b9c4c8;border-radius:8px;margin-top:3px}
@@ -61,6 +64,8 @@ tr.off td.nm{color:#9aa6aa;font-weight:400}
 <div class="kr"><input type="password" id="keyIn" autocomplete="off" placeholder="院内キー"><button class="pri">登録</button></div><span id="keyErr" style="color:#c62828"></span></form>
 <div class="err hide" id="err"></div>
 <div class="rule"><b>付け方</b>：その時間帯に余裕があったかを 緑・黄・赤 で1つ。<b>「余裕なし」に1つでも当てはまれば赤</b>。赤は原因も1つ選ぶ。もう一度押すと消せます。<br>
+黄も、原因が分かれば選んでください（任意）。「トラブル」「他」は中身を一言。<br>
+<b>緊急枠</b>＝予約外の急患を緊急枠で受けて詰まった／<b>エマージェンシー</b>＝命に関わる救急対応で人手が取られた。<br>
 <b>色を付けた人だけ、その日の出勤として集計します</b>（休みの人は何も付けない）。押すとその場で保存され、ほかのPCにも数秒で出ます。</div>
 <table><thead><tr><th></th><th>午前</th><th>昼</th><th class="pm">午後（最後）</th></tr></thead><tbody id="tb"></tbody></table>
 <div class="meta" id="meta"></div>
@@ -72,7 +77,7 @@ tr.off td.nm{color:#9aa6aa;font-weight:400}
 <script>
 (function(){
 var L=YoyuLogic,$=function(id){return document.getElementById(id)},KEY=YOYU.key();
-var R=null,busy=false,pending=0,me=localStorage.getItem('yoyu_me')||'';
+var R=null,busy=false,pending=0,redraw=false,me=localStorage.getItem('yoyu_me')||'';
 function jdate(t){return new Date(t+9*3600e3).toISOString().slice(0,10)}
 function shift(d,n){return new Date(Date.parse(d+'T00:00:00Z')+n*864e5).toISOString().slice(0,10)}
 var q=new URLSearchParams(location.search),date=L.validDate(q.get('date'))?q.get('date'):jdate(Date.now());
@@ -113,6 +118,9 @@ function act(p){
 
 function draw(){
   $('dt').textContent=date.slice(5).replace('-','/')+'（'+L.dow(date)+'）';
+  /* 一言を入力している最中は表を作り直さない（入力が消えるのを防ぐ） */
+  var ae=document.activeElement;if(R&&ae&&ae.classList&&ae.classList.contains('nt')){redraw=true;drawMeta();return}
+  redraw=false;
   var T=$('tb');T.innerHTML='';
   if(!R)return;
   L.PEOPLE.filter(function(p){return !me||p===me}).forEach(function(p){
@@ -120,13 +128,18 @@ function draw(){
     L.BLOCKS.forEach(function(b){
       var c=R.cells[L.ckey(b.id,p)],td=el('td'),cs=el('div','cs');
       ['g','y','r'].forEach(function(col){var x=el('button','c '+col+(c&&c.c===col?' on':''),L.COLORS[col]);x.type='button';
-        x.addEventListener('click',function(){act({action:'set',block:b.id,person:p,color:c&&c.c===col?'':col,cause:''})});cs.appendChild(x)});
+        x.addEventListener('click',function(){var on=c&&c.c===col;act({action:'set',block:b.id,person:p,color:on?'':col,cause:!on&&c&&col!=='g'?c.k:'',note:!on&&c&&col!=='g'?c.n||'':''})});cs.appendChild(x)});
       td.appendChild(cs);
-      if(c&&c.c==='r'){
-        var ks=el('div','ks');
+      if(c&&c.c!=='g'){
+        var ks=el('div','ks'+(c.c==='y'?' yk':''));
         L.CAUSES.forEach(function(k){var x=el('button','k'+(c.k===k?' on':''),k);x.type='button';
-          x.addEventListener('click',function(){act({action:'set',block:b.id,person:p,color:'r',cause:c.k===k?'':k})});ks.appendChild(x)});
-        td.appendChild(ks);if(!c.k)td.appendChild(el('div','need','原因を1つ選ぶ'));
+          x.addEventListener('click',function(){act({action:'set',block:b.id,person:p,color:c.c,cause:c.k===k?'':k,note:''})});ks.appendChild(x)});
+        td.appendChild(ks);
+        if(!c.k)td.appendChild(el('div',c.c==='r'?'need':'hint',c.c==='r'?'原因を1つ選ぶ':'原因が分かれば選ぶ（任意）'));
+        /* トラブル・他は中身を一言（対策を考える材料になる） */
+        if(L.NOTE_CAUSES.indexOf(c.k)>=0){var ni=el('input','nt');ni.maxLength=40;ni.placeholder=c.k+'の中身を一言（例：レジ故障）';ni.value=c.n||'';ni.dataset.cell=L.ckey(b.id,p);
+          ni.addEventListener('change',function(){act({action:'set',block:b.id,person:p,color:c.c,cause:c.k,note:ni.value})});
+          ni.addEventListener('keydown',function(e){if(e.key==='Enter')ni.blur()});ni.addEventListener('blur',function(){setTimeout(function(){if(redraw)draw()},0)});td.appendChild(ni)}
       }
       tr.appendChild(td);
     });
@@ -147,7 +160,7 @@ function drawMeta(){
         var mk=function(t,d){var x=el('button','',t);x.type='button';x.addEventListener('click',function(){var cur=parseInt(R.meta[m.k]||'0',10)||0,nv=Math.max(0,Math.min(99,cur+d));act({action:'meta',m:m.k,v:String(nv)})});return x};
         n.appendChild(mk('－',-1));n.appendChild(v);n.appendChild(mk('＋',1));w.appendChild(n);
       }else{
-        var i=el(m.type==='memo'?'textarea':'input');i.id='m_'+m.k;if(m.type==='time')i.type='time';if(m.type==='memo')i.maxLength=400;else i.maxLength=40;
+        var i=el(m.type==='memo'?'textarea':'input');i.id='m_'+m.k;if(m.type==='time')i.type='time';if(m.type==='cnt'){i.type='number';i.min=0;i.max=999;i.inputMode='numeric'}if(m.type==='memo')i.maxLength=400;else i.maxLength=40;
         i.addEventListener('change',function(){if((R.meta[m.k]||'')!==i.value.trim())act({action:'meta',m:m.k,v:i.value})});
         if(m.type==='time'){var t=el('div','tm');t.appendChild(i);var nb=el('button','','今');nb.type='button';
           nb.addEventListener('click',function(){var d=new Date(Date.now()+9*3600e3),hm=('0'+d.getUTCHours()).slice(-2)+':'+('0'+d.getUTCMinutes()).slice(-2);i.value=hm;act({action:'meta',m:m.k,v:hm})});t.appendChild(nb);w.appendChild(t)}

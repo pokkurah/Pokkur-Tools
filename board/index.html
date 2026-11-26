@@ -103,7 +103,7 @@ body.inpip .pipOnly{display:inline-block!important}
 <li><b>押</b>：先生（伊・蒲・榮・柿・晶）→ 分数。外来終了で自動で消える</li>
 <li><b>📝</b>：申し送り（文字）。済んだら「解決」</li>
 <li><b>札</b>：赤札・黄札を場所ごとに増減</li>
-<li><b>17時以降</b>：外来・ホテル・MTG は押すと完了（もう一度で戻す）。入院は検査・FFを選べる。チェックはチェックリストが開く</li>
+<li><b>17時以降</b>：外来・ホテル・MTG は押すと完了（もう一度で戻す）。入院は検査・FFを選べる。チェックはチェックリストが開く。「余裕✎」は余裕チェックの記入画面が開く</li>
 <li>15:55〜16:05 に「16:00退勤」が点滅し、15:55 と 16:00 にアラームと通知が出ます。押すと全PCから消えます</li>
 <li>表示は毎朝4時にすべて消えます（札は残ります）。留守電は17時に自動で点きます</li>
 </ul></details>
@@ -280,6 +280,7 @@ function drawBar(){
         else act({action:'step',id:x.id,state:st?'':'done'});
       },'chip '+(x.id===cur?'now':st||'todo')+(sub===x.id||(x.id==='check'&&sub==='places')?' sel':''),x.label));
     });
+    B.appendChild(btn('余裕✎',function(){var w=window.open(new URL('../yoyu/',location.href).href,'pbd_yoyu','width=900,height=820');if(!w)showErr('余裕チェックの窓を開けませんでした。ポップアップを許可してください。')},'chip','余裕チェックを記入（ミーティングで）'));
   }
 }
 

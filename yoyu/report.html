@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>余裕チェック 集計 | ポックル院内ツール</title>
+<script src="../gate.js"></script>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f5f7f8;color:#1f2a2e;font-family:"Meiryo UI","Yu Gothic UI",-apple-system,"Hiragino Sans","Noto Sans JP",sans-serif;font-size:14px}
+button{font:inherit;border:1px solid #b9c4c8;background:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;color:#1f2a2e}
+button.on{background:#1f8670;border-color:#1f8670;color:#fff;font-weight:700}
+a{color:#1f8670}
+.hide{display:none!important}
+.hd{background:#1f2a2e;color:#fff;padding:10px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.hd h1{font-size:18px;margin:0}.hd .sp{flex:1}.hd a{color:#9fd8c7}
+.wrap{max-width:980px;margin:0 auto;padding:10px}
+.mock{background:#333;color:#fff;font-size:11px;text-align:center;padding:2px}
+.bar0{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.bar0 input{font:inherit;padding:4px 6px}
+.card{background:#fff;border:1px solid #cfd8db;border-radius:10px;padding:12px;margin-bottom:10px}
+.card h2{font-size:15px;margin:0 0 8px;color:#1f8670}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+.pts{margin:0;padding-left:20px;line-height:1.8;font-size:15px}
+.pts li.bad{color:#b23a2b;font-weight:700}.pts li.ok{color:#1f8670;font-weight:700}
+.big{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+.big div{flex:1;min-width:90px;border-radius:10px;padding:8px;text-align:center;color:#fff;font-weight:800}
+.big b{display:block;font-size:26px;line-height:1.1}
+.g{background:#3aa58a}.y{background:#f5c400;color:#3a2e00!important}.r{background:#e05a4a}.n{background:#eef1f2}
+.row{display:grid;grid-template-columns:92px 1fr 64px;gap:6px;align-items:center;margin:4px 0;font-size:13px}
+.stk{display:flex;height:18px;border-radius:5px;overflow:hidden;background:#eef1f2}
+.stk i{display:block;height:100%}
+.row .v{text-align:right;font-variant-numeric:tabular-nums;color:#46555b}
+.hbar{height:18px;border-radius:5px;background:#e05a4a}
+.tblw{overflow-x:auto}
+table{border-collapse:collapse;font-size:12px}
+th,td{border:1px solid #e3e8ea;padding:3px 4px;text-align:center;white-space:nowrap}
+th{background:#f3f6f7}td.nm{text-align:left;font-weight:700}
+.sq{display:inline-flex;width:17px;height:17px;border-radius:4px;margin:0 1px;align-items:center;justify-content:center;font-size:10px;color:#fff;font-weight:700;vertical-align:middle}
+.sq.n{border:1px dashed #cfd8db;background:#fff}
+td.late{color:#b23a2b;font-weight:800}
+.memo{border-left:4px solid #e05a4a;padding:2px 8px;margin:6px 0}.memo.p{border-color:#1f8670}
+.memo small{color:#6b7a80}
+.err{padding:8px 12px;color:#c62828;background:#fff3f3;border-radius:8px;margin-bottom:8px}
+.lg{font-size:11px;color:#6b7a80;margin-top:6px}
+@media print{.hd a,.bar0,.noprint{display:none!important}body{background:#fff}.card{break-inside:avoid}}
+</style></head><body>
+<div class="mock hide" id="mockbar">試験モード（このPC内だけのデータ）</div>
+<div class="hd"><h1>余裕チェック 集計</h1><span id="per"></span><span class="sp"></span><a href="./">✎ 入力へ</a></div>
+<div class="wrap">
+<div class="bar0" id="bar0"></div>
+<div class="err hide" id="err"></div>
+<div id="out"></div>
+</div>
+<script src="logic.js"></script>
+<script src="config.js"></script>
+<script src="api.js"></script>
+<script>
+(function(){
+var L=YoyuLogic,$=function(id){return document.getElementById(id)},KEY=YOYU.key();
+if(YOYU.isMock)$('mockbar').classList.remove('hide');
+function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+function jdate(t){return new Date(t+9*3600e3).toISOString().slice(0,10)}
+function shift(d,n){return new Date(Date.parse(d+'T00:00:00Z')+n*864e5).toISOString().slice(0,10)}
+function md(d){return Number(d.slice(5,7))+'/'+Number(d.slice(8))}
+function mins(t){var m=/^(\d{1,2}):(\d{2})$/.exec(t||'');return m?Number(m[1])*60+Number(m[2]):null}
+function hm(m){return Math.floor(m/60)+':'+('0'+Math.round(m%60)).slice(-2)}
+function pct(a,b){return b?Math.round(a*100/b):0}
+var today=jdate(Date.now()),from,to,mode='7';
+function setMode(m){mode=m;
+  var dw=new Date(today+'T00:00:00Z').getUTCDay(),mon=shift(today,-((dw+6)%7));
+  if(m==='7'){from=shift(today,-6);to=today}
+  if(m==='w'){from=mon;to=shift(mon,6)}
+  if(m==='lw'){from=shift(mon,-7);to=shift(mon,-1)}
+  if(m==='m'){from=today.slice(0,8)+'01';to=today}
+  if(m==='lm'){var e=shift(today.slice(0,8)+'01',-1);from=e.slice(0,8)+'01';to=e}
+  drawBar();load();
+}
+function drawBar(){var B=$('bar0');B.innerHTML='';
+  [['7','直近7日'],['w','今週（月〜日）'],['lw','先週'],['m','今月'],['lm','先月']].forEach(function(x){var b=el('button',mode===x[0]?'on':'',x[1]);b.addEventListener('click',function(){setMode(x[0])});B.appendChild(b)});
+  var a=el('input'),z=el('input');a.type=z.type='date';a.value=from;z.value=to;
+  var ch=function(){if(L.validDate(a.value)&&L.validDate(z.value)&&a.value<=z.value){mode='';from=a.value;to=z.value;drawBar();load()}};
+  a.addEventListener('change',ch);z.addEventListener('change',ch);
+  B.appendChild(a);B.appendChild(document.createTextNode('〜'));B.appendChild(z);
+  var p=el('button','','🖨 印刷');p.addEventListener('click',function(){window.print()});B.appendChild(p);
+  $('per').textContent=md(from)+'（'+L.dow(from)+'）〜 '+md(to)+'（'+L.dow(to)+'）';
+}
+function load(){
+  if(!KEY){$('err').textContent='このPCは院内キーが未登録です。先に「入力」の画面で院内キーを入れてください。';$('err').classList.remove('hide');return}
+  var f=from,t=to;$('out').textContent='読み込み中…';
+  YOYU.range(KEY,f,t).then(function(r){if(f!==from||t!==to)return;if(!r.ok)throw new Error(r.err);$('err').classList.add('hide');render(r.recs)})
+  .catch(function(e){$('out').textContent='';$('err').textContent='読み込めません：'+(e.message||e);$('err').classList.remove('hide')});
+}
+function stack(c,h){var s=el('div','stk'),t=c.g+c.y+c.r;if(h)s.style.height=h+'px';
+  ['g','y','r'].forEach(function(k){if(c[k]){var i=el('i',k);i.style.width=(c[k]*100/t)+'%';i.title=L.COLORS[k]+' '+c[k];s.appendChild(i)}});return s}
+function zero(){return {g:0,y:0,r:0}}
+
+function render(recs){
+  var O=$('out');O.innerHTML='';
+  recs=recs.filter(function(r){return Object.keys(r.cells||{}).length||Object.keys(r.meta||{}).length});
+  var days=[];for(var d=from;d<=to;d=shift(d,1))days.push(d);
+  var by={};recs.forEach(function(r){by[r.date]=r});
+  if(!recs.length){O.appendChild(el('div','card','この期間の記録はありません。'));return}
+  /* 集計 */
+  var tot=zero(),blk={},per={},dowc={},cause={},redList=[];
+  L.BLOCKS.forEach(function(b){blk[b.id]=zero()});L.PEOPLE.forEach(function(p){per[p]=zero()});
+  recs.forEach(function(r){var w=L.dow(r.date);dowc[w]=dowc[w]||zero();
+    L.BLOCKS.forEach(function(b){L.PEOPLE.forEach(function(p){var c=r.cells[L.ckey(b.id,p)];if(!c)return;
+      tot[c.c]++;blk[b.id][c.c]++;per[p][c.c]++;dowc[w][c.c]++;
+      if(c.c==='r'){var k=c.k||'（原因未記入）';cause[k]=(cause[k]||0)+1;redList.push(md(r.date)+' '+b.label+' '+p)}})})});
+  var n=tot.g+tot.y+tot.r;
+  var mt=[],pm=[],am=[];recs.forEach(function(r){var a=mins(r.meta.mtStart),b=mins(r.meta.pmEnd),c=mins(r.meta.amEnd);if(a!=null)mt.push([r.date,a]);if(b!=null)pm.push([r.date,b]);if(c!=null)am.push([r.date,c])});
+  function avg(x){return x.length?x.reduce(function(s,v){return s+v[1]},0)/x.length:null}
+
+  /* ① ひとことまとめ */
+  var c1=el('div','card');c1.appendChild(el('h2','','① ひとことまとめ'));
+  var bg=el('div','big');[['g','緑'],['y','黄'],['r','赤']].forEach(function(x){var d=el('div',x[0]);d.appendChild(document.createTextNode(x[1]));d.appendChild(el('b','',pct(tot[x[0]],n)+'%'));d.appendChild(document.createTextNode(tot[x[0]]+'件'));bg.appendChild(d)});
+  c1.appendChild(bg);
+  var ul=el('ul','pts');function li(t,cls){ul.appendChild(el('li',cls||'',t))}
+  li('記録のある日：'+recs.length+'日（期間 '+days.length+'日中）。付けられた色は全部で '+n+'件。');
+  if(n){
+    if(!tot.r)li('赤は0件でした。','ok');
+    else{
+      var wb=L.BLOCKS.slice().sort(function(a,b){return pct(blk[b.id].r,blk[b.id].g+blk[b.id].y+blk[b.id].r)-pct(blk[a.id].r,blk[a.id].g+blk[a.id].y+blk[a.id].r)})[0],wc=blk[wb.id];
+      li('赤が出やすい時間帯は「'+wb.label+'」（'+wc.r+'件、その時間帯の'+pct(wc.r,wc.g+wc.y+wc.r)+'%）。','bad');
+      var ws=Object.keys(dowc).filter(function(w){return dowc[w].r}).sort(function(a,b){return dowc[b].r-dowc[a].r});
+      if(ws.length&&Object.keys(dowc).length>1)li('赤が多い曜日は '+ws.slice(0,2).map(function(w){return w+'曜（'+dowc[w].r+'件）'}).join('、')+'。','bad');
+      var cs=Object.keys(cause).sort(function(a,b){return cause[b]-cause[a]});
+      li('赤の原因で一番多いのは「'+cs[0]+'」（'+cause[cs[0]]+'件／赤 '+tot.r+'件中）'+(cs[1]?'、次が「'+cs[1]+'」（'+cause[cs[1]]+'件）':'')+'。','bad');
+      var wp=L.PEOPLE.filter(function(p){return per[p].r}).sort(function(a,b){return per[b].r-per[a].r});
+      li('赤が付いた回数：'+wp.map(function(p){return p+' '+per[p].r}).join('、')+'。');
+    }
+  }
+  var late=mt.filter(function(x){return x[1]>19*60});
+  if(mt.length)li('MT開始の平均は '+hm(avg(mt))+'。19:00を過ぎた日は '+late.length+'日／'+mt.length+'日'+(late.length?'（'+late.map(function(x){return md(x[0])+' '+hm(x[1])}).join('、')+'）':'')+'。',late.length?'bad':'ok');
+  if(pm.length)li('午後の終了の平均は '+hm(avg(pm))+(am.length?'、午前の終了の平均は '+hm(avg(am)):'')+'。');
+  var miss=days.filter(function(d){return !by[d]&&d<=today});
+  if(miss.length)li('記録のない日：'+miss.map(function(d){return md(d)+'（'+L.dow(d)+'）'}).join('、')+'（休診日を含みます）。');
+  c1.appendChild(ul);O.appendChild(c1);
+
+  /* ② 時間帯・人・原因 */
+  var g=el('div','grid');
+  function rows(title,items,get,note){var c=el('div','card');c.appendChild(el('h2','',title));
+    items.forEach(function(it){var v=get(it[0]),t=v.g+v.y+v.r,r=el('div','row');r.appendChild(el('span','',it[1]));
+      if(t)r.appendChild(stack(v));else r.appendChild(el('div','stk'));
+      r.appendChild(el('span','v',t?'赤'+v.r+'/'+t:'—'));c.appendChild(r)});
+    if(note)c.appendChild(el('div','lg',note));g.appendChild(c)}
+  rows('② 時間帯ごと',L.BLOCKS.map(function(b){return [b.id,b.label]}),function(k){return blk[k]});
+  rows('③ 人・部署ごと',L.PEOPLE.map(function(p){return [p,p]}),function(k){return per[k]},'色を付けた回数だけを数えています（休みの日は入りません）');
+  var ord='月火水木金土日'.split('').filter(function(w){return dowc[w]});
+  if(ord.length>1)rows('④ 曜日ごと',ord.map(function(w){return [w,w+'曜']}),function(k){return dowc[k]});
+  var cc=el('div','card');cc.appendChild(el('h2','','⑤ 赤の原因（多い順）'));
+  var ck=Object.keys(cause).sort(function(a,b){return cause[b]-cause[a]});
+  if(!ck.length)cc.appendChild(el('div','','赤はありません。'));
+  ck.forEach(function(k){var r=el('div','row');r.appendChild(el('span','',k));var w=el('div'),h=el('div','hbar');h.style.width=(cause[k]*100/cause[ck[0]])+'%';w.appendChild(h);r.appendChild(w);r.appendChild(el('span','v',cause[k]+'件'));cc.appendChild(r)});
+  g.appendChild(cc);O.appendChild(g);
+
+  /* ⑥ 一覧（紙の表と同じ並び） */
+  var c6=el('div','card');c6.appendChild(el('h2','','⑥ 一覧（各日の 午前・昼・午後）'));
+  var tw=el('div','tblw'),tb=el('table'),hr=el('tr');hr.appendChild(el('th','',''));
+  days.forEach(function(d){hr.appendChild(el('th','',md(d)+' '+L.dow(d)))});tb.appendChild(hr);
+  L.PEOPLE.forEach(function(p){var tr=el('tr');tr.appendChild(el('td','nm',p));
+    days.forEach(function(d){var td=el('td'),r=by[d];
+      if(r&&L.attend(r,p))L.BLOCKS.forEach(function(b){var c=r.cells[L.ckey(b.id,p)],s=el('span','sq '+(c?c.c:'n'),c&&c.c==='r'&&c.k?c.k.charAt(0):'');s.title=b.label+(c?' '+L.COLORS[c.c]+(c.k?'（'+c.k+'）':''):' 未記入');td.appendChild(s)});
+      else td.appendChild(el('span','','·'));
+      tr.appendChild(td)});
+    tb.appendChild(tr)});
+  [['amEnd','午前終了'],['pmEnd','午後終了'],['mtStart','MT開始'],['urgent','緊急枠'],['ope','オペ数']].forEach(function(m){var tr=el('tr');tr.appendChild(el('td','nm',m[1]));
+    days.forEach(function(d){var v=by[d]&&by[d].meta[m[0]]||'',td=el('td',m[0]==='mtStart'&&mins(v)>19*60?'late':'',v);tr.appendChild(td)});tb.appendChild(tr)});
+  tw.appendChild(tb);c6.appendChild(tw);
+  c6.appendChild(el('div','lg','四角は左から 午前・昼・午後。赤の中の文字は原因の頭文字（緊＝緊急枠、エ＝エマージェンシー、ト＝トラブル、押＝押し、人＝人手不足、電＝電話、他）。「·」は休み（未記入）。MT開始が19:00を過ぎた日は赤字。'));
+  O.appendChild(c6);
+
+  /* ⑦ メモ */
+  var c7=el('div','card');c7.appendChild(el('h2','','⑦ 赤の原因と対策のメモ'));var any=false;
+  recs.forEach(function(r){['causeMemo','planMemo'].forEach(function(k){if(!r.meta[k])return;any=true;
+    var m=el('div','memo'+(k==='planMemo'?' p':''));m.appendChild(el('small','',md(r.date)+'（'+L.dow(r.date)+'）'+(k==='planMemo'?' 対策':' 原因')+(r.meta.writer?'　記入：'+r.meta.writer:'')));m.appendChild(el('div','',r.meta[k]));c7.appendChild(m)})});
+  if(!any)c7.appendChild(el('div','','メモはありません。'));
+  O.appendChild(c7);
+}
+setMode('7');
+})();
+</script>
+</body></html>

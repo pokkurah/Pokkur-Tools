@@ -1427,7 +1427,11 @@ function buildPdf(canvases){
   x+="trailer\n<< /Size "+total+" /Root 1 0 R >>\nstartxref\n"+xref+"\n%%EOF\n"; pushS(x);
   return new Blob(chunks,{type:"application/pdf"});
 }
-function pdfName(){ var P=R.pt; return [(P.date||ymd()).replace(/-/g,""),P.no||"番号なし",P.name||"名前なし","麻酔記録"].join("_").replace(/[\\\/:*?"<>|\s]/g,"")+".pdf"; }
+/* ファイル名：日程_カルテ番号_飼い主名＋動物名_動物種_手術内容（院長指定 2026-11-26） */
+function pdfName(){ var P=R.pt, cl=function(s){ return String(s||"").replace(/[\\\/:*?"<>|\s_]/g,""); };
+  var ow=cl(P.owner), nm=cl(P.name), who=ow&&nm.indexOf(ow)!==0?ow+nm:(nm||ow);
+  var proc=cl(P.proc); if(proc.length>40) proc=proc.slice(0,40);
+  return [(P.date||ymd()).replace(/-/g,""),cl(P.no)||"番号なし",who||"名前なし",cl(R.sp)||"種不明",proc||"手術内容なし"].join("_")+".pdf"; }
 function savePdf(msgEl){
   var blob=buildPdf(allPages()), name=pdfName();
   function ok(t){ msgEl.className="alert grey"; msgEl.textContent=t; } function ng(t){ msgEl.className="alert red"; msgEl.textContent=t; }

@@ -1,0 +1,557 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<!-- スタッフの発行画面だけ院内パスコードで守る。飼い主がリンク（#d=）で開いたときは gate.js を読み込まない -->
+<script>if(!/[#&]d=/.test(location.hash))document.write('<script src="../gate.js"><\/script>')</script>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>同意書｜ポックル動物病院</title>
+<style>
+:root{--g:#0F6E56;--gl:#E7F3EF;--bg:#fff;--line:#cfd6d3;--tx:#1a1a1a;--mut:#5b6562;--red:#b3261e;--fs:22px}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic UI","Noto Sans JP","Noto Sans CJK JP",sans-serif;font-size:var(--fs);line-height:1.8}
+body.xl{--fs:26px}
+@media(min-width:700px){:root{--fs:24px}body.xl{--fs:29px}}
+.wrap{max-width:600px;margin:0 auto;padding:0 20px 150px}
+h1{font-size:1.18em;line-height:1.5;margin:.9em 0 .4em}
+.test{background:#fff3cd;border:1px solid #e0c36a;border-radius:8px;padding:6px 10px;font-size:14px;line-height:1.5;margin:8px 0}
+/* 上の帯 */
+.top{position:sticky;top:0;background:#fff;z-index:5;margin:0 -20px;padding:8px 20px 0}
+.top .r{display:flex;align-items:center;gap:8px;min-height:48px}
+.top .back{font:inherit;font-size:17px;border:0;background:none;color:var(--g);padding:10px 8px 10px 0;font-weight:700}
+.top .pg{flex:1;text-align:center;font-size:17px;color:var(--mut);font-weight:700}
+.top .sz{font:inherit;font-size:15px;border:1.5px solid var(--line);background:#fff;color:var(--tx);border-radius:8px;padding:6px 10px}
+.prog{height:6px;background:#e3e8e6;border-radius:3px;overflow:hidden}.prog i{display:block;height:100%;background:var(--g);transition:width .2s}
+/* 本文 */
+.lead{font-size:.8em;color:var(--mut);font-weight:700;margin:1.1em 0 .2em}
+.st p{margin:0 0 .75em}
+.st b{font-weight:800;background:linear-gradient(transparent 62%,#cfe9df 62%)}
+dl.info{margin:.6em 0;border-top:1px solid var(--line)}
+dl.info div{display:flex;gap:12px;border-bottom:1px solid var(--line);padding:.45em 0}
+dl.info dt{flex:none;width:5.6em;color:var(--mut);font-size:.8em;padding-top:.2em}
+dl.info dd{margin:0;font-weight:700;flex:1;line-height:1.5}
+dl.info .fix{font:inherit;font-size:.72em;border:1.5px solid var(--line);background:#fff;border-radius:8px;padding:2px 10px;color:var(--g);font-weight:700;align-self:center}
+dl.info.sum div{flex-wrap:wrap;gap:0 12px}dl.info.sum dt{width:100%;flex-basis:100%;line-height:1.5;padding:0}dl.info.sum dd{white-space:normal}
+.risk{border-left:5px solid var(--g);padding:.1em 0 .1em .7em;margin:0 0 .9em}
+.risk .n{font-weight:800}.risk .d{font-size:.9em;line-height:1.65}
+.qt{font-weight:800;font-size:1.08em;line-height:1.6;margin:.4em 0 .9em}
+.opt{display:flex;align-items:center;gap:14px;width:100%;min-height:68px;margin:0 0 14px;padding:10px 18px;font:inherit;font-weight:700;text-align:left;color:var(--tx);background:#fff;border:2.5px solid #8b9692;border-radius:14px}
+.opt .ck{flex:none;width:30px;height:30px;border:2.5px solid #8b9692;border-radius:50%;display:flex;align-items:center;justify-content:center;color:transparent;font-size:20px;line-height:1}
+.opt.on{background:var(--g);border-color:var(--g);color:#fff}.opt.on .ck{background:#fff;border-color:#fff;color:var(--g)}
+input[type=text],input[type=tel],input[type=date],select{width:100%;font:inherit;padding:12px;border:2px solid #8b9692;border-radius:10px;background:#fff;color:var(--tx)}
+input:focus,select:focus{outline:3px solid #9fd3c2;border-color:var(--g)}
+label.f{display:block;font-size:.72em;color:var(--mut);font-weight:700;margin-top:.8em}
+.row{display:flex;gap:10px}.row>*{flex:1;min-width:0}
+.seg{display:flex;gap:8px}.seg button{flex:1;font:inherit;font-size:.85em;padding:10px 4px;border:2px solid #8b9692;background:#fff;border-radius:10px;color:var(--tx)}
+.seg button.on{border-color:var(--g);background:var(--g);color:#fff;font-weight:700}
+.pad{position:relative;border:2.5px solid #8b9692;border-radius:12px;background:#fff;height:230px;margin:.5em 0 .3em;touch-action:none}
+.pad canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;border-radius:12px}
+.pad .hint{position:absolute;left:0;right:0;bottom:44px;border-bottom:2px dotted #b6bfbc;margin:0 18px;text-align:center;color:#9aa5a1;pointer-events:none;font-size:.8em;line-height:2.4}
+.pad .cl{position:absolute;right:8px;top:8px;z-index:2}
+button.s{font:inherit;font-size:.72em;font-weight:700;padding:6px 14px;border:1.5px solid #8b9692;border-radius:8px;background:#fff;color:var(--tx)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--line);padding:12px 20px calc(12px + env(safe-area-inset-bottom));z-index:6}
+.bar .in{max-width:560px;margin:0 auto}
+button.p,a.p{display:block;width:100%;min-height:64px;font:inherit;font-weight:800;padding:12px;border:0;border-radius:14px;background:var(--g);color:#fff;text-align:center;text-decoration:none}
+button.p:disabled{background:#c3cbc8;color:#fff}
+button.p.ghost{background:#fff;color:var(--g);border:2.5px solid var(--g)}
+.note{font-size:.76em;color:var(--mut);line-height:1.6}
+.err{color:var(--red);font-size:.8em;font-weight:700}
+#outImg img{width:100%;border:1px solid var(--line)}
+.url{word-break:break-all;font-size:12px;line-height:1.4;background:#eef2f0;border-radius:8px;padding:8px;font-family:ui-monospace,monospace}
+.staff{--fs:18px;font-size:18px}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="test" id="testNote">【試作・試験モード】サーバーには送りません。架空の名前でお試しください。</div>
+
+  <section id="vStaff" class="staff" hidden>
+    <p style="margin:10px 0 0"><a href="../" style="font-size:14px;color:#0F6E56">‹ 院内ツール一覧</a></p>
+    <h1>同意書を発行</h1>
+    <label class="f">同意書の種類</label>
+    <select id="sType"></select>
+    <div class="row">
+      <div><label class="f">カルテNo.</label><input type="text" id="sKarte" inputmode="numeric"></div>
+      <div><label class="f">日付</label><input type="date" id="sDate"></div>
+    </div>
+    <div id="sPrev" hidden class="note" style="margin-top:8px">前回の内容があります　<button class="s" id="sPrevBtn">前回の内容を入れる</button></div>
+    <div class="row">
+      <div><label class="f">動物名（ちゃん は自動）</label><input type="text" id="sName"></div>
+      <div><label class="f">動物種</label><input type="text" id="sSpecies" list="spL"><datalist id="spL"></datalist></div>
+    </div>
+    <label class="f" id="sProcL">処置の内容</label><input type="text" id="sProc">
+    <div id="sWtBox"><div class="row">
+      <div><label class="f">体重</label><div class="row" style="gap:6px"><input type="text" id="sWt" inputmode="decimal"><div class="seg" id="sWu" style="flex:none;width:6.2em"><button data-v="kg" class="on">kg</button><button data-v="g">g</button></div></div></div>
+      <div><label class="f">方法</label><div class="seg" id="sMode"><button data-v="全身麻酔下" class="on">全身麻酔下</button><button data-v="鎮静下">鎮静下</button></div></div>
+    </div></div>
+    <label class="f">この子で特に注意する点（獣医師が記入・空欄可）</label><input type="text" id="sNote" placeholder="例：高齢、心雑音あり、前回覚醒が遅かった">
+    <label class="f">担当獣医師</label>
+    <select id="sVet"><option>伊村<option>蒲原<option>榮藤<option>伊村（晶）<option>柿本</select>
+    <p></p><button class="p" id="sIssue">発行する</button>
+    <div id="sOut" hidden>
+      <p class="note" style="margin:16px 0 6px"><b>発行しました。</b>① 院内のiPadでサイン：この端末をそのまま渡します。</p>
+      <button class="p" id="sHere">この端末でサインしてもらう</button>
+      <p class="note" style="margin:14px 0 6px">② LINEで送る：コピーして、飼い主さんとのチャットに貼ります。</p>
+      <button class="p ghost" id="sCopy">LINE用の文とリンクをコピー</button>
+      <p class="url" id="sUrl"></p>
+    </div>
+  </section>
+
+  <section id="vOwner" hidden>
+    <div class="top">
+      <div class="r"><button class="back" id="oBack">‹ 戻る</button><div class="pg" id="oPg"></div><button class="sz" id="oSz">文字を大きく</button></div>
+      <div class="prog"><i id="oBar"></i></div>
+    </div>
+    <div id="oMain"></div>
+    <div class="bar"><div class="in"><button class="p" id="oNext"></button></div></div>
+  </section>
+
+  <section id="vChk" class="staff" hidden>
+    <h1>スタッフに端末をお返しください</h1>
+    <p class="note">ご署名ありがとうございました。</p>
+    <label class="f">【スタッフ】ご質問がないか口頭で確認した人</label>
+    <select id="cStaff"><option value="">選んでください</option></select>
+    <p></p><button class="p" id="cDone" disabled>確認して完了</button>
+  </section>
+
+  <section id="vDone" hidden>
+    <h1>ありがとうございました</h1>
+    <p>同意書を受け付けました。<br>この画面は閉じて大丈夫です。</p>
+    <div id="out">
+      <div class="note">【試作のみ表示】できあがった同意書（PDF・A4）</div>
+      <div id="outImg" style="margin:8px 0"></div>
+      <a id="outPdf" class="p">PDFを開く</a>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+/* ================= 同意書の文面（変えるときはここだけ） ================= */
+var STAFF=["院長","晶子","蒲原","榮藤","柿本","山田","坂口","植松","阿部","八柳","三上","三瓶","澤田","平尾","吉田","絹","此田","小野","新岡","内山"];
+var Q_ALLERGY={t:"q",id:"allergy",q:"フードやおやつ、薬にアレルギーはありますか",o:["ある","ない"],detail:"ある",dl:"何のアレルギーですか"};
+var Q_PAST={t:"q",id:"past",q:"過去に麻酔や鎮静で問題があったことはありますか",o:["ある","ない"],detail:"ある",dl:"どのようなことがありましたか"};
+var Q_CHEW={t:"q",id:"chew",q:"ペットシーツやタオルを食べたりかじったりしますか",o:["する","しない"]};
+var Q_TEL={t:"q",id:"tel",q:"手術後の電話を希望されますか",o:["する","しない"]};
+var FORMS={
+ /* ---------- ウサギ・げっ歯類の歯科（下書き：院長確認前） ---------- */
+ exo_dental:{
+  name:"ウサギ・げっ歯類の歯科処置",v2:true,wt:true,ver:"歯科（ウサギ・げっ歯類）下書き0.2",
+  title:"ウサギ・げっ歯類の歯科処置に対する同意書",
+  species:["ウサギ","モルモット","チンチラ","デグー","ハムスター","ラット"],
+  procLabel:"処置の内容",procDefault:"臼歯・切歯の切削、かみ合わせの調整",
+  intro:["当院では処置にあたって飼い主様のご承諾をいただいております。","下記の事項をよくお読みになり、ご確認とご署名をお願いいたします。"],
+  body:[
+   {t:"c",e:["{mode}","麻酔下で初めて分かる異常","追加の検査や処置"],x:"今回は{mode}で、伸びすぎた歯やとがった歯を削り、かみ合わせを整えます。口の奥は起きている状態では十分に確認できないため、麻酔下で初めて分かる異常（歯の根の病気、膿、口の中の傷など）があります。その場合は、追加の検査や処置を行うことがあります。"},
+   {t:"c",e:["一生伸び続けます","処置を繰り返す必要"],x:"ウサギやげっ歯類の歯は一生伸び続けます。今回の処置で完治するものではなく、多くの場合、定期的に処置を繰り返す必要があります。"},
+   {t:"c",e:["100％安全な処置ではありません","犬や猫に比べて","死亡するリスクが高い","死亡または重い後遺症"],x:"麻酔・鎮静は100％安全な処置ではありません。ウサギやげっ歯類は、犬や猫に比べて麻酔中や術後に死亡するリスクが高いことが報告されています。検査で異常がなくても、まれに死亡または重い後遺症に至る場合があります。"},
+   {t:"c",e:["対応には限りがあります","見つかっていない病気がある可能性"],x:"体が小さいため、採血・血管の確保・気管挿管が難しく、術前の検査や麻酔中の対応には限りがあります。また、病気を隠す性質があり、見つかっていない病気がある可能性があります。"},
+   {t:"c",sp:/ウサギ|うさぎ|兎|兔/,e:["骨折するリスクが高い","命の危険"],x:"ウサギは、処置や注射の際、また麻酔から覚める際に暴れて骨折するリスクが高い動物です。特に背骨（脊椎）や大きな骨の骨折が起こった場合には、命の危険があります。"},
+   {t:"c",x:"今回の処置・麻酔で起こりうるリスクは以下のものがあります。",b:[
+     "呼吸の抑制・低酸素：呼吸が弱くなり、体の酸素が不足することがあります",
+     "低体温・低血糖：体が小さいため、体温や血糖が下がりやすくなります",
+     "誤嚥：口の中の水分や削った歯の粉が気管に入り、肺炎を起こす可能性があります",
+     "口の中の傷・出血：器具や歯の切削により、舌・頬・歯ぐきに傷がつくことがあります",
+     "歯や顎の損傷：もろくなった歯が折れたり、まれに顎の骨が折れることがあります",
+     "術後の食欲低下・消化管うっ滞：術後に食べなくなり、胃腸の動きが止まることがあります。命に関わるため、強制給餌や入院が必要になる場合があります",
+     "ショック・心肺停止：麻酔薬への反応や体質により、突然の血圧低下や心肺停止が起こる場合があります"]},
+   {t:"c",e:["連絡を待たずに行い","実施した分の費用"],x:"万が一、緊急の変化を起こした場合には、救命のための処置を連絡を待たずに行い、速やかにご連絡させて頂きます。緊急処置や追加の投薬を行った場合、また処置を中止した場合も、実施した分の費用はご請求させて頂きます。"},
+   {t:"c",e:["保温","食欲と便","すぐにご連絡ください"],x:"帰宅後は保温し、食欲と便の様子を確認してください。【仮：12時間】たっても食べない、便が出ない、ぐったりしている場合は、すぐにご連絡ください。"},
+   {t:"h",x:"確認事項"},
+   {t:"q",id:"xray",q:"麻酔・鎮静前のレントゲン検査を希望しますか",o:["する","しない"]},
+   {t:"q",id:"blood",q:"麻酔・鎮静前の血液検査を希望しますか",o:["する","しない"]},
+   {t:"q",id:"eat",q:"今朝、いつもどおり食べていますか",o:["はい","いいえ"],detail:"いいえ",dl:"いつから食べていませんか"},
+   {t:"q",id:"stool",q:"便はいつもどおり出ていますか",o:["はい","いいえ"]},
+   {t:"q",id:"ill",q:"持病や、現在飲んでいる薬・サプリはありますか",o:["ある","ない"],detail:"ある",dl:"病名・薬の名前"},
+   Q_ALLERGY,Q_PAST,
+   {t:"q",id:"extra",q:"麻酔下で抜歯などの追加処置が必要と判断した場合",o:["連絡なしで行ってよい","まず連絡がほしい"]},
+   {t:"q",id:"proceed",q:"→連絡が付かなかった場合、獣医師の判断で処置を実施して良いか",o:["可","不可"],sub:1,when:function(A){return A.extra==="まず連絡がほしい"}},
+   {t:"q",id:"cpr",q:"心肺停止となった場合、蘇生処置を希望しますか",o:["する","しない"]},
+   {t:"q",id:"tel",q:"処置後の電話を希望されますか",o:["する","しない"]},
+   {t:"q",id:"photo",q:"処置中の写真を、学会発表・院内教育・病院からの情報発信に使用してよいですか（飼い主様が特定される情報は出しません）",o:["よい","使用しない"]}
+  ]
+ },
+ /* ---------- 犬・猫のスケーリング・抜歯（下書き：院長確認前） ---------- */
+ dc_dental:{
+  name:"犬・猫のスケーリング・抜歯",v2:true,wt:true,ver:"歯科（犬・猫）下書き0.1",
+  title:"スケーリング・抜歯に対する同意書",
+  species:["犬","猫"],
+  procLabel:"処置の内容",procDefault:"スケーリング（歯石除去）・歯科検査・必要に応じて抜歯",
+  intro:["当院では処置にあたって飼い主様のご承諾をいただいております。","下記の事項をよくお読みになり、ご確認とご署名をお願いいたします。"],
+  body:[
+   {t:"c",e:["{mode}","麻酔下の検査で初めて分かります","処置中に決まります"],x:"今回は{mode}で、歯石の除去（スケーリング）と歯の表面の研磨を行い、歯周ポケットの検査と、必要に応じて歯科レントゲン検査を行います。歯の根や顎の骨の状態は、麻酔下の検査で初めて分かります。そのため、抜歯が必要な歯とその本数は、処置中に決まります。"},
+   {t:"c",e:["抜歯します","歯ぐきを切開し、歯を分割し、縫合する","費用と処置時間が変わります"],x:"重度の歯周病、歯の根の病気、折れた歯、歯が溶ける病気（吸収病巣）などがあり、残すと痛みや感染が続くと判断した歯は抜歯します。抜歯では、歯ぐきを切開し、歯を分割し、縫合することがあります。抜歯の本数によって、費用と処置時間が変わります。"},
+   {t:"c",e:["100％安全な処置ではありません","死亡または重い後遺症","リスクが高くなります"],x:"全身麻酔・鎮静は100％安全な処置ではありません。検査で異常がなくても、体質や不測の事態により、まれに死亡または重い後遺症に至る場合があります。高齢の動物や持病のある動物では、リスクが高くなります。"},
+   {t:"c",e:["血圧・心拍の低下や呼吸の抑制"],x:"麻酔時には、血圧・心拍の低下や呼吸の抑制が一般的に発生します。その他、今回の処置・麻酔で起こりうるリスクは以下のものがあります。",b:[
+     "出血：抜歯した部位から出血することがあります",
+     "顎の骨折：歯周病で顎の骨がもろくなっている場合（特に小型犬の下顎）、抜歯の際やその後に顎の骨が折れることがあります",
+     "口と鼻がつながる穴（口鼻瘻）：上顎の歯を抜いた後、口と鼻がつながり、くしゃみや鼻水が続くことがあります。再手術が必要になる場合があります",
+     "歯の根の取り残し：根が骨と癒着している、または折れやすい場合、根の一部が残ることがあります",
+     "縫合部の離開・感染：縫った部位が開いたり、腫れや感染が起こることがあります",
+     "周囲の組織や神経の損傷：舌・唇・眼の周囲や神経に傷がつき、しびれや違和感が残ることがあります",
+     "誤嚥：水分や歯石、吐物が気管に入り、肺炎を起こす可能性があります",
+     "気管チューブによる影響：咳やのどの違和感が数日続くことがあります。まれに気管を傷つけることがあります",
+     "腎障害：麻酔・処置の後、数日以内に腎臓の働きが低下する可能性があります",
+     "ショック・心肺停止：麻酔薬への反応や体質により、突然の血圧低下や心肺停止が起こる場合があります"]},
+   {t:"c",e:["再び付着します","歯みがきなどのケアと定期的な検診","完全には治まらない"],x:"歯石は処置後も再び付着します。歯周病の進行を防ぐには、ご自宅での歯みがきなどのケアと定期的な検診が必要です。歯周病が進んでいる場合、今回の処置だけでは口臭や炎症が完全には治まらないことがあります。"},
+   {t:"c",e:["連絡を待たずに行い","実施した分の費用","事前の概算から変わる"],x:"万が一、緊急の変化を起こした場合には、救命のための処置を連絡を待たずに行い、速やかにご連絡させて頂きます。緊急処置や追加の投薬を行った場合、また処置を中止した場合も、実施した分の費用はご請求させて頂きます。抜歯の本数や追加の処置により、費用は事前の概算から変わることがあります。"},
+   {t:"c",e:["やわらかい食事","すぐにご連絡ください"],x:"帰宅後もふらつきや食欲の変化がみられる場合があります。抜歯をした場合は、【仮：2週間】はやわらかい食事にし、硬いおやつやおもちゃは避けてください。出血が止まらない、顔が腫れる、食べない、ぐったりしている場合は、すぐにご連絡ください。"},
+   {t:"h",x:"確認事項"},
+   {t:"q",id:"exam",q:"麻酔前の検査（血液検査・レントゲン）を希望しますか",o:["する","しない","実施済み"]},
+   {t:"q",id:"fast",q:"絶食の指示は守れましたか",o:["はい","いいえ"],detail:"いいえ",dl:"最後に食べた時刻と内容"},
+   {t:"q",id:"ill",q:"持病や、現在飲んでいる薬・サプリはありますか",o:["ある","ない"],detail:"ある",dl:"病名・薬の名前"},
+   Q_ALLERGY,Q_PAST,
+   {t:"q",id:"extra",q:"麻酔下の検査で抜歯が必要と判断した歯について",o:["連絡なしで抜歯してよい","まず連絡がほしい"]},
+   {t:"q",id:"proceed",q:"→連絡が付かなかった場合、獣医師の判断で抜歯して良いか（不可の場合、抜歯は行わず、後日あらためて麻酔が必要になります）",o:["可","不可"],sub:1,when:function(A){return A.extra==="まず連絡がほしい"}},
+   {t:"q",id:"cpr",q:"心肺停止となった場合、蘇生処置を希望しますか",o:["する","しない"]},
+   Q_CHEW,
+   {t:"q",id:"tel",q:"処置後の電話を希望されますか",o:["する","しない"]},
+   {t:"q",id:"photo",q:"処置中の写真を、学会発表・院内教育・病院からの情報発信に使用してよいですか（飼い主様が特定される情報は出しません）",o:["よい","使用しない"]}
+  ]
+ },
+ /* ---------- 紙の同意書どおり（共通の2枚） ---------- */
+ surgery:{
+  name:"手術・麻酔（共通）",wt:true,ver:"手術・麻酔 紙版",
+  title:"手術・麻酔に対する同意書",
+  intro:["当院では手術にあたって飼い主様のご承諾をいただいております。","下記の事項をよくお読みになり、各項目にチェック、ご署名をお願いいたします。"],
+  procLabel:"手術・処置の内容",
+  body:[
+   {t:"c",e:["{mode}","手術の中止、延期"],x:"今回の手術・処置は{mode}で行います。必要な場合は、手術当日に追加の検査や治療をさせて頂く場合があります。また、動物の状態によっては手術の中止、延期をする場合があります。"},
+   {t:"c",e:["100％安全な処置ではありません","命に関わる変化"],x:"全身麻酔・鎮静は100％安全な処置ではありません。まれに、手術前の全身状態や検査で異常がなくても体質や不測の事態により、命に関わる変化が起こる場合があります。"},
+   {t:"c",e:["速やかにご連絡","その費用をご請求"],x:"万が一、緊急の変化を起こした場合には、最大限の治療を行うとともに速やかにご連絡させて頂きます。また、獣医師が必要と判断し、緊急処置や追加の投薬を実施した場合にはその費用をご請求させて頂きます。"},
+   {t:"c",e:["血圧・心拍の低下や呼吸の抑制"],x:"麻酔時には、血圧・心拍の低下や呼吸の抑制が一般的に発生します。その他、今回の手術・麻酔で起こりうるリスクは以下のものがあります。",b:[
+     "悪性高熱：麻酔薬に反応し、急激な発熱を起こす可能性があります",
+     "低酸素血症：特に気管挿管を出来ない小型動物で問題になります",
+     "誤嚥：麻酔時に吐物が気管内に入る事で肺炎を起こす可能性があります",
+     "腎障害：麻酔・手術の後、数日以内に重度の腎障害が発生する可能性があります",
+     "ショック・心肺停止：麻酔薬に急激に反応してしまい、突然の血圧低下が起こり、心肺停止となる場合があります",
+     "出血：血管や腫瘍、切開部位などから出血する場合があります",
+     "神経の麻痺：四肢・顔面・耳・眼などを手術する場合、その部位に麻痺症状が発生し、後遺症として残る可能性があります"]},
+   {t:"h",x:"確認事項"},
+   {t:"q",id:"contact",q:"追加で処置・検査が必要と判断された場合、連絡を希望しますか",o:["する","しない"]},
+   {t:"q",id:"proceed",q:"→連絡が付かなかった場合、獣医師の判断で処置を実施して良いか",o:["可","不可"],sub:1},
+   Q_ALLERGY,Q_PAST,Q_CHEW,Q_TEL
+  ]
+ },
+ sedation:{
+  name:"鎮静（共通）",ver:"鎮静 紙版",
+  title:"鎮静に対する同意書",
+  intro:["下記の事項をよくお読みになり、各項目にチェック、ご署名をお願いいたします。"],
+  procLabel:"鎮静の目的",
+  body:[
+   {t:"c",e:["100％安全を保障するものではありません"],x:"鎮静・麻酔下検査は命に関わるような変化をおこさない事が一般的です。しかし動物の特異体質やアレルギー反応などにより予想外の反応が出てしまうことが稀にあるため、100％安全を保障するものではありません。"},
+   {t:"c",e:["速やかにご連絡"],x:"万が一、緊急の変化を起こした場合には、最大限の治療を行うとともに速やかにご連絡させて頂きます。"},
+   {t:"c",e:["必須ではない","望ましい","気づけない疾患を抱えている可能性"],x:"鎮静・麻酔下検査前には、安全かどうかの確認のため血液検査・レントゲンの実施が必須ではないものの望ましいとされます。検査をせずに鎮静を行う場合においては身体検査や外観から気づけない疾患を抱えている可能性があります。"},
+   {t:"q",id:"blood",q:"鎮静前の血液検査を希望しますか？",o:["する","しない"],sub:1},
+   {t:"q",id:"xray",q:"鎮静前のレントゲン検査を希望しますか？",o:["する","しない"],sub:1},
+   {t:"c",e:["ふらつきや、異常行動、食欲の変化"],x:"鎮静剤の反応により、処置や検査が終わり帰宅したのちにもふらつきや、異常行動、食欲の変化がみられる場合があります。"},
+   {t:"c",e:["血圧・心拍の変動や呼吸数の変化"],x:"鎮静時には、血圧・心拍の変動や呼吸数の変化が発生する場合が多くあります。その他、起こりうるリスクは以下のものがあります。",b:[
+     "悪性高熱：ごくまれに鎮静剤などに反応し、急激な発熱を起こす可能性があります",
+     "低酸素血症：呼吸数が低下した場合に発生する可能性があります",
+     "誤嚥：鎮静時に吐物が気管内に入る事で肺炎を起こす可能性があります",
+     "ショック・心肺停止：特異体質により鎮静剤に急激に反応し、突然の血圧低下が起こり、心肺停止となる場合があります"]},
+   {t:"h",x:"確認事項"},
+   Q_ALLERGY,Q_PAST,Q_CHEW,Q_TEL
+  ]
+ }
+};
+var SIGN_V2="担当獣医師から説明を受け、質問する機会がありました。内容を理解し、実施に同意します。";
+
+/* ================= 共通 ================= */
+var API="";            // 空＝試験モード（端末内だけ）。本番はApps ScriptのURLを入れる
+function $(id){return document.getElementById(id)}
+function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+function b64e(o){var s=unescape(encodeURIComponent(JSON.stringify(o)));return btoa(s).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")}
+function b64d(s){s=s.replace(/-/g,"+").replace(/_/g,"/");while(s.length%4)s+="=";return JSON.parse(decodeURIComponent(escape(atob(s))))}
+function today(){var d=new Date();return d.getFullYear()+"-"+("0"+(d.getMonth()+1)).slice(-2)+"-"+("0"+d.getDate()).slice(-2)}
+function jdate(s){var m=/^(\d+)-(\d+)-(\d+)/.exec(s||"");return m?(+m[1])+"年"+(+m[2])+"月"+(+m[3])+"日":""}
+function stamp(){var d=new Date();return today()+" "+("0"+d.getHours()).slice(-2)+":"+("0"+d.getMinutes()).slice(-2)}
+function show(id){["vStaff","vOwner","vChk","vDone"].forEach(function(v){$(v).hidden=(v!==id)});window.scrollTo(0,0)}
+function seg(box,cb){box.addEventListener("click",function(e){var b=e.target.closest("button");if(!b)return;[].forEach.call(box.children,function(c){c.classList.toggle("on",c===b)});cb&&cb(b.dataset.v)})}
+function segVal(box){var b=box.querySelector(".on");return b?b.dataset.v:""}
+function segSet(box,v){[].forEach.call(box.children,function(c){c.classList.toggle("on",c.dataset.v===v)})}
+function fill(x,D){return x.replace("{mode}",D.mode||"全身麻酔下")}
+function wtText(D){return D.wt?D.wt+" "+(D.wu||"kg"):""}
+function vis(it,A){return !it.when||it.when(A)}
+function bodyOf(D){var b=FORMS[D.type].body.filter(function(x){return !x.sp||x.sp.test(D.species||"")});if(D.note){var i=b.findIndex(function(x){return x.t==="h"});if(i<0)i=b.length;b.splice(i,0,{t:"c",x:"この子で特に注意する点："+D.note,e:[D.note]})}return b}
+function alertBox(m){var n=el("div","test",m);n.style.cssText="position:fixed;left:14px;right:14px;top:14px;z-index:9;background:#fdecea;border-color:#e57373;font-size:16px";document.body.appendChild(n);setTimeout(function(){n.remove()},3500)}
+
+/* ================= スタッフ：発行 ================= */
+var PREV_KEY="consent_prev";
+function prevAll(){try{return JSON.parse(localStorage.getItem(PREV_KEY)||"{}")}catch(e){return {}}}
+function staffInit(){
+  show("vStaff");$("sDate").value=today();
+  Object.keys(FORMS).forEach(function(k){var o=el("option",null,FORMS[k].name);o.value=k;$("sType").appendChild(o)});
+  function typeUI(){var F=FORMS[$("sType").value];$("sWtBox").hidden=!F.wt;$("sProcL").textContent=F.procLabel;
+    if(F.procDefault&&!$("sProc").value)$("sProc").value=F.procDefault;
+    var L=$("spL");L.textContent="";(F.species||["犬","猫","ウサギ","フェレット","鳥","爬虫類","ハムスター","ハリネズミ","モルモット"]).forEach(function(s){L.appendChild(el("option",null,s))})}
+  $("sType").onchange=function(){$("sProc").value="";typeUI()};typeUI();seg($("sMode"));seg($("sWu"));
+  $("sWt").addEventListener("input",function(){var v=parseFloat($("sWt").value);if(v>=30)segSet($("sWu"),"g")});
+  $("sKarte").addEventListener("input",function(){$("sPrev").hidden=!prevAll()[$("sKarte").value.trim()]});
+  $("sPrevBtn").onclick=function(){var p=prevAll()[$("sKarte").value.trim()];if(!p)return;
+    $("sType").value=p.type;typeUI();$("sName").value=p.name||"";$("sSpecies").value=p.species||"";$("sProc").value=p.proc||"";
+    $("sWt").value="";segSet($("sMode"),p.mode||"全身麻酔下");$("sVet").value=p.vet||"伊村";$("sNote").value=p.note||"";$("sPrev").hidden=true};
+  $("sIssue").onclick=function(){
+    var F=FORMS[$("sType").value];
+    var D={v:2,id:"c"+Date.now().toString(36),type:$("sType").value,date:$("sDate").value,karte:$("sKarte").value.trim(),
+      name:$("sName").value.trim(),species:$("sSpecies").value.trim(),proc:$("sProc").value.trim(),vet:$("sVet").value,note:$("sNote").value.trim()};
+    if(F.wt){D.wt=$("sWt").value.trim();D.wu=segVal($("sWu"));D.mode=segVal($("sMode"))}
+    if(!D.name||!D.proc){alertBox("動物名と「"+F.procLabel+"」を入れてください");return}
+    if(F.wt&&D.wt&&((D.wu==="kg"&&parseFloat(D.wt)>=100)||(D.wu==="g"&&parseFloat(D.wt)<10))){alertBox("体重の単位（kg／g）を確認してください");return}
+    if(D.karte){var a=prevAll();a[D.karte]={type:D.type,name:D.name,species:D.species,proc:D.proc,mode:D.mode,vet:D.vet,note:D.note};try{localStorage.setItem(PREV_KEY,JSON.stringify(a))}catch(e){}}
+    var url=location.href.split("#")[0]+"#d="+b64e(D);
+    $("sUrl").textContent=url;$("sOut").hidden=false;$("sOut").scrollIntoView({behavior:"smooth"});
+    $("sCopy").onclick=function(){
+      var msg="ポックル動物病院です。\n"+D.name+"ちゃんの「"+F.title+"」です。\n内容をご確認のうえ、ご署名をお願いいたします。\nご不明な点は当日スタッフにおたずねください。\n"+url;
+      (navigator.clipboard?navigator.clipboard.writeText(msg):Promise.reject()).then(function(){$("sCopy").textContent="コピーしました ✓"},function(){window.prompt("コピーしてください",msg)})};
+    $("sHere").onclick=function(){D.here=1;ownerInit(D)};
+  };
+}
+
+/* ================= 飼い主：1画面1項目で確認 → 署名 ================= */
+var OD=null,ANS={},STEPS=[],SEEN=[],IDX=0,RET=null,TEL="",TEL2="",WHO={name:"",rel:""},pads=[],signBox=null;
+function makePad(first){
+  var w=el("div","pad"),c=el("canvas"),h=el("div","hint","この線の上に、指でお名前を"),x=el("button","s cl","書き直す");
+  w.appendChild(c);w.appendChild(h);w.appendChild(x);signBox.insertBefore(w,signBox.querySelector(".add"));
+  var P={c:c,ink:false,w:w},ctx=c.getContext("2d"),down=false,lx,ly;
+  function size(){var r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=Math.round(r.width*d);c.height=Math.round(r.height*d);ctx.lineWidth=3.2*d;ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle="#111";P.ink=false;h.hidden=false}
+  size();
+  function pos(e){var r=c.getBoundingClientRect();return [(e.clientX-r.left)*c.width/r.width,(e.clientY-r.top)*c.height/r.height]}
+  c.addEventListener("pointerdown",function(e){e.preventDefault();down=true;c.setPointerCapture&&c.setPointerCapture(e.pointerId);var p=pos(e);lx=p[0];ly=p[1];ctx.beginPath();ctx.arc(lx,ly,ctx.lineWidth/2,0,7);ctx.fillStyle="#111";ctx.fill();P.ink=true;h.hidden=true;btnState()});
+  c.addEventListener("pointermove",function(e){if(!down)return;e.preventDefault();var p=pos(e);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p[0],p[1]);ctx.stroke();lx=p[0];ly=p[1]});
+  ["pointerup","pointercancel","pointerleave"].forEach(function(n){c.addEventListener(n,function(){down=false})});
+  x.onclick=function(){if(!first&&!P.ink){w.remove();pads.splice(pads.indexOf(P),1);btnState();return}size();btnState()};
+  pads.push(P);return P;
+}
+function richText(host,text,ems){
+  text.split(/(?<=。)/).forEach(function(sen){
+    var p=el("p"),rest=sen;
+    while(rest){var hit=null,at=-1;(ems||[]).forEach(function(k){var i=rest.indexOf(k);if(i>=0&&(at<0||i<at)){at=i;hit=k}});
+      if(!hit){p.appendChild(document.createTextNode(rest));break}
+      if(at)p.appendChild(document.createTextNode(rest.slice(0,at)));p.appendChild(el("b",null,hit));rest=rest.slice(at+hit.length)}
+    host.appendChild(p)});
+}
+function ownerInit(D){
+  OD=D;ANS={};SEEN=[];IDX=0;RET=null;TEL="";TEL2="";WHO={name:"",rel:""};pads=[];signBox=null;var F=FORMS[D.type];
+  document.title=F.title+"｜ポックル動物病院";
+  STEPS=[{k:"cover"}];var n=0;
+  bodyOf(D).forEach(function(it){
+    if(it.t==="c"){n++;STEPS.push({k:"c",it:it,n:n});if(it.b)STEPS.push({k:"r",it:it,n:n})}
+    else if(it.t==="q")STEPS.push({k:"q",it:it})});
+  if(F.v2)STEPS.push({k:"who"});
+  STEPS.push({k:"tel"},{k:"sum"},{k:"sign"});STEPS.NC=n;
+  $("oBack").onclick=function(){if(RET!=null){var r=RET;RET=null;go(r)}else move(-1)};
+  $("oSz").onclick=function(){var x=document.body.classList.toggle("xl");$("oSz").textContent=x?"文字をふつうに":"文字を大きく"};
+  show("vOwner");render();
+}
+function shown(i){var s=STEPS[i];return s.k!=="q"||vis(s.it,ANS)}
+function go(i){IDX=i;render();window.scrollTo(0,0)}
+function move(d){var i=IDX+d;while(i>0&&i<STEPS.length-1&&!shown(i))i+=d;go(Math.max(0,Math.min(STEPS.length-1,i)))}
+function next(){SEEN[IDX]=true;if(RET!=null&&STEPS[IDX+1]&&shown(IDX+1)&&STEPS[IDX+1].k==="q"&&STEPS[IDX+1].it.when&&!ANS[STEPS[IDX+1].it.id]){move(1);return}
+  if(RET!=null){var r=RET;RET=null;go(r)}else move(1)}
+function qDone(it){return !!ANS[it.id]&&!(it.detail&&ANS[it.id]===it.detail&&!ANS[it.id+"_d"])}
+function telOk(){return TEL.replace(/\D/g,"").length>=10}
+function btnState(){
+  var st=STEPS[IDX],b=$("oNext"),ok=true;
+  if(st.k==="q")ok=qDone(st.it);
+  else if(st.k==="tel")ok=telOk();
+  else if(st.k==="who")ok=!!(WHO.name&&WHO.rel);
+  else if(st.k==="sign")ok=pads.some(function(p){return p.ink});
+  b.disabled=!ok;
+}
+function infoRows(D,F){return [["動物名",D.name+" ちゃん"],[F.procLabel,D.proc],["日付",jdate(D.date)],["担当獣医師",D.vet],["動物種",D.species],["体重",wtText(D)],["カルテNo.",D.karte]].filter(function(r){return r[1]})}
+function dl(rows){var d=el("dl","info");rows.forEach(function(r){var w=el("div");w.appendChild(el("dt",null,r[0]));w.appendChild(el("dd",null,r[1]));if(r[2]!=null){var f=el("button","fix","直す");f.onclick=function(){RET=IDX;go(r[2])};w.appendChild(f)}d.appendChild(w)});return d}
+function opts(m,list,cur,onPick){list.forEach(function(o){var bt=el("button","opt"+(cur===o?" on":""));bt.type="button";bt.appendChild(el("span","ck","✓"));bt.appendChild(el("span",null,o));
+  bt.onclick=function(){[].forEach.call(m.querySelectorAll(".opt"),function(x){x.classList.toggle("on",x===bt)});onPick(o)};m.appendChild(bt)})}
+function render(){
+  var st=STEPS[IDX],F=FORMS[OD.type],D=OD,m=$("oMain"),b=$("oNext");m.textContent="";
+  if(signBox&&signBox.parentNode)signBox.remove();
+  var total=0,pos=0;STEPS.forEach(function(s,i){if(i&&shown(i)){total++;if(i<=IDX)pos++}});
+  $("oBack").style.visibility=IDX?"visible":"hidden";
+  $("oPg").textContent=IDX?(pos+"／"+total):"";$("oBar").style.width=(pos/total*100)+"%";
+  b.className="p";b.onclick=next;
+  if(st.k==="cover"){
+    m.appendChild(el("div","lead","ポックル動物病院"));m.appendChild(el("h1",null,F.title));
+    m.appendChild(dl(infoRows(D,F)));
+    var s=el("div","st");F.intro.forEach(function(t){s.appendChild(el("p",null,t))});m.appendChild(s);
+    m.appendChild(el("p","note","1つずつ表示します。3分ほどで終わります。"));
+    b.textContent="はじめる";
+  }else if(st.k==="c"){
+    m.appendChild(el("div","lead","ご説明 "+st.n+"／"+STEPS.NC));
+    var s2=el("div","st");richText(s2,fill(st.it.x,D),(st.it.e||[]).map(function(k){return fill(k,D)}));m.appendChild(s2);
+    b.textContent=st.it.b?"次へ（リスクの内容）":"確認しました";
+  }else if(st.k==="r"){
+    m.appendChild(el("div","lead","ご説明 "+st.n+"／"+STEPS.NC+"　起こりうるリスク"));
+    st.it.b.forEach(function(t){var i=t.indexOf("："),r=el("div","risk");r.appendChild(el("div","n",t.slice(0,i)));r.appendChild(el("div","d",t.slice(i+1)));m.appendChild(r)});
+    b.textContent="確認しました";
+  }else if(st.k==="q"){
+    var it=st.it,dt=null;m.appendChild(el("div","lead","ご質問"));m.appendChild(el("div","qt",it.q.replace(/^→/,"")));
+    opts(m,it.o,ANS[it.id],function(o){ANS[it.id]=o;
+      STEPS.forEach(function(s3){if(s3.k==="q"&&!vis(s3.it,ANS)){delete ANS[s3.it.id];delete ANS[s3.it.id+"_d"]}});
+      if(it.detail&&o===it.detail){dt.parentNode.hidden=false;dt.focus();btnState()}
+      else{if(dt){dt.parentNode.hidden=true;delete ANS[it.id+"_d"]}btnState();setTimeout(next,220)}});
+    if(it.detail){var w=el("div");w.hidden=ANS[it.id]!==it.detail;w.appendChild(el("label","f",it.dl));dt=el("input");dt.type="text";dt.value=ANS[it.id+"_d"]||"";
+      dt.oninput=function(){ANS[it.id+"_d"]=dt.value.trim();btnState()};w.appendChild(dt);m.appendChild(w)}
+    b.textContent="次へ";
+  }else if(st.k==="who"){
+    m.appendChild(el("div","lead","ご署名される方"));m.appendChild(el("div","qt","お名前と、"+D.name+"ちゃんとのご関係"));
+    m.appendChild(el("label","f","お名前（フルネーム）"));var nm=el("input");nm.type="text";nm.autocomplete="name";nm.value=WHO.name;nm.oninput=function(){WHO.name=nm.value.trim();btnState()};m.appendChild(nm);
+    m.appendChild(el("label","f","ご関係"));var box=el("div");box.style.marginTop="6px";m.appendChild(box);
+    opts(box,["飼い主本人","ご家族","飼い主から任された方"],WHO.rel,function(o){WHO.rel=o;btnState()});
+    m.appendChild(el("p","note","飼い主ご本人、または飼い主から同意を任された方がご署名ください。"));
+    b.textContent="次へ";
+  }else if(st.k==="tel"){
+    m.appendChild(el("div","lead","ご連絡先"));m.appendChild(el("div","qt","緊急時の電話番号"));
+    var t=el("input");t.type="tel";t.inputMode="tel";t.autocomplete="tel";t.placeholder="090-0000-0000";t.value=TEL;t.style.fontSize="1.2em";
+    t.oninput=function(){TEL=t.value.trim();btnState()};m.appendChild(t);
+    m.appendChild(el("p","note","手術・処置の間、すぐつながる番号をお願いします。"));
+    if(F.v2){m.appendChild(el("label","f","つながらない時の連絡先（任意）"));var t2=el("input");t2.type="tel";t2.inputMode="tel";t2.value=TEL2;t2.oninput=function(){TEL2=t2.value.trim()};m.appendChild(t2)}
+    b.textContent="次へ";
+  }else if(st.k==="sum"){
+    m.appendChild(el("div","lead","内容のご確認"));m.appendChild(el("h1",null,"ご回答はこちらでよろしいですか"));
+    var rows=[["ご説明",STEPS.NC+"項目すべて確認済み"]];
+    STEPS.forEach(function(s3,i){
+      if(s3.k==="q"&&shown(i))rows.push([s3.it.q.replace(/^→/,""),ANS[s3.it.id]+(ANS[s3.it.id+"_d"]?"（"+ANS[s3.it.id+"_d"]+"）":""),i]);
+      if(s3.k==="who")rows.push(["ご署名される方",WHO.name+"（"+WHO.rel+"）",i]);
+      if(s3.k==="tel")rows.push(["緊急時の電話番号",TEL+(TEL2?"　／　"+TEL2:""),i])});
+    var d2=dl(rows);d2.className="info sum";m.appendChild(d2);
+    b.textContent="署名へ進む";
+  }else if(st.k==="sign"){
+    m.appendChild(el("div","lead","ご署名"));m.appendChild(el("div","qt",F.v2?SIGN_V2:"上記内容を理解しました"));
+    if(!signBox){signBox=el("div");var add=el("button","s add","＋ ご家族の署名を追加");add.onclick=function(){makePad(false)};signBox.appendChild(add);m.appendChild(signBox);makePad(true)}
+    else m.appendChild(signBox);
+    m.appendChild(el("p","note",F.v2?"画面へのご署名は、手書きの署名と同じものとして扱います。":"ご確認頂いたご家族皆様の署名をお願いします。"));
+    b.textContent="同意して送信する";b.onclick=submit;
+  }
+  btnState();
+}
+function complete(){
+  var F=FORMS[OD.type];
+  return STEPS.every(function(s,i){return s.k==="q"?(!shown(i)||qDone(s.it)):(s.k==="c"||s.k==="r")?SEEN[i]:true})&&telOk()&&(!F.v2||(WHO.name&&WHO.rel))&&pads.some(function(p){return p.ink});
+}
+function submit(){
+  if(!complete()){alertBox("未確認の項目があります。最初から順にご確認ください。");return}
+  var R={d:OD,ans:ANS,tel:TEL,tel2:TEL2,who:WHO,staff:"",signedAt:stamp(),sigs:pads.filter(function(p){return p.ink}).map(function(p){return p.c})};
+  if(OD.here&&FORMS[OD.type].v2){
+    var s=$("cStaff");if(s.options.length<2)STAFF.forEach(function(n){s.appendChild(el("option",null,n))});s.value="";$("cDone").disabled=true;
+    s.onchange=function(){$("cDone").disabled=!s.value};$("cDone").onclick=function(){R.staff=s.value;finish(R)};show("vChk");
+  }else finish(R);
+}
+function finish(R){
+  var pages=buildDoc(R),jpgs=pages.map(function(c){return c.toDataURL("image/jpeg",0.88)}),pdf=jpegsToPdf(jpgs,PW,PH);
+  // 本番：ここで API に {id, pdf} を送る。試験モードは画面に出すだけ
+  $("outImg").textContent="";jpgs.forEach(function(j){var img=new Image();img.src=j;img.alt="同意書";img.style.marginBottom="8px";$("outImg").appendChild(img)});
+  var url=URL.createObjectURL(new Blob([pdf],{type:"application/pdf"}));var a=$("outPdf");a.href=url;a.target="_blank";
+  a.download=(OD.karte?OD.karte+"_":"")+OD.name+"_"+FORMS[OD.type].title+"_"+OD.date+".pdf";
+  window.__lastPdf=pdf;window.__pages=pages.length;show("vDone");
+}
+
+/* ================= 同意書の画像（A4縦 150dpi・必要なら2枚）とPDF ================= */
+var PW=1240,PH=1754,MX=96,TM=90;
+var MIN='"Hiragino Mincho ProN","Yu Mincho","YuMincho","Noto Serif CJK JP","Noto Serif JP",serif';
+function wrap(ctx,text,maxW){var out=[],line="",NO="、。，．）」』】・：；？！ー％",i,ch;
+  for(i=0;i<text.length;i++){ch=text[i];if(ch==="\n"){out.push(line);line="";continue}
+    if(ctx.measureText(line+ch).width>maxW&&line&&NO.indexOf(ch)<0){out.push(line);line=ch}else line+=ch}
+  if(line)out.push(line);return out}
+function buildDoc(R){
+  var tall=document.createElement("canvas");tall.width=PW;tall.height=PH*3;
+  var sc=[1,0.95,0.9,0.86],res,i,one=false;
+  for(i=0;i<sc.length;i++){res=layout(tall,R,sc[i]);if(res.y<=PH-70){one=true;break}}
+  if(!one)res=layout(tall,R,0.94);
+  var end=res.y+30,cuts=[0],lim=PH-90;
+  while(!one&&end>lim){var c=0;res.brk.forEach(function(b){if(b<=lim&&b>cuts[cuts.length-1]+200)c=b});if(!c)c=lim;cuts.push(c);lim=c+(PH-90-TM)}
+  cuts.push(end);
+  var pages=[];
+  for(i=0;i<cuts.length-1;i++){var p=document.createElement("canvas");p.width=PW;p.height=PH;var x=p.getContext("2d");x.fillStyle="#fff";x.fillRect(0,0,PW,PH);
+    var h=cuts[i+1]-cuts[i];x.drawImage(tall,0,cuts[i],PW,h,0,i?TM:0,PW,h);
+    if(cuts.length>2){x.fillStyle="#555";x.font="17px "+MIN;x.textAlign="center";x.fillText(FORMS[R.d.type].title+"　発行ID "+R.d.id+"　"+(i+1)+"／"+(cuts.length-1),PW/2,PH-40)}
+    pages.push(p)}
+  return pages;
+}
+function layout(c,R,s){
+  var ctx=c.getContext("2d"),D=R.d,F=FORMS[D.type],W=PW-MX*2,y=0,brk=[];
+  var fs=Math.round(25*s),lh=Math.round(fs*1.52);
+  ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);ctx.fillStyle="#111";ctx.textBaseline="alphabetic";ctx.textAlign="left";
+  function font(px,b){ctx.font=(b?"bold ":"")+px+"px "+MIN}
+  function line(y1,w,col){ctx.strokeStyle=col||"#111";ctx.lineWidth=w||1.5;ctx.beginPath();ctx.moveTo(MX,y1);ctx.lineTo(PW-MX,y1);ctx.stroke()}
+  function para(t,x,indent,b){font(fs,b);var ls=wrap(ctx,t,PW-MX-x-indent);ls.forEach(function(l){y+=lh;ctx.fillText(l,x+indent,y)});return ls.length}
+  function mark(){brk.push(y+8)}
+  ctx.strokeStyle="#999";ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(MX+110,84);ctx.lineTo(PW-MX-110,84);ctx.stroke();
+  font(Math.round(38*s));ctx.textAlign="center";ctx.fillText(F.title.split("").join(" "),PW/2,146);ctx.textAlign="left";
+  line(176,5,"#888");y=176;
+  font(Math.round(22*s));y+=Math.round(48*s);ctx.fillText(jdate(D.date),MX+60,y);ctx.textAlign="right";ctx.fillText("担当獣医師："+D.vet,PW-MX-20,y);ctx.textAlign="left";
+  y+=Math.round(18*s);F.intro.forEach(function(t){para(t,MX,0)});
+  function field(lbl,val,x){font(fs,true);ctx.fillText(lbl+"：",x,y);var lw=ctx.measureText(lbl+"：").width;font(fs);ctx.fillText(val||"",x+lw+8,y)}
+  y+=Math.round(lh*1.25);field(F.procLabel,D.proc,MX);
+  if(F.wt){font(fs);ctx.textAlign="right";ctx.fillText("体重　"+(wtText(D)||"　　kg"),PW-MX,y);ctx.textAlign="left"}
+  line(y+10,1.2);
+  y+=Math.round(lh*1.25);field("動物名",D.name+" ちゃん",MX);field("動物種",D.species,MX+W*0.5);field("カルテNo.",D.karte,MX+W*0.76);line(y+10,1.2);
+  y+=Math.round(lh*0.35);
+  var bx=Math.round(fs*0.95),ind=bx+22;
+  function cbox(yy){ctx.lineWidth=2;ctx.strokeStyle="#111";ctx.strokeRect(MX,yy-bx+4,bx,bx);ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(MX+4,yy-bx/2+4);ctx.lineTo(MX+bx*0.4,yy);ctx.lineTo(MX+bx+5,yy-bx-2);ctx.stroke()}
+  function ans(it,x){
+    var a=R.ans[it.id]||"",ow=0,i;font(fs,true);it.o.forEach(function(o){ow+=ctx.measureText(o).width});font(fs);ow+=ctx.measureText(" / ").width*(it.o.length-1)+40;
+    var txt=(it.q.charAt(0)==="→"?"":"※")+it.q,stack=(PW-MX-x-ow)<W*0.42;
+    var ls=wrap(ctx,txt,stack?PW-MX-x:PW-MX-x-ow);ls.forEach(function(l){y+=lh;ctx.fillText(l,x,y)});if(stack)y+=lh;
+    var qy=y,ax=PW-MX-14;ctx.textAlign="right";
+    for(i=it.o.length-1;i>=0;i--){var o=it.o[i];font(fs,o===a);var w=ctx.measureText(o).width;ctx.fillStyle=(o===a)?"#111":"#aaa";ctx.fillText(o,ax,qy);
+      if(o===a){ctx.lineWidth=2.4;ctx.strokeStyle="#111";ctx.beginPath();ctx.ellipse(ax-w/2,qy-fs*0.36,w/2+13,fs*0.72,0,0,Math.PI*2);ctx.stroke()}
+      ax-=w;if(i>0){font(fs);ctx.fillStyle="#aaa";var sw=ctx.measureText(" / ").width;ctx.fillText(" / ",ax,qy);ax-=sw}}
+    ctx.fillStyle="#111";ctx.textAlign="left";ctx.lineWidth=1;ctx.strokeStyle="#111";ctx.beginPath();ctx.moveTo(x,qy+6);ctx.lineTo(PW-MX,qy+6);ctx.stroke();
+    if(R.ans[it.id+"_d"]){font(Math.round(fs*0.92));wrap(ctx,"　内容："+R.ans[it.id+"_d"],PW-MX-x).forEach(function(l){y+=lh;ctx.fillText(l,x,y)})}
+  }
+  bodyOf(D).forEach(function(it){
+    if(it.t==="c"){mark();y+=Math.round(lh*0.22);var y0=y+lh;para(fill(it.x,D),MX,ind);cbox(y0);
+      if(it.b)it.b.forEach(function(b){font(fs);var ls=wrap(ctx,b,W-ind-30);ls.forEach(function(l,i){y+=lh;if(i===0)ctx.fillText("•",MX+ind-4,y);ctx.fillText(l,MX+ind+24,y)})})}
+    else if(it.t==="h"){mark();y+=Math.round(lh*0.5);para(it.x,MX,0,true)}
+    else if(it.t==="q"){if(!vis(it,R.ans))return;mark();ans(it,MX+(it.sub?ind+30:ind))}
+  });
+  // 署名（途中で改ページしない）
+  mark();y+=Math.round(lh*0.7);
+  if(F.v2){para(SIGN_V2,MX,0,true);y+=Math.round(lh*0.2)}
+  font(Math.round(fs*1.15),true);y+=lh;ctx.fillText("ご署名",MX,y);var tw=ctx.measureText("ご署名").width;font(Math.round(fs*0.8));
+  ctx.fillText(F.v2?"（画面への署名を、手書きの署名と同じものとして扱います）":"（ご確認頂いたご家族皆様の署名をお願いします）",MX+tw+6,y);
+  if(!F.v2){y+=lh;font(Math.round(fs*0.85));ctx.fillText("上記内容を理解しました",MX,y)}
+  var n=R.sigs.length,sh=Math.round((n>2?120:150)*s),gap=24,sw=Math.min(420,(W-gap*(n-1))/n);y+=10;
+  R.sigs.forEach(function(sc,i){var b=inkBox(sc);if(!b)return;var k=Math.min(sw/b.w,sh/b.h);ctx.drawImage(sc,b.x,b.y,b.w,b.h,MX+i*(sw+gap),y+(sh-b.h*k)/2,b.w*k,b.h*k)});
+  y+=sh+8;line(y,1.2);
+  if(F.v2){y+=Math.round(lh*1.15);font(fs);ctx.fillText("お名前：　"+R.who.name+"　（"+R.who.rel+"）",MX,y);line(y+10,1.2)}
+  y+=Math.round(lh*1.15);font(fs);ctx.fillText("緊急時の電話番号：　"+R.tel+(R.tel2?"　／　"+R.tel2:""),MX,y);line(y+10,1.2);
+  if(F.v2){y+=Math.round(lh*1.15);font(fs);ctx.fillText("当日の口頭確認（スタッフ）：　"+(R.staff||"　　　　　　"),MX,y);line(y+10,1.2)}
+  y+=Math.round(lh*1.0);font(Math.round(17*s));ctx.fillStyle="#555";
+  ctx.fillText("電子署名（画面への手書き）　署名日時 "+R.signedAt+"　発行ID "+D.id+"　版："+F.ver+"　ポックル動物病院",MX,y);ctx.fillStyle="#111";
+  return {y:y,brk:brk};
+}
+function inkBox(c){var x=c.getContext("2d"),d=x.getImageData(0,0,c.width,c.height).data,w=c.width,h=c.height,x0=w,y0=h,x1=-1,y1=-1,i,j;
+  for(j=0;j<h;j+=2)for(i=0;i<w;i+=2)if(d[(j*w+i)*4+3]>40){if(i<x0)x0=i;if(i>x1)x1=i;if(j<y0)y0=j;if(j>y1)y1=j}
+  if(x1<0)return null;var p=8;x0=Math.max(0,x0-p);y0=Math.max(0,y0-p);x1=Math.min(w,x1+p);y1=Math.min(h,y1+p);return {x:x0,y:y0,w:x1-x0,h:y1-y0}}
+function jpegsToPdf(urls,w,h){
+  var parts=[],off=[],len=0,n=urls.length,i;
+  function put(s){var u=(typeof s==="string")?Uint8Array.from(s,function(ch){return ch.charCodeAt(0)}):s;parts.push(u);len+=u.length}
+  function obj(k,s){off[k]=len;put(k+" 0 obj\n"+s)}
+  put("%PDF-1.4\n%\xE2\xE3\xCF\xD3\n");
+  obj(1,"<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+  var kids=[];for(i=0;i<n;i++)kids.push((3+i*3)+" 0 R");
+  obj(2,"<< /Type /Pages /Kids ["+kids.join(" ")+"] /Count "+n+" >>\nendobj\n");
+  var cs="q 595.28 0 0 841.89 0 0 cm /Im0 Do Q";
+  for(i=0;i<n;i++){var a=3+i*3,bin=atob(urls[i].split(",")[1]),img=new Uint8Array(bin.length),j;for(j=0;j<bin.length;j++)img[j]=bin.charCodeAt(j);
+    obj(a,"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /XObject << /Im0 "+(a+1)+" 0 R >> >> /Contents "+(a+2)+" 0 R >>\nendobj\n");
+    obj(a+1,"<< /Type /XObject /Subtype /Image /Width "+w+" /Height "+h+" /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length "+img.length+" >>\nstream\n");put(img);put("\nendstream\nendobj\n");
+    obj(a+2,"<< /Length "+cs.length+" >>\nstream\n"+cs+"\nendstream\nendobj\n")}
+  var cnt=3+n*3,xr=len,x="xref\n0 "+cnt+"\n0000000000 65535 f \n";for(i=1;i<cnt;i++)x+=("0000000000"+off[i]).slice(-10)+" 00000 n \n";
+  put(x+"trailer\n<< /Size "+cnt+" /Root 1 0 R >>\nstartxref\n"+xr+"\n%%EOF\n");
+  var out=new Uint8Array(len),p=0;parts.forEach(function(u){out.set(u,p);p+=u.length});return out;
+}
+
+/* ================= 起動 ================= */
+(function(){
+  var m=/[#&]d=([^&]+)/.exec(location.hash);
+  if(m){try{ownerInit(b64d(m[1]));return}catch(e){}}
+  staffInit();
+})();
+</script>
+</body>
+</html>

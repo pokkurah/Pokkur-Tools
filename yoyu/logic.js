@@ -11,8 +11,12 @@ var YoyuLogic = (function () {
     { k: 'mtStart', label: 'MT開始時刻', type: 'time' }, { k: 'urgent', label: '緊急枠の数', type: 'num' },
     { k: 'ope', label: 'オペ数', type: 'num' }, { k: 'writer', label: '記入者', type: 'text' },
     { k: 'checker', label: '確認した人', type: 'text' }, { k: 'causeMemo', label: '赤の原因メモ', type: 'memo' },
-    { k: 'planMemo', label: '対策メモ', type: 'memo' }
+    { k: 'planMemo', label: '対策メモ', type: 'memo' },
+    /* 週の振り返り（土曜の朝に記入）。その週の最初の日（土曜）の行に保存する。毎日の入力画面には出さない */
+    { k: 'weekMemo', label: '週の振り返り', type: 'memo', week: true }
   ];
+  /* 1週間＝土曜〜金曜。その日を含む週の土曜を返す */
+  function weekStart(date) { var t = Date.parse(date + 'T00:00:00Z'), w = new Date(t).getUTCDay(); return new Date(t - ((w + 1) % 7) * 864e5).toISOString().slice(0, 10); }
   function validDate(d) { return /^\d{4}-\d{2}-\d{2}$/.test(String(d)) && !isNaN(Date.parse(d + 'T00:00:00Z')); }
   function blank(date) { return { date: date, cells: {}, meta: {}, at: 0 }; }
   function str(x, n) { return String(x == null ? '' : x).replace(/[\r\n\t]+/g, ' ').trim().slice(0, n); }
@@ -33,7 +37,7 @@ var YoyuLogic = (function () {
     } else if (p.action === 'meta') {
       var m = META.filter(function (x) { return x.k === p.m; })[0];   /* p.k は院内キーなので項目名は p.m */
       if (!m) return '項目が不明です';
-      var v = str(p.v, m.type === 'memo' ? 400 : 40);
+      var v = m.week ? String(p.v == null ? '' : p.v).replace(/\r/g, '').trim().slice(0, 1000) : str(p.v, m.type === 'memo' ? 400 : 40);   /* 週の振り返りは改行を残す */
       if (m.type === 'time' && v && !/^([01]?\d|2[0-3]):[0-5]\d$/.test(v)) return '時刻の形が違います';
       if (m.type === 'num' && v && !/^\d{1,2}$/.test(v)) return '数の形が違います';
       if (v) rec.meta[p.m] = v; else delete rec.meta[p.m];
@@ -58,5 +62,5 @@ var YoyuLogic = (function () {
     return r;
   }
   return { PEOPLE: PEOPLE, BLOCKS: BLOCKS, COLORS: COLORS, CAUSES: CAUSES, META: META, validDate: validDate, blank: blank,
-    ckey: ckey, dow: dow, attend: attend, apply: apply, header: header, flatten: flatten };
+    ckey: ckey, dow: dow, weekStart: weekStart, attend: attend, apply: apply, header: header, flatten: flatten };
 })();

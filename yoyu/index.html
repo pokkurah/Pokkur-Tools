@@ -140,6 +140,7 @@ function drawMeta(){
   var M=$('meta');
   if(!built){built=true;
     L.META.forEach(function(m){
+      if(m.week)return;
       var w=el('div',m.type==='memo'?'wide':''),lb=el('label','',m.label);w.appendChild(lb);
       if(m.type==='num'){
         var n=el('div','num'),v=el('b');v.id='m_'+m.k;
@@ -155,7 +156,7 @@ function drawMeta(){
       M.appendChild(w);
     });
   }
-  L.META.forEach(function(m){var e=$('m_'+m.k),v=R.meta[m.k]||'';
+  L.META.forEach(function(m){if(m.week)return;var e=$('m_'+m.k),v=R.meta[m.k]||'';
     if(m.type==='num')e.textContent=v||'0';
     else if(document.activeElement!==e&&e.value!==v)e.value=v});
 }

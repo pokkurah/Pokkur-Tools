@@ -396,9 +396,9 @@ function recHandoff(){
 /* 当日の内容で確定 → サーバーに保存（状態＝確定）。麻酔記録アプリの「確定した麻酔」から別の端末でも呼び出せる（院長指定 2026-11-16） */
 function ordConfirm(go){
   var P=S.pt, miss=[];
-  if(!sp()) miss.push("動物種"); if(kg()==null) miss.push("当日の体重"); if(!P.no&&!P.name) miss.push("カルテNoか動物名"); if(!P.vet) miss.push("担当医"); if(!S.pre.length&&!S.criList.length) miss.push("薬");
+  if(!sp()) miss.push("動物種"); if(kg()==null) miss.push("当日の体重"); if(!P.no&&!P.name) miss.push("カルテNoか名前"); if(P.name&&!nameOk(P.name)) miss.push("名前の形（カタカナ「名字 動物名」）"); if(!P.vet) miss.push("担当医"); if(!S.pre.length&&!S.criList.length) miss.push("薬");
   if(miss.length){ toast("未入力："+miss.join("・")); return; }
-  var today=addDays(0); if(P.date!==today){ if(!confirm("日付が今日（"+today+"）ではありません。今日の日付にして確定しますか？")) return; P.date=today; }
+  var today=addDays(0); if(P.date!==today){ if(!confirm("麻酔予定日が今日（"+today+"）ではありません。今日の日付にして確定しますか？")) return; P.date=today; }
   var hd=buildHandoff();
   uploadPrep(prepImage()).then(function(pid){ if(pid) hd.prepId=pid; return ordApi({action:"save",id:(S.ref&&S.ref.id)||"",date:P.date,no:P.no,name:P.name,sp:S.sp,proc:P.proc,vet:P.vet,data:snapshot(hd)}).then(function(j){
     if(!j.ok){ toast(j.err||"確定できませんでした"); if(go) recHandoff(); return; }
@@ -864,6 +864,9 @@ function txtInput(obj,key,ph,type){
   return h(type==="area"?"textarea":"input",{type:type==="area"?null:(type||"text"),placeholder:ph||"",value:type==="area"?null:obj[key],"data-k":"rec_"+key,
     class:"tin",oninput:function(e){obj[key]=e.target.value;},onchange:function(){refreshPrint();}},type==="area"?obj[key]:null);
 }
+function normNo(v){ return String(v||"").replace(/[Ａ-Ｚａ-ｚ０-９]/g,function(c){return String.fromCharCode(c.charCodeAt(0)-0xFEE0);}).replace(/[^A-Za-z0-9]/g,""); }
+function normName(v){ return String(v||"").replace(/[ぁ-ゖ]/g,function(c){return String.fromCharCode(c.charCodeAt(0)+0x60);}).replace(/[\s　]+/g,"　").replace(/^　|　$/g,""); }
+function nameOk(v){ return /^[ァ-ヺー・]+　[ァ-ヺー・]+$/.test(normName(v)); }
 function asaText(){ return S.pt.asa? "ASA "+S.pt.asa+(S.pt.asaE?"E":"") : "—"; }
 function bcsText(){ return S.pt.bcs? S.pt.bcs+"/"+S.pt.bcsScale : "—"; }
 
@@ -961,7 +964,7 @@ function drawSheet(k){
   ctx.textAlign="right"; ctx.font=pf(z(34),700); ctx.fillStyle=MINT; ctx.fillText("ポックル動物病院　"+(P.date||today()).replace(/-/g,"/"),PW-PM,y+z(12)); ctx.textAlign="left";
   y+=z(70); ctx.fillStyle="#2fa88e"; ctx.fillRect(PM,y,PW-2*PM,z(5)); y+=z(16);
   // 症例情報（2段×5）
-  var info=[["カルテNo",P.no||""],["動物名",P.name||""],["種",o.l],["体重",fnum(w)+" kg"+(w<1?"（"+fnum(w*1000)+" g）":"")],["ASA",P.asa?P.asa+(P.asaE?"E":""):"—"],
+  var info=[["カルテNo",P.no||""],["名前",P.name||""],["種",o.l],["体重",fnum(w)+" kg"+(w<1?"（"+fnum(w*1000)+" g）":"")],["ASA",P.asa?P.asa+(P.asaE?"E":""):"—"],
             ["術式・処置",P.proc||""],["担当医",P.vet||""],["麻酔管理者",P.mgr||""],["疼痛",P.pain||"—"],["BCS",bcsText()]];
   /* 押印欄：麻酔準備者・確認者（院長指定 2026-11-17）。症例情報の右に2つ */
   var ch=z(78), SB=ch*2, SG=z(14), SWT=SB*2+SG+z(18);
@@ -979,7 +982,7 @@ function drawSheet(k){
     var x=PM+(i%5)*cw, yy=y+Math.floor(i/5)*ch;
     ctx.strokeRect(x,yy,cw,ch);
     ctx.font=pf(z(24),700); ctx.fillStyle=SUB; ctx.fillText(kv[0],x+z(12),yy+z(8));
-    var big=(kv[0]==="ASA"||kv[0]==="体重"||kv[0]==="動物名"), red=(kv[0]==="ASA"&&/III|IV|V|E/.test(kv[1]));
+    var big=(kv[0]==="ASA"||kv[0]==="体重"||kv[0]==="名前"), red=(kv[0]==="ASA"&&/III|IV|V|E/.test(kv[1]));
     ctx.font=pf(z(big?40:34),big?800:700); ctx.fillStyle=red?RED:INK;
     var lw=ctx.measureText(kv[0]).width; ctx.font=pf(z(24),700); lw=ctx.measureText(kv[0]).width; ctx.font=pf(z(big?40:34),big?800:700);
     var val=kv[1], mx=cw-lw-z(40); while(ctx.measureText(val).width>mx&&val.length>1) val=val.slice(0,-1);
@@ -1142,9 +1145,16 @@ function renderRec(){
   var P=S.pt, out=[];
   var c1=h("div",{class:"card"},h("h2",{text:"症例情報（印刷シートに載ります）"}));
   function fld(label,el){ c1.appendChild(h("label",{class:"f",text:label})); c1.appendChild(el); }
-  fld("日付",txtInput(P,"date","","date"));
-  fld("カルテNo",txtInput(P,"no","例：12345"));
-  fld("動物名",txtInput(P,"name","例：モカ"));
+  fld("麻酔予定日",txtInput(P,"date","","date"));
+  var noIn=txtInput(P,"no","例：12345（半角英数字）"); noIn.setAttribute("inputmode","latin"); noIn.setAttribute("autocapitalize","off"); noIn.setAttribute("autocomplete","off");
+  noIn.oninput=function(e){ var v=normNo(e.target.value); if(v!==e.target.value) e.target.value=v; P.no=v; };
+  fld("カルテNo（半角英数字のみ）",noIn);
+  var nmIn=txtInput(P,"name","例：イムラ モカ"); nmIn.setAttribute("autocomplete","off");
+  var nmNote=h("div",{class:"note"});
+  function nmCheck(){ var bad=P.name&&!nameOk(P.name); nmNote.textContent=bad?"⚠ カタカナで「飼い主の名字 スペース 動物名」にしてください（例：イムラ モカ）":"カタカナで「飼い主の名字 スペース 動物名」。ひらがなは自動でカタカナに直ります"; nmNote.style.color=bad?"#c0392b":""; }
+  nmIn.oninput=function(e){ P.name=e.target.value; nmCheck(); };
+  nmIn.onchange=function(e){ var v=normName(e.target.value); e.target.value=v; P.name=v; nmCheck(); refreshPrint(); };
+  fld("名前（飼い主名字＋動物名・カタカナ）",nmIn); c1.appendChild(nmNote); nmCheck();
   fld("術式・処置",txtInput(P,"proc","例：去勢手術、歯科処置"));
   fld("担当医",h("div",{class:"seg"},VETS.map(function(v){return h("button",{class:P.vet===v?"on":"",text:v,onclick:function(){P.vet=P.vet===v?"":v;renderMain();}});})));
   fld("麻酔管理者",txtInput(P,"mgr","名前"));
@@ -1189,7 +1199,7 @@ function refreshPrint(){
   var P=S.pt, pw=document.getElementById("pwarn"), fn=document.getElementById("fname"), pv=document.getElementById("prev");
   if(!pv) return;
   var kp=document.querySelector("#kt pre.copy"); if(kp) kp.textContent=karteText();
-  var warn=[]; if(!P.no) warn.push("カルテNo"); if(!P.name) warn.push("動物名"); if(!P.asa) warn.push("ASA"); if(!S.pre.length) warn.push("投与する薬");
+  var warn=[]; if(!P.no) warn.push("カルテNo"); if(!P.name) warn.push("名前"); if(!P.asa) warn.push("ASA"); if(!S.pre.length) warn.push("投与する薬");
   pw.innerHTML=""; if(warn.length) pw.appendChild(h("div",{class:"alert amber",text:"未入力："+warn.join("・")}));
   var pages=renderSheet();
   fn.textContent="ファイル名："+pdfName()+"（A5横・1枚）";
@@ -1261,10 +1271,10 @@ function restore(row){
 function ordOpen(id){ ordApi({action:"get",id:id}).then(function(j){ if(j.ok) restore(j.row); else toast(j.err||"呼び出せませんでした"); }).catch(function(){ toast("通信できませんでした"); }); }
 function ordSave(asNew){
   var P=S.pt, miss=[];
-  if(!sp()) miss.push("動物種"); if(kg()==null) miss.push("体重"); if(!P.date) miss.push("日付（手術日）");
-  if(!P.no&&!P.name) miss.push("カルテNoか動物名"); if(!P.vet) miss.push("担当医"); if(!S.pre.length&&!S.criList.length) miss.push("薬");
+  if(!sp()) miss.push("動物種"); if(kg()==null) miss.push("体重"); if(!P.date) miss.push("麻酔予定日");
+  if(!P.no&&!P.name) miss.push("カルテNoか名前"); if(P.name&&!nameOk(P.name)) miss.push("名前の形（カタカナ「名字 動物名」）"); if(!P.vet) miss.push("担当医"); if(!S.pre.length&&!S.criList.length) miss.push("薬");
   if(miss.length){ toast("未入力："+miss.join("・")); return; }
-  if(P.date<addDays(0)&&!confirm("手術日が過去の日付です。このまま保存しますか？")) return;
+  if(P.date<addDays(0)&&!confirm("麻酔予定日が過去の日付です。このまま保存しますか？")) return;
   var id=asNew?null:(S.ref&&S.ref.id);
   ordApi({action:"save",id:id||"",date:P.date,no:P.no,name:P.name,sp:S.sp,proc:P.proc,vet:P.vet,data:snapshot()}).then(function(j){
     if(!j.ok){ toast(j.err||"保存できませんでした"); return; }

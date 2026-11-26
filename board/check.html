@@ -90,7 +90,7 @@ function draw(){
   /* すべての場所のボタン：どこがどれだけ済んだか＋押すとその一覧へ */
   var N=$('nav');N.innerHTML='';
   L.AREAS.forEach(function(a){var q=P.per[a],b=el('button',(a===area?'cur':'')+(q.done===q.all?' full':''));b.type='button';
-    b.appendChild(document.createTextNode(a.replace('検査台・入院舎','検査台・入院')));b.appendChild(el('small','',(q.done===q.all?'✓ ':'')+q.done+'/'+q.all));
+    b.appendChild(document.createTextNode(a));b.appendChild(el('small','',(q.done===q.all?'✓ ':'')+q.done+'/'+q.all));
     var i=el('i');i.style.width=(q.all?q.done*100/q.all:100)+'%';b.appendChild(i);
     b.addEventListener('click',function(){go(a)});N.appendChild(b)});
   $('totBar').style.width=P.pct+'%';$('totTxt').textContent=P.done+'/'+P.all+'（'+P.pct+'%）';

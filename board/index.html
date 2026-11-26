@@ -104,7 +104,7 @@ body.inpip .pipOnly{display:inline-block!important}
 <li><b>📝</b>：申し送り（文字）。済んだら「解決」</li>
 <li><b>札</b>：赤札・黄札を場所ごとに増減</li>
 <li><b>17時以降</b>：外来・ホテル・MTG は押すと完了（もう一度で戻す）。入院は検査・FFを選べる。チェックはチェックリストが開く</li>
-<li>16:00〜16:05 に「16:00退勤」が点滅します。押すと全PCから消えます</li>
+<li>15:55〜16:05 に「16:00退勤」が点滅し、15:55 と 16:00 にアラームと通知が出ます。押すと全PCから消えます</li>
 <li>表示は毎朝4時にすべて消えます（札は残ります）。留守電は17時に自動で点きます</li>
 </ul></details>
 <details class="set" style="display:block"><summary style="cursor:pointer">タスクバーに置く（さっと出す・しまう）</summary>
@@ -134,7 +134,7 @@ var L=BoardLogic,cache={};document.querySelectorAll('[id]').forEach(function(e){
 var $=function(id){return cache[id]};
 var KEY=BOARD.key(),LS='pbd_';
 var S=null,skew=0,busy=false,mine={},seen=null,notes={},pip=null,host=window,timer=null;
-var sub='',fvet='',noteDraft='',lastOk=0,fail=false,rang16='';
+var sub='',fvet='',noteDraft='',lastOk=0,fail=false,rang16='',snd16='';
 var ICON={emer:'🚨',phone:'📞',quiet:'🤫',claim:'⚠',delay:'⏱',note:'📝'};
 var SHORT={emer:'エマ',phone:'留守電',quiet:'看取り',claim:'クレーム'};
 var SP={'ICU':'ICU','犬舎':'犬','猫舎':'猫','エキゾ舎':'エキゾ','?':'場所?'};
@@ -176,8 +176,21 @@ if(!KEY)showKey();
 /* 音・通知（エマだけ画面に残す。ほかは数秒で消える。解決されたら全PCで閉じる） */
 var ac=null;
 function unlockAudio(){if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}if(ac&&ac.state==='suspended')ac.resume()}
-document.addEventListener('click',unlockAudio);
+document.addEventListener('click',function(){unlockAudio();setTimeout(drawBar,300)});
 function beep(strong){if(!ac||ac.state!=='running')return;(strong?[0,.25,.5]:[0,.25]).forEach(function(dt,i){var o=ac.createOscillator(),g=ac.createGain();o.frequency.value=i%2?1320:990;o.connect(g);g.connect(ac.destination);var t=ac.currentTime+dt;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.35,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+.22);o.start(t);o.stop(t+.24)})}
+/* 退勤アラーム：できるだけ気づきやすく（高めの矩形波を大きめの音量で、約4秒） */
+function alarm(){
+  if(!ac||ac.state!=='running')return false;
+  for(var i=0;i<12;i++){var o=ac.createOscillator(),g=ac.createGain();o.type='square';o.frequency.value=i%2?1568:1175;o.connect(g);g.connect(ac.destination);
+    var t=ac.currentTime+i*0.33;g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(.9,t+.02);g.gain.setValueAtTime(.9,t+.2);g.gain.exponentialRampToValueAtTime(.0001,t+.28);o.start(t);o.stop(t+.3)}
+  return true;
+}
+var n16=null;
+function note16(msg){
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  try{if(n16)n16.close();n16=new Notification('🕓 '+msg,{body:'押すと全PCの表示が消えます',tag:'pbd-out16',requireInteraction:true,renotify:true});
+    n16.onclick=function(){act({action:'ack',name:'out16'});n16.close();n16=null}}catch(e){}
+}
 function updNoti(){$('notiBtn').classList.toggle('hide',!('Notification' in window)||Notification.permission!=='default')}
 $('notiBtn').addEventListener('click',function(){Notification.requestPermission().then(updNoti)});updNoti();
 function title(a){return a.type==='delay'?a.frame+' '+a.min+'分押し':L.TYPES[a.type]}
@@ -226,12 +239,14 @@ function drawBar(){
   if(!KEY)B.appendChild(el('span','warn','🔑 院内キー未登録（ボードの画面で入力）'));
   else if(fail||(lastOk&&Date.now()-lastOk>35000))B.appendChild(el('span','warn','⚠ 更新できていません'));
   if(!S){if(KEY&&!fail)B.appendChild(el('span','','読み込み中…'));return}
-  /* 16:00〜16:05 だけ「16:00退勤」を点滅表示。押すと全PCから消える */
-  var tj=jst(now()),m16=tj.getUTCHours()*60+tj.getUTCMinutes()-16*60;
-  if(m16>=0&&m16<5&&!S.day.out16){
+  /* 15:55〜16:05 に「16:00退勤」を点滅表示。15:55 と 16:00 に大きなアラームと通知。押すと全PCから消える */
+  var tj=jst(now()),m16=tj.getUTCHours()*60+tj.getUTCMinutes()-16*60,on16=m16>=-5&&m16<5&&!S.day.out16;
+  if(on16){
     B.appendChild(btn('🕓 16:00退勤',function(){act({action:'ack',name:'out16'})},'out16','押すと消える'));
-    if(rang16!==S.day.date){rang16=S.day.date;beep(false)}
-  }
+    var k16=S.day.date+(m16<0?'a':'b');
+    if(rang16!==k16){rang16=k16;note16(m16<0?'まもなく 16:00 退勤です':'16:00 退勤の時間です')}
+    if(snd16!==k16&&alarm())snd16=k16;   /* 音がまだ出せないPCは、出せるようになった時点で鳴らす */
+  }else if(n16){try{n16.close()}catch(e){}n16=null}
   /* 札（場所つき） */
   var any=false;
   [['red','r','赤'],['yellow','y','黄']].forEach(function(c){

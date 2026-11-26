@@ -13,7 +13,15 @@ button.pri{background:#1f8670;border-color:#1f8670;color:#fff}
 .hd .t{display:flex;align-items:center;gap:8px}
 .hd h1{font-size:20px;margin:0}
 .hd select{font:inherit;font-size:14px;padding:3px 6px;margin-left:auto}
-.hd .tot{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:13px;color:#cfe}
+.hd .tot{display:flex;align-items:center;gap:8px;font-size:13px;color:#cfe}
+.nav{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:8px}
+.nav button{position:relative;overflow:hidden;padding:5px 2px 7px;font-size:12px;line-height:1.25;background:#3a474c;color:#fff;border-color:#55646a}
+.nav button small{display:block;font-size:11px;color:#cfe;font-variant-numeric:tabular-nums}
+.nav button i{position:absolute;left:0;bottom:0;height:4px;background:#4fd1a5}
+.nav button.full{background:#1f8670;border-color:#1f8670}
+.nav button.cur{background:#fff;color:#1f2a2e;border-color:#fff;font-weight:800}
+.nav button.cur small{color:#46555b}.nav button.cur i{background:#1f8670}
+.nav button.cur.full{background:#d9f3ea}
 .bar{height:10px;background:rgba(255,255,255,.2);border-radius:5px;flex:1;overflow:hidden}
 .bar i{display:block;height:100%;background:#4fd1a5;transition:width .3s}
 .me{display:flex;align-items:center;gap:8px;padding:10px 12px;font-size:16px;font-weight:700;background:#fff;border-bottom:1px solid #e3e8ea}
@@ -40,9 +48,9 @@ textarea{width:100%;font:inherit;font-size:15px;line-height:1.6;padding:8px;bord
 .hide{display:none!important}
 </style></head><body>
 <div class="mock hide" id="mockbar">試験モード（このPC内だけのデータ）</div>
-<div class="hd"><div class="t"><h1 id="ttl">チェックリスト</h1><select id="area"></select></div>
-<div class="tot">全体<div class="bar"><i id="totBar"></i></div><span id="totTxt"></span></div></div>
-<div class="me"><span id="meTxt"></span><div class="bar"><i id="meBar"></i></div></div>
+<div class="hd"><div class="tot">全体<div class="bar"><i id="totBar"></i></div><span id="totTxt"></span></div>
+<div class="nav" id="nav"></div></div>
+<div class="me"><span id="ttl"></span><span id="meTxt"></span><div class="bar"><i id="meBar"></i></div></div>
 <div id="list"></div>
 <div class="done hide" id="done">✓ ここは完了です</div>
 <div class="ed hide" id="ed"><p>1行に1項目。保存すると全PCの項目が変わります。<br>「■」で始めた行は見出し。「（水曜）」のように曜日を入れるとその曜日だけ数えます。「月1」「週1」「月末」を含む行は任意（％に数えない）。</p>
@@ -62,8 +70,8 @@ if(BOARD.isMock)$('mockbar').classList.remove('hide');
 var q=new URLSearchParams(location.search),area=q.get('area');
 if(L.AREAS.indexOf(area)<0)area=localStorage.getItem('pbd_place');
 if(L.AREAS.indexOf(area)<0)area=L.AREAS[0];
-L.AREAS.forEach(function(a){$('area').appendChild(new Option(a,a))});$('area').value=area;
-$('area').addEventListener('change',function(){wasFull=true;myLast=0;if(closing){clearTimeout(closing);closing=null}area=$('area').value;history.replaceState(null,'','?area='+encodeURIComponent(area));draw()});
+/* 上のボタンで別の場所へ切り替える（窓はそのまま） */
+function go(a){if(a===area)return;wasFull=true;myLast=0;if(closing){clearTimeout(closing);closing=null}pend={};area=a;history.replaceState(null,'','?area='+encodeURIComponent(area));if(editing)endEdit();else draw();window.scrollTo(0,0)}
 function err(t){$('err').textContent=t;$('err').classList.remove('hide');setTimeout(function(){$('err').classList.add('hide')},6000)}
 if(!KEY)err('このPCは院内キーが未登録です。院内ボードで院内キーを入れてください。');
 function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
@@ -79,6 +87,12 @@ function draw(){
   if(!S)return;
   $('ttl').textContent=area;document.title=area+' チェックリスト';
   var P=L.progress(S),me=P.per[area];
+  /* すべての場所のボタン：どこがどれだけ済んだか＋押すとその一覧へ */
+  var N=$('nav');N.innerHTML='';
+  L.AREAS.forEach(function(a){var q=P.per[a],b=el('button',(a===area?'cur':'')+(q.done===q.all?' full':''));b.type='button';
+    b.appendChild(document.createTextNode(a.replace('検査台・入院舎','検査台・入院')));b.appendChild(el('small','',(q.done===q.all?'✓ ':'')+q.done+'/'+q.all));
+    var i=el('i');i.style.width=(q.all?q.done*100/q.all:100)+'%';b.appendChild(i);
+    b.addEventListener('click',function(){go(a)});N.appendChild(b)});
   $('totBar').style.width=P.pct+'%';$('totTxt').textContent=P.done+'/'+P.all+'（'+P.pct+'%）';
   $('meTxt').textContent=me.done+'/'+me.all;$('meBar').style.width=(me.all?me.done*100/me.all:100)+'%';
   var Lst=$('list');Lst.innerHTML='';

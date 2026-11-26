@@ -14,6 +14,7 @@ body{margin:0;background:#f5f7f8;color:#1f2a2e;font-family:"Meiryo UI","Yu Gothi
 .top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}
 .top h1{font-size:18px;margin:0;color:#1f8670}
 .tip{font-size:12px;color:#6b7a80;margin:0 0 8px}
+.lost{background:#fff3cd;border:1px solid #e0b84a;color:#7a5200;border-radius:10px;padding:10px 12px;margin-bottom:10px;font-weight:700}
 .sp{flex:1}
 button{font:inherit;border:1px solid #b9c4c8;background:#fff;border-radius:8px;padding:5px 10px;cursor:pointer;color:#1f2a2e}
 button:hover{filter:brightness(.95)}
@@ -86,7 +87,8 @@ body.inpip .pipOnly{display:inline-block!important}
 <div class="wrap">
 <div class="top"><h1>院内ボード</h1><span class="sp"></span>
 <button id="pipBtn" class="pri">最前面に浮かせる</button></div>
-<div class="tip">この画面で Enter キーを押しても浮かせられます。小窓は ✕ で隠せます。</div>
+<div class="tip">この画面で Enter キーを押しても浮かせられます。小窓は ✕ で隠せます。<b>小窓を出しているあいだ、このタブ（窓）は閉じずに最小化してください。</b></div>
+<div class="lost hide" id="lost">⚠ 小窓が閉じました。Enter キー（または「最前面に浮かせる」）で戻せます。</div>
 <form class="keybox hide" id="keybox"><b>院内キーを入力</b><span id="keyMsg">受付ボードと同じ院内キーです。1回入れればこのPCに保存され、次からは入力不要です。</span>
 <div class="kr"><input type="password" id="keyIn" autocomplete="off" placeholder="院内キー"><button class="pri" id="keyGo">登録</button></div><span class="ke" id="keyErr"></span></form>
 <div class="set">
@@ -111,6 +113,7 @@ body.inpip .pipOnly{display:inline-block!important}
 <li>できた「院内ボード」のアイコンをタスクバーで右クリック →「タスクバーにピン留めする」</li>
 <li>タスクバーのアイコンを押す → Enter で小窓 → 元の窓は最小化。しまうときは小窓の ✕</li>
 </ol></details>
+<details class="set" style="display:block"><summary style="cursor:pointer">小窓が閉じた記録（このPC）</summary><div id="piplog" style="margin-top:6px;font-size:12px"></div></details>
 
 <div id="panel">
 <div class="mock hide" id="mockbar">試験モード（このPC内だけのデータ）</div>
@@ -245,7 +248,7 @@ function drawBar(){
   B.appendChild(btn('押'+(dl.length?' '+dl.map(function(a){return a.frame+a.min}).join(' '):''),function(){openSub('delay')},'t dl'+(dl.length?' on':'')+(sub==='delay'?' sel':''),'診察の押し'));
   var nt=S.alerts.filter(function(a){return a.type==='note'});
   B.appendChild(btn('📝'+(nt.length||''),function(){openSub('note')},'t nt'+(nt.length?' on':'')+(sub==='note'?' sel':''),'申し送り'));
-  B.appendChild(btn('✕',function(){if(pip)pip.close()},'x pipOnly','小窓を隠す'));
+  B.appendChild(btn('✕',function(){if(pip){byUser=true;pip.close()}},'x pipOnly','小窓を隠す'));
   /* 17時以降：残り時間と段取り */
   if(isEve()){
     B.appendChild(el('span','brk'));
@@ -356,19 +359,40 @@ function clip(){if(pip){try{$('panel').classList.toggle('clipped',need()>pip.inn
 $('panel').addEventListener('click',function(){later(fit)});
 $('pipBtn').addEventListener('click',function(){
   unlockAudio();
-  if(pip){pip.close();return}
+  if(pip){byUser=true;pip.close();return}
   if(!('documentPictureInPicture' in window)){showErr('このブラウザでは最前面表示が使えません。ChromeかEdgeを最新版にしてください。');return}
   if('Notification' in window&&Notification.permission==='default')Notification.requestPermission().then(updNoti);
   sub='';fvet='';drawAll();
-  documentPictureInPicture.requestWindow({width:MINI.w,height:isEve()?MINI.h+30:MINI.h}).then(function(w){
+  documentPictureInPicture.requestWindow({width:MINI.w,height:isEve()?MINI.h+30:MINI.h,disallowReturnToOpener:true}).then(function(w){
     pip=w;host=w;w.document.title='院内ボード';w.document.body.classList.add('inpip');
     var st=w.document.createElement('style');st.textContent=$('bstyle').textContent;
     w.document.head.appendChild(st);w.document.body.appendChild($('panel'));
     w.document.addEventListener('click',unlockAudio);
-    $('pipBtn').textContent='小窓を閉じる';schedule();later(clip);
-    w.addEventListener('pagehide',function(){document.querySelector('.wrap').appendChild($('panel'));pip=null;host=window;sub='';$('pipBtn').textContent='最前面に浮かせる';schedule();drawAll()});
+    $('pipBtn').textContent='小窓を閉じる';schedule();later(clip);byUser=false;document.title='院内ボード（小窓を表示中・閉じないで）';$('lost').classList.add('hide');holdLock();
+    w.addEventListener('pagehide',function(){document.querySelector('.wrap').appendChild($('panel'));pip=null;host=window;sub='';$('pipBtn').textContent='最前面に浮かせる';schedule();drawAll();pipClosed()});
   }).catch(function(e){showErr('最前面にできませんでした：'+e.message)});
 });
+/* 小窓が閉じたとき：自分で閉じた（✕・ボタン）以外は「勝手に閉じた」として知らせ、記録する */
+var byUser=false,relLock=null;
+function holdLock(){ /* 裏に回ったタブをChromeが止めたり捨てたりしにくくする */
+  try{if(navigator.locks&&!relLock)navigator.locks.request('pbd_pip',function(){return new Promise(function(res){relLock=res})})}catch(e){}
+}
+function pipClosed(){
+  if(relLock){relLock();relLock=null}
+  document.title=byUser?'院内ボード | ポックル院内ツール':'⚠ 小窓が閉じました｜院内ボード';
+  var t=jst(Date.now()+skew),hm=t.getUTCHours()+':'+('0'+t.getUTCMinutes()).slice(-2);
+  try{var lg=JSON.parse(localStorage.getItem(LS+'piplog')||'[]');lg.unshift(hm+' '+(byUser?'✕・ボタンで閉じた':'勝手に閉じた（タブ表示='+document.visibilityState+'）'));localStorage.setItem(LS+'piplog',JSON.stringify(lg.slice(0,10)))}catch(e){}
+  showLog();
+  if(!byUser){
+    $('lost').classList.remove('hide');
+    try{if('Notification' in window&&Notification.permission==='granted'){var n=new Notification('院内ボードの小窓が閉じました',{body:'ここを押してボードを開き、Enter でもう一度浮かせてください',tag:'pbd-lost',requireInteraction:true});n.onclick=function(){window.focus();n.close()}}}catch(e){}
+  }
+  byUser=false;
+}
+function showLog(){try{var lg=JSON.parse(localStorage.getItem(LS+'piplog')||'[]');$('piplog').textContent=lg.length?lg.join(' ／ '):'まだありません'}catch(e){}}
+showLog();
+/* 小窓を出しているあいだにこのタブを閉じる・再読み込みすると小窓も消えるので、確認を出す */
+window.addEventListener('beforeunload',function(e){if(pip){e.preventDefault();e.returnValue='';return ''}});
 /* この画面で Enter を押しても浮かせる（入力欄では無効） */
 document.addEventListener('keydown',function(e){
   if(e.key!=='Enter'||pip||e.isComposing)return;var t=e.target&&e.target.tagName;if(t==='INPUT'||t==='TEXTAREA'||t==='SELECT'||t==='BUTTON'||t==='SUMMARY')return;

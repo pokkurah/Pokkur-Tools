@@ -176,7 +176,7 @@ function loadAll(){try{return JSON.parse(localStorage.getItem(LS)||'[]');}catch(
 function saveAll(a){localStorage.setItem(LS,JSON.stringify(a));}
 function save(){if(!R)return;R.upd=Date.now();var a=loadAll(),i=a.findIndex(function(x){return x.id===R.id;});if(i>=0)a[i]=R;else a.unshift(R);saveAll(a);}
 function today(){var d=new Date();return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2);}
-function newRec(){return {id:'d'+Date.now().toString(36),date:today(),species:'dog',karte:'',owner:'',name:'',weight:'',vet:'',rec:'',teeth:{},g:{scaling:true,polish:true,calc:null,ging:null,suture:'',memo:'',comment:'',care:''}};}
+function newRec(){return {id:'d'+Date.now().toString(36),date:today(),species:'dog',karte:'',name:'',weight:'',vet:'',rec:'',teeth:{},g:{scaling:true,polish:true,calc:null,ging:null,suture:'',memo:'',comment:'',care:''}};}
 function T(id){return R.teeth[id]||{};}
 function TT(id){if(!R.teeth[id])R.teeth[id]={};return R.teeth[id];}
 function thr(){return SP[R.species].thr;}
@@ -257,14 +257,17 @@ function homeHTML(){var a=loadAll();
     return '<div class="rec"><div><b>'+esc(r.name||'（名前なし）')+'</b> '+SP[r.species].label+' '+esc(r.karte?'No.'+r.karte:'')+'<small>'+esc(r.date)+'　抜歯 '+n+'本</small></div>'+
     '<button class="ghost" data-act="open" data-id="'+r.id+'">開く</button><button class="iconbtn" data-act="del" data-id="'+r.id+'">削除</button></div>';}).join(''):'<p class="note">まだありません</p>')+'</div>';
   return h;}
+/* 動物名：飼い主名＋半角スペース＋ペット名、カタカナに統一 */
+function kana(v){v=String(v||'').normalize('NFKC').replace(/[\u3041-\u3096]/g,function(c){return String.fromCharCode(c.charCodeAt(0)+96);});return v.replace(/\s+/g,' ').trim();}
+function nameWarn(v){if(!v)return '';if(v.indexOf(' ')<0)return '飼い主名とペット名の間にスペースを入れてください';if(!/^[\u30A1-\u30FAー・ ]+$/.test(v))return 'カタカナで入力してください';return '';}
+function nameParts(){var a=(R.name||'').split(' ');return a.length>1?[a[0],a.slice(1).join(' ')]:['',R.name||''];}
 function pick(list,key,val){return '<div class="seg">'+list.map(function(x){return '<button class="'+(val===x?'on':'')+'" data-act="setr" data-k="'+key+'" data-v="'+x+'">'+x+'</button>';}).join('')+'</div>';}
 function caseHTML(){var n=Object.keys(R.teeth).length;
   return '<div class="card"><h2>症例</h2>'+
   '<label class="f">動物種'+(n?'（入力後は変えられません）':'')+'</label><div class="seg">'+['dog','cat'].map(function(s){return '<button class="'+(R.species==s?'on':'')+'" data-act="species" data-v="'+s+'">'+SP[s].label+'（'+teethOf(s).length+'本）</button>';}).join('')+'</div>'+
   '<div class="grid2"><div><label class="f">カルテNo</label><input class="t" inputmode="numeric" data-in="karte" value="'+esc(R.karte)+'"></div>'+
   '<div><label class="f">検査日</label><input class="t" type="date" data-in="date" value="'+esc(R.date)+'"></div>'+
-  '<div><label class="f">飼い主名</label><input class="t" data-in="owner" value="'+esc(R.owner)+'"></div>'+
-  '<div><label class="f">動物名</label><input class="t" data-in="name" value="'+esc(R.name)+'"></div>'+
+  '<div><label class="f">動物名（飼い主名＋スペース＋ペット名・カタカナ）</label><input class="t" data-in="name" placeholder="例：イムラ ポチ" value="'+esc(R.name)+'"><div class="note" id="nmw" style="color:var(--red)">'+nameWarn(R.name)+'</div></div>'+
   '<div><label class="f">体重（kg）</label><input class="t" inputmode="decimal" data-in="weight" value="'+esc(R.weight)+'"></div></div>'+
   '<label class="f">担当獣医師</label>'+pick(VETS,'vet',R.vet)+
   '<label class="f">記録者（助手）</label>'+pick(NURSES,'rec',R.rec)+
@@ -349,7 +352,7 @@ function karteText(){var s=summary(),L=['【歯科検査・処置】'+R.date+'�
 var OWNER_REASON={'重度の歯周病':'歯周病が進み、歯を支える骨が大きく失われていたため','歯の破折':'歯が折れて（割れて）いたため','吸収病巣':'歯が溶ける病気（吸収病巣）があったため','残存乳歯':'乳歯が抜けずに残っていたため','根尖病巣':'歯の根の先に炎症があったため','残根':'歯の根だけが残っていたため'};
 function ownerSheet(){var s=summary();
   var h='<div class="sheet owner"><div class="hd"><div><h1>歯科処置のご報告</h1></div><p>ポックル動物病院<br>'+esc(R.date)+'</p></div>'+
-   '<div class="inf"><span><b>'+esc(R.owner?R.owner+' 様':'')+'</b></span><span><b>'+esc(R.name)+'</b> ちゃん（'+SP[R.species].label+'）</span><span>担当獣医師：'+esc(R.vet)+'</span></div>'+
+   '<div class="inf"><span><b>'+esc(nameParts()[0]?nameParts()[0]+' 様':'')+'</b></span><span><b>'+esc(nameParts()[1])+'</b> ちゃん（'+SP[R.species].label+'）</span><span>担当獣医師：'+esc(R.vet)+'</span></div>'+
    '<div class="sum"><div>抜歯した歯<b>'+s.ext.length+'本</b></div><div>歯周ポケットが深い歯<b>'+s.deep.filter(function(id){return !T(id).ext;}).length+'本</b></div><div>経過観察の歯<b>'+s.watch.length+'本</b></div></div>'+
    '<h2>お口の中の図</h2>'+chartHTML({owner:true,schema:true})+'<p style="font-size:9pt;margin:2px 0 0">図の「右・左」は動物から見た向きです。数字は歯の番号です。</p>';
   h+='<h2>抜歯した歯</h2>'+(s.ext.length?'<ul>'+s.ext.map(function(id){var t=T(id);return '<li><b>'+tname(id)+'</b>（'+id+'）'+(t.reason&&OWNER_REASON[t.reason]?'：'+OWNER_REASON[t.reason]:'')+(t.suture?'。歯ぐきを縫合しています':'')+'</li>';}).join('')+'</ul>':'<p>抜歯した歯はありません。</p>');
@@ -364,7 +367,7 @@ function staffSheet(){var s=summary(),rows='';
     rows+='<tr><td><b>'+id+'</b><br>'+tname(id)+'</td><td>'+esc(findTxt(t))+'</td><td>'+esc(pdTxt(t))+'</td><td>'+esc(xrTxt(t))+'</td><td>'+esc(txTxt(t))+'</td></tr>';});
   var g=[];if(R.g.scaling)g.push('スケーリング');if(R.g.polish)g.push('ポリッシング');
   return '<div class="sheet"><div class="hd"><div><h1>歯科検査記録（院内用）</h1></div><p>ポックル動物病院<br>'+esc(R.date)+'</p></div>'+
-   '<div class="inf"><span>カルテNo：<b>'+esc(R.karte)+'</b></span><span>'+esc(R.owner)+'</span><span><b>'+esc(R.name)+'</b>（'+SP[R.species].label+(R.weight?'・'+esc(R.weight)+'kg':'')+'）</span><span>担当：'+esc(R.vet)+'</span><span>記録：'+esc(R.rec)+'</span></div>'+
+   '<div class="inf"><span>カルテNo：<b>'+esc(R.karte)+'</b></span><span><b>'+esc(R.name)+'</b>（'+SP[R.species].label+(R.weight?'・'+esc(R.weight)+'kg':'')+'）</span><span>担当：'+esc(R.vet)+'</span><span>記録：'+esc(R.rec)+'</span></div>'+
    chartHTML({schema:true})+'<p style="font-size:8.5pt;margin:2px 0 0">M＝動揺　F＝根分岐部　赤丸＝出血　X線：青い歯根＝歯根吸収、根の先の赤丸＝根尖病巣、青の点線＝骨吸収の高さ（目安）　数字の並びは図の向き（正中側が近心）</p>'+
    '<div class="sum"><div>抜歯<b>'+s.ext.length+'本</b></div><div>フラップ<b>'+s.flap+'か所</b></div><div>縫合<b>'+s.suture+'か所</b></div><div>欠損<b>'+s.miss.length+'本</b></div></div>'+
    '<p style="margin:0">全体の処置：'+(g.join('・')||'なし')+(R.g.suture?'　縫合糸：'+esc(R.g.suture):'')+'</p>'+
@@ -386,7 +389,7 @@ window.addEventListener('resize',function(){if(V.tab=='out')fitPreview();});
 document.addEventListener('click',function(ev){var b=ev.target.closest('[data-act]');if(!b)return;var a=b.dataset.act,v=b.dataset.v,k=b.dataset.k,t;
   if(a=='home'){R=null;V={tab:'home',sel:null,probe:false,pi:0};}
   else if(a=='new'){R=newRec();save();V.tab='case';}
-  else if(a=='open'){R=loadAll().find(function(x){return x.id===b.dataset.id;});V.tab='exam';V.sel=null;V.probe=false;}
+  else if(a=='open'){R=loadAll().find(function(x){return x.id===b.dataset.id;});if(R.owner){R.name=kana(R.owner+' '+R.name);delete R.owner;}V.tab='exam';V.sel=null;V.probe=false;}
   else if(a=='del'){if(!confirm('この記録を端末から消します。元に戻せません。よろしいですか？'))return;saveAll(loadAll().filter(function(x){return x.id!==b.dataset.id;}));}
   else if(a=='tab'){V.tab=v;V.sel=null;V.probe=false;}
   else if(a=='species'){if(Object.keys(R.teeth).length){toast('歯の入力があるので変えられません');return;}R.species=v;}
@@ -418,7 +421,7 @@ document.addEventListener('input',function(ev){var e=ev.target;if(!R)return;
   if(e.dataset.in){R[e.dataset.in]=e.value;save();}
   else if(e.dataset.gin){R.g[e.dataset.gin]=e.value;save();}
 });
-document.addEventListener('change',function(ev){if(R&&V.tab=='out'&&ev.target.dataset.gin){var y=window.scrollY;render();window.scrollTo(0,y);}});
+document.addEventListener('change',function(ev){if(R&&ev.target.dataset.in=='name'){R.name=ev.target.value=kana(ev.target.value);save();document.getElementById('nmw').textContent=nameWarn(R.name);}if(R&&V.tab=='out'&&ev.target.dataset.gin){var y=window.scrollY;render();window.scrollTo(0,y);}});
 /* PCのキーボードでも6点入力できる */
 document.addEventListener('keydown',function(ev){if(!R||!V.probe||V.tab!='exam'||/INPUT|TEXTAREA/.test(ev.target.tagName))return;
   var sel=null;if(/^[0-9]$/.test(ev.key))sel='[data-act="key"][data-v="'+ev.key+'"]';else if(ev.key=='Enter')sel='[data-act="pok"]';else if(ev.key=='Backspace')sel='[data-act="pback"]';

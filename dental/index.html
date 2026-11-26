@@ -73,6 +73,8 @@ textarea.t{min-height:70px}
 .tooth.watch .sch .cr{fill:var(--yel-l);stroke:var(--yel)}.tooth.watch .sch .rt{stroke:var(--yel)}
 .tooth.miss .sch path{fill:none;stroke:var(--gray);stroke-dasharray:2.5 2}
 .tooth.ext .sch .cr,.tooth.ext .sch .rt{fill:var(--red-l);stroke:var(--red)}
+.tooth:not(.ext) .sch.rem .cr{fill:none!important;stroke:var(--gray)!important;stroke-dasharray:2.5 2}
+.tooth:not(.ext) .sch.rem .rt{fill:#f4efe6;stroke:#3c474c!important;stroke-dasharray:none!important}
 .sch .xx{fill:none!important;stroke:var(--red)!important;stroke-width:2.4;stroke-dasharray:none!important}
 .sch.xroot .rt{fill:#bcd6f5!important}
 .sch .apx{fill:rgba(198,40,40,.25);stroke:var(--red);stroke-width:1}
@@ -237,7 +239,7 @@ function schemaSVG(id,t,staff){var sp=R.species,sh=shapeOf(id,sp),w=weight(id,sp
   if(staff&&t.xbone)p+='<line class="bone" x1="0" x2="'+f(w)+'" y1="'+(g-[0,6,12,19][t.xlv||1])+'" y2="'+(g-[0,6,12,19][t.xlv||1])+'"/>';
   if(t.ext)p+='<path class="xx" d="M2,4 L'+f(w-2)+','+(H-4)+' M'+f(w-2)+',4 L2,'+(H-4)+'"/>';
   var tr=(mir?'translate('+f(w)+',0) scale(-1,1) ':'')+(up?'':'translate(0,'+H+') scale(1,-1)');
-  return '<svg class="sch'+(staff&&t.xroot?' xroot':'')+'" viewBox="0 0 '+f(w)+' '+H+'"><g transform="'+tr+'">'+p+'</g></svg>';}
+  return '<svg class="sch'+(staff&&t.xroot?' xroot':'')+(t.xrem?' rem':'')+'" viewBox="0 0 '+f(w)+' '+H+'"><g transform="'+tr+'">'+p+'</g></svg>';}
 /* ===== 画面 ===== */
 var TABS=[['case','症例'],['exam','検査'],['xray','X線'],['tx','処置'],['out','出力']];
 function render(){
@@ -368,7 +370,7 @@ function staffSheet(){var s=summary(),rows='';
   var g=[];if(R.g.scaling)g.push('スケーリング');if(R.g.polish)g.push('ポリッシング');
   return '<div class="sheet"><div class="hd"><div><h1>歯科検査記録（院内用）</h1></div><p>ポックル動物病院<br>'+esc(R.date)+'</p></div>'+
    '<div class="inf"><span>カルテNo：<b>'+esc(R.karte)+'</b></span><span><b>'+esc(R.name)+'</b>（'+SP[R.species].label+(R.weight?'・'+esc(R.weight)+'kg':'')+'）</span><span>担当：'+esc(R.vet)+'</span><span>記録：'+esc(R.rec)+'</span></div>'+
-   chartHTML({schema:true})+'<p style="font-size:8.5pt;margin:2px 0 0">M＝動揺　F＝根分岐部　赤丸＝出血　X線：青い歯根＝歯根吸収、根の先の赤丸＝根尖病巣、青の点線＝骨吸収の高さ（目安）　数字の並びは図の向き（正中側が近心）</p>'+
+   chartHTML({schema:true})+'<p style="font-size:8.5pt;margin:2px 0 0">M＝動揺　F＝根分岐部　赤丸＝出血　X線：歯冠が点線で歯根が実線＝残根、青い歯根＝歯根吸収、根の先の赤丸＝根尖病巣、青の点線＝骨吸収の高さ（目安）　数字の並びは図の向き（正中側が近心）</p>'+
    '<div class="sum"><div>抜歯<b>'+s.ext.length+'本</b></div><div>フラップ<b>'+s.flap+'か所</b></div><div>縫合<b>'+s.suture+'か所</b></div><div>欠損<b>'+s.miss.length+'本</b></div></div>'+
    '<p style="margin:0">全体の処置：'+(g.join('・')||'なし')+(R.g.suture?'　縫合糸：'+esc(R.g.suture):'')+'</p>'+
    '<h2>歯ごとの記録（異常・処置のある歯）</h2>'+(rows?'<table><tr><th>歯</th><th>所見</th><th>ポケット（近心-中央-遠心）</th><th>X線</th><th>処置</th></tr>'+rows+'</table>':'<p>異常・処置の記録はありません。</p>')+

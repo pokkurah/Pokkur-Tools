@@ -193,7 +193,7 @@ function toothHTML(id,o){var sp=R.species,t=T(id),q=qOf(id),up=q<=2,mir=(q==1||q
       h+='<i class="'+c+'">'+(v!=null?v:(t.pdok?'·':''))+'</i>';});return h+'</div>';}
   var mk=o.owner?[]:marks(t,sp,id);
   var body='<div class="tb">'+(!o.owner&&hasXr(t)?'<span class="xr">X</span>':'')+(!o.owner&&t.bop?'<span class="dot"></span>':'')+'<b>'+id+'</b>'+(mk.length?'<span class="mk">'+mk.join(' ')+'</span>':'')+'</div>';
-  if(o.schema){var nb='<div class="num">'+id+(mk.length?' <span>'+mk.join(' ')+'</span>':'')+(!o.owner&&t.bop?'<em>●</em>':'')+'</div>',sv=schemaSVG(id,t,!o.owner);
+  if(o.schema){var nb='<div class="num">'+id+(!o.owner&&t.bop?'<em>●</em>':'')+(mk.length?' <span>'+mk.join(' ')+'</span>':'')+'</div>',sv=schemaSVG(id,t,!o.owner);
     return '<div class="'+cls+'" style="flex:'+weight(id,sp)+'">'+(up?row(0)+sv+nb+row(3):row(3)+nb+sv+row(0))+'</div>';}
   /* 上顎：頬側が上、内側が下。下顎：内側が上、頬側が下 */
   return '<div class="'+cls+'" style="flex:'+weight(id,sp)+'" data-act="tooth" data-id="'+id+'">'+(up?row(0)+body+row(3):row(3)+body+row(0))+'</div>';}

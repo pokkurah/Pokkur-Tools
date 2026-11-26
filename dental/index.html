@@ -66,6 +66,21 @@ textarea.t{min-height:70px}
 .legend span:before{content:"";display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:4px;vertical-align:-2px;border:1.5px solid}
 .legend .l1:before{background:var(--red-l);border-color:var(--red)}.legend .l2:before{background:var(--org-l);border-color:var(--org)}
 .legend .l3:before{background:var(--yel-l);border-color:var(--yel)}.legend .l4:before{background:#e4e8ea;border-color:var(--gray)}
+.sch{display:block;width:100%;height:auto;overflow:visible}
+.sch path{fill:#fff;stroke:#3c474c;stroke-width:1.1;stroke-linejoin:round}
+.sch .cr{fill:#fff}.sch .rt{fill:#f4efe6}
+.tooth.deep .sch .cr{fill:var(--org-l);stroke:var(--org)}.tooth.deep .sch .rt{stroke:var(--org)}
+.tooth.watch .sch .cr{fill:var(--yel-l);stroke:var(--yel)}.tooth.watch .sch .rt{stroke:var(--yel)}
+.tooth.miss .sch path{fill:none;stroke:var(--gray);stroke-dasharray:2.5 2}
+.tooth.ext .sch .cr,.tooth.ext .sch .rt{fill:var(--red-l);stroke:var(--red)}
+.sch .xx{fill:none!important;stroke:var(--red)!important;stroke-width:2.4;stroke-dasharray:none!important}
+.sch.xroot .rt{fill:#bcd6f5!important}
+.sch .apx{fill:rgba(198,40,40,.25);stroke:var(--red);stroke-width:1}
+.sch .bone{stroke:var(--blue);stroke-width:1.2;stroke-dasharray:3 2}
+.tooth .num{font-size:7.5pt;font-weight:700;text-align:center;line-height:1.3;white-space:nowrap;letter-spacing:-.3px}
+.tooth .num span{font-size:6pt;display:block;line-height:1}.tooth .num em{color:var(--red);font-style:normal;font-size:6pt}
+.tooth.miss .num{color:var(--gray)}.tooth.ext .num{color:var(--red)}
+.sheet:not(.owner) .tooth .num{height:24px;overflow:hidden}.sheet .tooth{cursor:default}.sheet .arch{gap:1px;align-items:flex-start;margin:6px 0}.sheet .arch.low{align-items:flex-end}
 /* 操作欄 */
 #panel{position:sticky;bottom:0;z-index:15;background:#fff;border:2px solid var(--blue);border-radius:14px;padding:10px 12px;box-shadow:0 -4px 16px rgba(0,0,0,.08)}
 #panel h3{margin:0 0 8px;font-size:16px;display:flex;align-items:center;gap:8px}
@@ -178,16 +193,46 @@ function toothHTML(id,o){var sp=R.species,t=T(id),q=qOf(id),up=q<=2,mir=(q==1||q
       h+='<i class="'+c+'">'+(v!=null?v:(t.pdok?'·':''))+'</i>';});return h+'</div>';}
   var mk=o.owner?[]:marks(t,sp,id);
   var body='<div class="tb">'+(!o.owner&&hasXr(t)?'<span class="xr">X</span>':'')+(!o.owner&&t.bop?'<span class="dot"></span>':'')+'<b>'+id+'</b>'+(mk.length?'<span class="mk">'+mk.join(' ')+'</span>':'')+'</div>';
+  if(o.schema){var nb='<div class="num">'+id+(mk.length?' <span>'+mk.join(' ')+'</span>':'')+(!o.owner&&t.bop?'<em>●</em>':'')+'</div>',sv=schemaSVG(id,t,!o.owner);
+    return '<div class="'+cls+'" style="flex:'+weight(id,sp)+'">'+(up?row(0)+sv+nb+row(3):row(3)+nb+sv+row(0))+'</div>';}
   /* 上顎：頬側が上、内側が下。下顎：内側が上、頬側が下 */
   return '<div class="'+cls+'" style="flex:'+weight(id,sp)+'" data-act="tooth" data-id="'+id+'">'+(up?row(0)+body+row(3):row(3)+body+row(0))+'</div>';}
 function chartHTML(o){o=o||{};var sp=R.species,S=SP[sp].q;
-  function arch(qa,qb){var h='<div class="arch"><div class="side">右</div>';
+  function arch(qa,qb){var h='<div class="arch'+(qa==4?' low':'')+'"><div class="side">右</div>';
     S[qa].slice().reverse().forEach(function(n){h+=toothHTML(tid(qa,n),o);});h+='<div class="mid"></div>';
     S[qb].forEach(function(n){h+=toothHTML(tid(qb,n),o);});return h+'<div class="side">左</div></div>';}
   return '<div class="chart"><div class="jaw">上あご'+(o.owner?'':'（上の数字＝頬側／下の数字＝口蓋側）')+'</div>'+arch(1,2)+
     '<div class="jaw">下あご'+(o.owner?'':'（上の数字＝舌側／下の数字＝頬側）')+'</div>'+arch(4,3)+
     '<div class="legend"><span class="l1">抜歯した歯</span><span class="l2">歯周ポケットが深い歯'+(o.owner?'':'（'+SP[sp].label+' '+thr()+'mm以上）')+'</span><span class="l3">経過観察</span><span class="l4">'+(o.owner?'もともと無い歯':'欠損')+'</span></div></div>';}
 
+
+/* ===== 歯の形のシェーマ（印刷用・頬側から見た図） ===== */
+var SH={
+  I:{r:[[.5,.5,24]],c:[[.1,.5],[.3,.95],[.5,1],[.7,.95],[.9,.5]],h:13},
+  C:{r:[[.5,.6,36]],c:[[.12,.45],[.3,.8],[.42,1],[.62,.7],[.9,.3]],h:28},
+  P1:{r:[[.5,.5,17]],c:[[.1,.3],[.5,1],[.9,.3]],h:9},
+  P:{r:[[.25,.3,22],[.75,.3,22]],c:[[.05,.3],[.25,.5],[.55,1],[.8,.45],[.95,.3]],h:15},
+  UP4:{r:[[.2,.3,24],[.6,.2,19],[.85,.24,26]],c:[[.03,.35],[.25,.75],[.4,.5],[.65,1],[.85,.45],[.97,.3]],h:24},
+  UM:{r:[[.2,.25,17],[.5,.2,13],[.8,.25,17]],c:[[.05,.4],[.3,1],[.5,.6],[.7,1],[.95,.4]],h:11},
+  LM1:{r:[[.25,.32,28],[.75,.32,28]],c:[[.03,.3],[.2,.55],[.32,.4],[.55,1],[.68,.6],[.82,.9],[.97,.35]],h:24},
+  LM2:{r:[[.27,.3,16],[.73,.3,16]],c:[[.05,.4],[.35,1],[.65,.9],[.95,.4]],h:9},
+  S:{r:[[.5,.5,13]],c:[[.1,.4],[.5,1],[.9,.4]],h:6},
+  CLM1:{r:[[.25,.32,24],[.75,.32,24]],c:[[.05,.3],[.3,1],[.5,.45],[.72,.95],[.95,.3]],h:20}
+};
+function shapeOf(id,sp){var n=nOf(id),u=qOf(id)<=2;if(n<=3)return SH.I;if(n==4)return SH.C;
+  if(sp=='dog'){if(n==5)return SH.P1;if(u)return n==8?SH.UP4:n>=9?SH.UM:SH.P;return n==9?SH.LM1:n==10?SH.LM2:n==11?SH.S:SH.P;}
+  if(u)return n==6?SH.S:n==7?SH.P:n==8?SH.UP4:SH.S;return n==9?SH.CLM1:SH.P;}
+function schemaSVG(id,t,staff){var sp=R.species,sh=shapeOf(id,sp),w=weight(id,sp)*20,H=64,g=36,q=qOf(id),up=q<=2,mir=(q==2||q==3),n=nOf(id);
+  var hh=sh.h+(sh===SH.I?(n-1)*1.5:0)+(sh===SH.P?(n-6)*1.5:0)+(sh===SH.UM&&n==10?-3:0),f=function(x){return Math.round(x*10)/10;};
+  var p='',ap='';sh.r.forEach(function(r){var cx=r[0]*w,wr=r[1]*w,len=r[2],x1=cx-wr/2,x2=cx+wr/2,ax=cx-wr*.12;
+    p+='<path class="rt" d="M'+f(x1)+','+g+' Q'+f(x1)+','+f(g-len*.75)+' '+f(ax)+','+f(g-len)+' Q'+f(x2)+','+f(g-len*.75)+' '+f(x2)+','+g+'Z"/>';
+    if(staff&&t.xapex)ap+='<circle class="apx" cx="'+f(ax)+'" cy="'+f(g-len-1)+'" r="3.2"/>';});
+  var P=[[1.2,g]];sh.c.forEach(function(c){P.push([1.2+c[0]*(w-2.4),g+c[1]*hh*1.12]);});P.push([w-1.2,g]);var d='M'+f(P[0][0])+','+g;for(var i=1;i<P.length-1;i++)d+=' Q'+f(P[i][0])+','+f(P[i][1])+' '+f((P[i][0]+P[i+1][0])/2)+','+f((P[i][1]+P[i+1][1])/2);d+=' L'+f(w-1.2)+','+g+'Z';
+  p+='<path class="cr" d="'+d+'"/>'+ap;
+  if(staff&&t.xbone)p+='<line class="bone" x1="0" x2="'+f(w)+'" y1="'+(g-[0,6,12,19][t.xlv||1])+'" y2="'+(g-[0,6,12,19][t.xlv||1])+'"/>';
+  if(t.ext)p+='<path class="xx" d="M2,4 L'+f(w-2)+','+(H-4)+' M'+f(w-2)+',4 L2,'+(H-4)+'"/>';
+  var tr=(mir?'translate('+f(w)+',0) scale(-1,1) ':'')+(up?'':'translate(0,'+H+') scale(1,-1)');
+  return '<svg class="sch'+(staff&&t.xroot?' xroot':'')+'" viewBox="0 0 '+f(w)+' '+H+'"><g transform="'+tr+'">'+p+'</g></svg>';}
 /* ===== 画面 ===== */
 var TABS=[['case','症例'],['exam','検査'],['xray','X線'],['tx','処置'],['out','出力']];
 function render(){
@@ -301,7 +346,7 @@ function ownerSheet(){var s=summary();
   var h='<div class="sheet owner"><div class="hd"><div><h1>歯科処置のご報告</h1></div><p>ポックル動物病院<br>'+esc(R.date)+'</p></div>'+
    '<div class="inf"><span><b>'+esc(R.owner?R.owner+' 様':'')+'</b></span><span><b>'+esc(R.name)+'</b> ちゃん（'+SP[R.species].label+'）</span><span>担当獣医師：'+esc(R.vet)+'</span></div>'+
    '<div class="sum"><div>抜歯した歯<b>'+s.ext.length+'本</b></div><div>歯周ポケットが深い歯<b>'+s.deep.filter(function(id){return !T(id).ext;}).length+'本</b></div><div>経過観察の歯<b>'+s.watch.length+'本</b></div></div>'+
-   '<h2>お口の中の図</h2>'+chartHTML({owner:true})+'<p style="font-size:9pt;margin:2px 0 0">図の「右・左」は動物から見た向きです。数字は歯の番号です。</p>';
+   '<h2>お口の中の図</h2>'+chartHTML({owner:true,schema:true})+'<p style="font-size:9pt;margin:2px 0 0">図の「右・左」は動物から見た向きです。数字は歯の番号です。</p>';
   h+='<h2>抜歯した歯</h2>'+(s.ext.length?'<ul>'+s.ext.map(function(id){var t=T(id);return '<li><b>'+tname(id)+'</b>（'+id+'）'+(t.reason&&OWNER_REASON[t.reason]?'：'+OWNER_REASON[t.reason]:'')+(t.suture?'。歯ぐきを縫合しています':'')+'</li>';}).join('')+'</ul>':'<p>抜歯した歯はありません。</p>');
   var dp=s.deep.filter(function(id){return !T(id).ext;});
   h+='<h2>歯周ポケットが深かった歯</h2>'+(dp.length?'<ul>'+dp.map(function(id){return '<li><b>'+tname(id)+'</b>（'+id+'）：最大 '+maxPd(T(id))+'mm</li>';}).join('')+'</ul><p style="font-size:9.5pt;margin:0">歯周ポケットは歯と歯ぐきのすき間です。深いほど歯周病が進んでいる目安になります。</p>':'<p>残した歯に、深い歯周ポケットはありませんでした。</p>');
@@ -315,7 +360,7 @@ function staffSheet(){var s=summary(),rows='';
   var g=[];if(R.g.scaling)g.push('スケーリング');if(R.g.polish)g.push('ポリッシング');
   return '<div class="sheet"><div class="hd"><div><h1>歯科検査記録（院内用）</h1></div><p>ポックル動物病院<br>'+esc(R.date)+'</p></div>'+
    '<div class="inf"><span>カルテNo：<b>'+esc(R.karte)+'</b></span><span>'+esc(R.owner)+'</span><span><b>'+esc(R.name)+'</b>（'+SP[R.species].label+(R.weight?'・'+esc(R.weight)+'kg':'')+'）</span><span>担当：'+esc(R.vet)+'</span><span>記録：'+esc(R.rec)+'</span></div>'+
-   chartHTML({})+'<p style="font-size:8.5pt;margin:2px 0 0">M＝動揺　F＝根分岐部　X＝X線所見あり　赤丸＝出血　数字の並びは図の向き（正中側が近心）</p>'+
+   chartHTML({schema:true})+'<p style="font-size:8.5pt;margin:2px 0 0">M＝動揺　F＝根分岐部　赤丸＝出血　X線：青い歯根＝歯根吸収、根の先の赤丸＝根尖病巣、青の点線＝骨吸収の高さ（目安）　数字の並びは図の向き（正中側が近心）</p>'+
    '<div class="sum"><div>抜歯<b>'+s.ext.length+'本</b></div><div>フラップ<b>'+s.flap+'か所</b></div><div>縫合<b>'+s.suture+'か所</b></div><div>欠損<b>'+s.miss.length+'本</b></div></div>'+
    '<p style="margin:0">全体の処置：'+(g.join('・')||'なし')+(R.g.suture?'　縫合糸：'+esc(R.g.suture):'')+'</p>'+
    '<h2>歯ごとの記録（異常・処置のある歯）</h2>'+(rows?'<table><tr><th>歯</th><th>所見</th><th>ポケット（近心-中央-遠心）</th><th>X線</th><th>処置</th></tr>'+rows+'</table>':'<p>異常・処置の記録はありません。</p>')+

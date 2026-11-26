@@ -218,7 +218,7 @@ function roots(id,sp){var n=nOf(id);if(n<=4)return 1;var u=qOf(id)<=2;return SP[
 function weight(id,sp){var n=nOf(id),u=qOf(id)<=2;if(n<=3)return 1;if(n==4)return 1.5;if(u&&n==8)return 1.9;if(!u&&n==9)return 1.9;if(sp=='dog'&&n==5)return 1.1;return 1.4;}
 
 /* ===== 状態 ===== */
-var DENT_API="";   /* Apps Script のウェブアプリURL。空のあいだは試験モード（この端末だけに保存） */
+var DENT_API="https://script.google.com/macros/s/AKfycbzD4KbnMB-0wnztxu5H6xu9Mvyo146nNaOqADGoMHj_2paixIhtQIjuiq0WP9heDCIVjg/exec";   /* Apps Script のウェブアプリURL。空のあいだは試験モード（この端末だけに保存） */
 var LS='dental_recs_v1';
 var SY={t:null},PH={},REMOTE=[];
 function apiKey(){try{return localStorage.getItem('anes_key')||localStorage.getItem('rcb_key')||'';}catch(e){return '';}}

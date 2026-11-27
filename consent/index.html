@@ -58,6 +58,13 @@ button.p:disabled{background:#c3cbc8;color:#fff}
 button.p.ghost{background:#fff;color:var(--g);border:2.5px solid var(--g)}
 .note{font-size:.76em;color:var(--mut);line-height:1.6}
 .err{color:var(--red);font-size:.8em;font-weight:700}
+.signov{position:fixed;left:0;right:0;top:0;bottom:0;z-index:50;background:#fff;display:flex;flex-direction:column;padding:12px 14px calc(12px + env(safe-area-inset-bottom));touch-action:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;overscroll-behavior:none}
+.signov .sh{font-weight:800;font-size:18px;line-height:1.5;margin-bottom:8px}
+.signov .sbox{position:relative;flex:1;min-height:150px;border:2.5px solid #8b9692;border-radius:12px;margin-bottom:10px}
+.signov canvas{position:absolute;left:0;top:0;width:100%;height:100%;border-radius:12px;touch-action:none}
+.signov .sline{position:absolute;left:18px;right:18px;bottom:30%;border-bottom:2px dotted #b6bfbc;pointer-events:none}
+.signov .srow{display:flex;justify-content:space-between;margin-bottom:10px}.signov .srow .s{font-size:16px;padding:10px 20px}
+.sig{display:flex;align-items:center;gap:8px;border:2px solid var(--line);border-radius:12px;padding:6px 10px;margin:.5em 0}.sig img{flex:1;min-width:0;height:90px;object-fit:contain}
 #outImg img{width:100%;border:1px solid var(--line)}
 .url{word-break:break-all;font-size:12px;line-height:1.4;background:#eef2f0;border-radius:8px;padding:8px;font-family:ui-monospace,monospace}
 .staff{--fs:18px;font-size:18px}
@@ -66,7 +73,7 @@ button.p.ghost{background:#fff;color:var(--g);border:2.5px solid var(--g)}
 </head>
 <body>
 <div class="wrap">
-  <div class="test" id="testNote">【試作・試験モード】サーバーには送りません。架空の名前でお試しください。</div>
+  <div class="test" id="testNote">【試作・試験モード】サーバーには送りません。架空の名前でお試しください。（版 11/27-2）</div>
 
   <section id="vStaff" class="staff" hidden>
     <p style="margin:10px 0 0"><a href="../" style="font-size:14px;color:#0F6E56">‹ 院内ツール一覧</a></p>
@@ -312,30 +319,35 @@ function staffInit(){
 }
 
 /* ================= 飼い主：1画面1項目で確認 → 署名 ================= */
-var OD=null,ANS={},STEPS=[],SEEN=[],IDX=0,RET=null,TEL="",TEL2="",WHO={name:"",rel:""},pads=[],signBox=null;
-function makePad(first){
-  var w=el("div","pad"),c=el("canvas"),h=el("div","hint","この線の上に、指でお名前を"),x=el("button","s cl","書き直す");
-  w.appendChild(c);w.appendChild(h);w.appendChild(x);signBox.insertBefore(w,signBox.querySelector(".add"));
-  var P={c:c,ink:false,w:w},ctx=c.getContext("2d"),down=false,lx,ly;
-  function size(){var r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=Math.round(r.width*d);c.height=Math.round(r.height*d);ctx.lineWidth=3.2*d;ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle="#111";P.ink=false;h.hidden=false}
-  size();
+var OD=null,ANS={},STEPS=[],SEEN=[],IDX=0,RET=null,TEL="",TEL2="",WHO={name:"",rel:""};
+/* 署名は全画面の専用モードで書く：背景のページを固定し、画面内の指の動きをすべて止める（LINE内ブラウザで縦に動く対策） */
+var SIGS=[],signLock=false;
+document.addEventListener("touchmove",function(e){if(signLock)e.preventDefault()},{passive:false});
+function openSign(idx){
+  var ov=el("div","signov"),hd=el("div","sh","枠の中に、指でお名前をお書きください"),box=el("div","sbox"),c=el("canvas"),ln=el("div","sline"),row=el("div","srow"),
+      bx=el("button","s","やめる"),br=el("button","s","書き直す"),bo=el("button","p","これで決定");
+  box.appendChild(c);box.appendChild(ln);row.appendChild(bx);row.appendChild(br);ov.appendChild(hd);ov.appendChild(box);ov.appendChild(row);ov.appendChild(bo);
+  var sy=window.pageYOffset||0;signLock=true;
+  document.documentElement.style.overflow="hidden";document.body.style.cssText="position:fixed;left:0;right:0;top:"+(-sy)+"px;overflow:hidden";
+  document.body.appendChild(ov);
+  var ctx=c.getContext("2d"),down=false,lx,ly,tid=null,NP={passive:false};
+  function size(){var r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=Math.round(r.width*d);c.height=Math.round(r.height*d);ctx.lineWidth=3.4*d;ctx.lineCap="round";ctx.lineJoin="round";ctx.strokeStyle="#111";bo.disabled=true;ln.hidden=false}
   function pos(t){var r=c.getBoundingClientRect();return [(t.clientX-r.left)*c.width/r.width,(t.clientY-r.top)*c.height/r.height]}
-  function start(t){down=true;var p=pos(t);lx=p[0];ly=p[1];ctx.beginPath();ctx.arc(lx,ly,ctx.lineWidth/2,0,7);ctx.fillStyle="#111";ctx.fill();P.ink=true;h.hidden=true;btnState()}
+  function start(t){down=true;var p=pos(t);lx=p[0];ly=p[1];ctx.beginPath();ctx.arc(lx,ly,ctx.lineWidth/2,0,7);ctx.fillStyle="#111";ctx.fill();bo.disabled=false}
   function draw(t){if(!down)return;var p=pos(t);ctx.beginPath();ctx.moveTo(lx,ly);ctx.lineTo(p[0],p[1]);ctx.stroke();lx=p[0];ly=p[1]}
-  /* 指：touch イベントで描き、既定の動き（画面スクロール・拡大）を必ず止める。iPhone/iPad・LINE内ブラウザ対策 */
-  var NP={passive:false},tid=null;
   c.addEventListener("touchstart",function(e){e.preventDefault();if(tid!==null)return;var t=e.changedTouches[0];tid=t.identifier;start(t)},NP);
   c.addEventListener("touchmove",function(e){e.preventDefault();for(var i=0;i<e.changedTouches.length;i++)if(e.changedTouches[i].identifier===tid)draw(e.changedTouches[i])},NP);
   function tend(e){e.preventDefault();for(var i=0;i<e.changedTouches.length;i++)if(e.changedTouches[i].identifier===tid){tid=null;down=false}}
   c.addEventListener("touchend",tend,NP);c.addEventListener("touchcancel",tend,NP);
-  w.addEventListener("touchmove",function(e){e.preventDefault()},NP);
-  ["gesturestart","gesturechange","contextmenu","selectstart"].forEach(function(n){w.addEventListener(n,function(e){e.preventDefault()})});
-  /* マウス・ペン：pointer イベント（指の分は上で処理済みなので除く） */
+  ov.addEventListener("touchmove",function(e){e.preventDefault()},NP);
+  ["gesturestart","gesturechange","contextmenu","selectstart"].forEach(function(n){ov.addEventListener(n,function(e){e.preventDefault()})});
   c.addEventListener("pointerdown",function(e){if(e.pointerType==="touch")return;e.preventDefault();try{c.setPointerCapture(e.pointerId)}catch(_){}start(e)});
   c.addEventListener("pointermove",function(e){if(e.pointerType==="touch")return;e.preventDefault();draw(e)});
   ["pointerup","pointercancel"].forEach(function(n){c.addEventListener(n,function(e){if(e.pointerType==="touch")return;down=false})});
-  x.onclick=function(){if(!first&&!P.ink){w.remove();pads.splice(pads.indexOf(P),1);btnState();return}size();btnState()};
-  pads.push(P);return P;
+  function close(){signLock=false;document.documentElement.style.overflow="";document.body.style.cssText="";ov.remove();window.scrollTo(0,sy)}
+  bx.onclick=close;br.onclick=size;
+  bo.onclick=function(){var k=document.createElement("canvas");k.width=c.width;k.height=c.height;k.getContext("2d").drawImage(c,0,0);if(idx>=0)SIGS[idx]=k;else SIGS.push(k);close();render()};
+  size();
 }
 function richText(host,text,ems){
   text.split(/(?<=。)/).forEach(function(sen){
@@ -346,7 +358,7 @@ function richText(host,text,ems){
     host.appendChild(p)});
 }
 function ownerInit(D){
-  OD=D;ANS={};SEEN=[];IDX=0;RET=null;TEL="";TEL2="";WHO={name:"",rel:""};pads=[];signBox=null;var F=FORMS[D.type];
+  OD=D;ANS={};SEEN=[];IDX=0;RET=null;TEL="";TEL2="";WHO={name:"",rel:""};SIGS=[];var F=FORMS[D.type];
   document.title=F.title+"｜ポックル動物病院";
   STEPS=[{k:"cover"}];var n=0;
   bodyOf(D).forEach(function(it){
@@ -370,7 +382,6 @@ function btnState(){
   if(st.k==="q")ok=qDone(st.it);
   else if(st.k==="tel")ok=telOk();
   else if(st.k==="who")ok=!!(WHO.name&&WHO.rel);
-  else if(st.k==="sign")ok=pads.some(function(p){return p.ink});
   b.disabled=!ok;
 }
 function infoRows(D,F){return [["動物名",D.name+" ちゃん"],[F.procLabel,D.proc],["日付",jdate(D.date)],["担当獣医師",D.vet],["動物種",D.species],["体重",wtText(D)],["カルテNo.",D.karte]].filter(function(r){return r[1]})}
@@ -379,7 +390,6 @@ function opts(m,list,cur,onPick){list.forEach(function(o){var bt=el("button","op
   bt.onclick=function(){[].forEach.call(m.querySelectorAll(".opt"),function(x){x.classList.toggle("on",x===bt)});onPick(o)};m.appendChild(bt)})}
 function render(){
   var st=STEPS[IDX],F=FORMS[OD.type],D=OD,m=$("oMain"),b=$("oNext");m.textContent="";
-  if(signBox&&signBox.parentNode)signBox.remove();
   var total=0,pos=0;STEPS.forEach(function(s,i){if(i&&shown(i)){total++;if(i<=IDX)pos++}});
   $("oBack").style.visibility=IDX?"visible":"hidden";
   $("oPg").textContent=IDX?(pos+"／"+total):"";$("oBar").style.width=(pos/total*100)+"%";
@@ -432,20 +442,22 @@ function render(){
     b.textContent="署名へ進む";
   }else if(st.k==="sign"){
     m.appendChild(el("div","lead","ご署名"));m.appendChild(el("div","qt",F.v2?SIGN_V2:"上記内容を理解しました"));
-    if(!signBox){signBox=el("div");var add=el("button","s add","＋ ご家族の署名を追加");add.onclick=function(){makePad(false)};signBox.appendChild(add);m.appendChild(signBox);makePad(true)}
-    else m.appendChild(signBox);
+    SIGS.forEach(function(k,n){var w=el("div","sig"),im=new Image();im.src=k.toDataURL();im.alt="署名";w.appendChild(im);
+      var r=el("button","s","書き直す");r.onclick=function(){openSign(n)};w.appendChild(r);
+      if(SIGS.length>1){var d=el("button","s","削除");d.onclick=function(){SIGS.splice(n,1);render()};w.appendChild(d)}m.appendChild(w)});
+    if(SIGS.length){var add=el("button","s","＋ ご家族の署名を追加");add.onclick=function(){openSign(-1)};m.appendChild(add)}
     m.appendChild(el("p","note",F.v2?"画面へのご署名は、手書きの署名と同じものとして扱います。":"ご確認頂いたご家族皆様の署名をお願いします。"));
-    b.textContent="同意して送信する";b.onclick=submit;
+    if(!SIGS.length){b.textContent="✍ 署名する";b.onclick=function(){openSign(-1)}}else{b.textContent="同意して送信する";b.onclick=submit}
   }
   btnState();
 }
 function complete(){
   var F=FORMS[OD.type];
-  return STEPS.every(function(s,i){return s.k==="q"?(!shown(i)||qDone(s.it)):(s.k==="c"||s.k==="r")?SEEN[i]:true})&&telOk()&&(!F.v2||(WHO.name&&WHO.rel))&&pads.some(function(p){return p.ink});
+  return STEPS.every(function(s,i){return s.k==="q"?(!shown(i)||qDone(s.it)):(s.k==="c"||s.k==="r")?SEEN[i]:true})&&telOk()&&(!F.v2||(WHO.name&&WHO.rel))&&SIGS.length>0;
 }
 function submit(){
   if(!complete()){alertBox("未確認の項目があります。最初から順にご確認ください。");return}
-  var R={d:OD,ans:ANS,tel:TEL,tel2:TEL2,who:WHO,staff:"",signedAt:stamp(),sigs:pads.filter(function(p){return p.ink}).map(function(p){return p.c})};
+  var R={d:OD,ans:ANS,tel:TEL,tel2:TEL2,who:WHO,staff:"",signedAt:stamp(),sigs:SIGS.slice()};
   if(OD.here&&FORMS[OD.type].v2){
     var s=$("cStaff");if(s.options.length<2)STAFF.forEach(function(n){s.appendChild(el("option",null,n))});s.value="";$("cDone").disabled=true;
     s.onchange=function(){$("cDone").disabled=!s.value};$("cDone").onclick=function(){R.staff=s.value;finish(R)};show("vChk");
